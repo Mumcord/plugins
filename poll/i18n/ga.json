@@ -26,9 +26,9 @@
   "error.poll_open": "Dún do phobalbhreith reatha ar dtús.",
   "error.incomplete": "Cuir isteach ceist agus dhá rogha ar a laghad.",
   "form.hint_triggers": "Vótálann daoine gan an breiseán Poll sa chomhrá le !poll agus uimhir na rogha.",
+  "card.hint_triggers": "Cuir vótáil !poll ar siúl i gceadanna an bhreiseáin",
   "chat.closed": "Dúnta: {{question}} {{results}}",
   "chat.vote_with": "Vótáil le !poll 1 go !poll {{count}}",
-  "chat.vote_in_mumcord": "Vótáil in Mumcord leis an mbreiseán Poll.",
   "notify.title": "Pobalbhreith nua",
   "notify.body": "Tá {{name}} ag fiafraí: {{question}}",
   "creator_fallback": "Cruthaitheoir na pobalbhreithe"

@@ -165,16 +165,20 @@ pub enum Role {
     Voter,
 }
 
-/// A poll's chat card: one bar and Vote button per option, the status and the voter list.
-pub fn card(s: &Strings, poll: &Poll, role: Role) -> El {
+/// A poll's chat card: one full-width vote row per option, the status and the voter list.
+pub fn card(s: &Strings, poll: &Poll, role: Role, triggers: bool) -> El {
     let mut card = ui::column()
         .child(ui::heading(&poll.question))
         .child(ui::caption(&status_text(s, poll, role)));
     for i in 0..poll.options.len() {
-        card = card.child(option_row(s, poll, i, MAX_TEXT_CHARS));
+        card = card.child(vote_row(s, poll, i));
     }
     for line in voter_lines(poll) {
         card = card.child(ui::caption(&line));
+    }
+    // Without `chat.triggers` people in plain Mumble cannot vote, although the chat line says so.
+    if role == Role::Creator && !poll.closed && !triggers {
+        card = card.child(ui::caption(&s.t("card.hint_triggers")));
     }
     if role == Role::Creator && !poll.closed {
         card = card.child(ui::button("close", &s.t("button.end")).kind(ButtonKind::Danger));
@@ -202,6 +206,35 @@ fn option_row(s: &Strings, poll: &Poll, i: usize, label_chars: usize) -> El {
         .kind(kind)
         .disabled(poll.closed || poll.frozen);
     ui::row()
+        .child(vote)
+        .child(ui::meter(&votes_text(s, u32::from(count)), share))
+}
+
+/// One option on the card: a full-width button with its name (checkmark and highlight once
+/// chosen) above its bar with the count as text, so the result is never shown by colour alone.
+fn vote_row(s: &Strings, poll: &Poll, i: usize) -> El {
+    let count = poll.counts.get(i).copied().unwrap_or(0);
+    let total = poll.total();
+    let share = if total == 0 {
+        0.0
+    } else {
+        f32::from(count) / total as f32
+    };
+    let mine = poll.my_vote == Some(i);
+    let label = if mine {
+        format!("✓ {}", poll.options[i])
+    } else {
+        poll.options[i].clone()
+    };
+    let kind = if mine {
+        ButtonKind::Primary
+    } else {
+        ButtonKind::Secondary
+    };
+    let vote = ui::button(&format!("vote-{i}"), &cut_chars(&label, MAX_TEXT_CHARS))
+        .kind(kind)
+        .disabled(poll.closed || poll.frozen);
+    ui::stack(Direction::Column, 2, Align::Stretch)
         .child(vote)
         .child(ui::meter(&votes_text(s, u32::from(count)), share))
 }
@@ -255,24 +288,21 @@ fn cut_chars(text: &str, max: usize) -> String {
 }
 
 /// The fallback chat line posted at creation, for official Mumble clients and Mumcord users
-/// without Poll. It ends with how to vote: "!poll <n>" when the creator's Poll counts those,
-/// otherwise in Mumcord.
-pub fn creation_line(s: &Strings, question: &str, options: &[String], triggers: bool) -> String {
+/// without Poll. Plain text only (the host escapes plugin lines), so the parts are separated by
+/// " · "; it always ends with how to vote with "!poll <n>".
+pub fn creation_line(s: &Strings, question: &str, options: &[String]) -> String {
     let list: Vec<String> = options
         .iter()
         .enumerate()
         .map(|(i, o)| format!("{}) {o}", i + 1))
         .collect();
-    let how = if triggers {
-        s.t_with("chat.vote_with", &[("count", &options.len().to_string())])
-    } else {
-        s.t("chat.vote_in_mumcord")
-    };
+    let how = s.t_with("chat.vote_with", &[("count", &options.len().to_string())]);
     // The hint must survive the length cut, so the question and the options give way.
     let separator = " · ";
-    let room = CHAT_LINE_BYTES.saturating_sub(how.len() + separator.len());
-    let poll = format!("{question} {}", list.join(" "));
-    chat_line(&format!("{}{separator}{how}", truncate(&poll, room)))
+    let icon = "📊 ";
+    let room = CHAT_LINE_BYTES.saturating_sub(how.len() + separator.len() + icon.len());
+    let poll = format!("{question}{separator}{}", list.join(separator));
+    chat_line(&format!("{icon}{}{separator}{how}", truncate(&poll, room)))
 }
 
 /// The fallback chat line posted when the creator closes the poll.
@@ -314,12 +344,8 @@ mod tests {
         let s = english();
         let options = vec!["Pizza".to_owned(), "Pasta".to_owned()];
         assert_eq!(
-            creation_line(&s, "Pizza or pasta?", &options, true),
-            "Pizza or pasta? 1) Pizza 2) Pasta · Vote with !poll 1 to !poll 2"
-        );
-        assert_eq!(
-            creation_line(&s, "Pizza or pasta?", &options, false),
-            "Pizza or pasta? 1) Pizza 2) Pasta · Vote in Mumcord with the Poll plugin."
+            creation_line(&s, "Pizza or pasta?", &options),
+            "📊 Pizza or pasta? · 1) Pizza · 2) Pasta · Vote with !poll 1 to !poll 2"
         );
     }
 
@@ -327,7 +353,7 @@ mod tests {
     fn creation_line_fits_the_chat_limit_and_keeps_the_hint() {
         let s = english();
         let options = vec!["ö".repeat(20); MAX_OPTIONS];
-        let line = creation_line(&s, &"ä".repeat(100), &options, true);
+        let line = creation_line(&s, &"ä".repeat(100), &options);
         assert!(line.chars().count() + "[Poll] ".len() <= 500);
         assert!(line.ends_with("Vote with !poll 1 to !poll 10"), "{line}");
     }

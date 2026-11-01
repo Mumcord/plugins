@@ -23,9 +23,9 @@
   "error.poll_open": "Първо затворете текущата си анкета.",
   "error.incomplete": "Въведете въпрос и поне два варианта.",
   "form.hint_triggers": "Хората без приставката Poll гласуват в чата с !poll и номера на отговора.",
+  "card.hint_triggers": "Включете гласуването с !poll в разрешенията на приставката",
   "chat.closed": "Затворена: {{question}} {{results}}",
   "chat.vote_with": "Гласувайте с !poll 1 до !poll {{count}}",
-  "chat.vote_in_mumcord": "Гласувайте в Mumcord с приставката Poll.",
   "notify.title": "Нова анкета",
   "notify.body": "{{name}} пита: {{question}}",
   "creator_fallback": "Създател на анкетата"

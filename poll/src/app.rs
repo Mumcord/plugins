@@ -256,7 +256,8 @@ impl App {
 
     pub fn set_granted(&mut self, host: &mut impl Host, granted: Vec<String>) {
         self.granted = granted;
-        self.render_panel(host);
+        // The creator's card hints at a missing `chat.triggers`.
+        self.render_own(host);
     }
 
     fn granted(&self, permission: &str) -> bool {
@@ -418,8 +419,7 @@ impl App {
         self.last_poll_id = id;
 
         // The click is the gesture that allows exactly one chat line (FR-6.44).
-        let triggers = self.granted("chat.triggers");
-        let line = view::creation_line(&self.strings.0, &question, &options, triggers);
+        let line = view::creation_line(&self.strings.0, &question, &options);
         let line_hash = match host.chat_send(&line) {
             Ok(()) => host.line_hash(&line),
             Err(e) => {
@@ -567,7 +567,7 @@ impl App {
         // One poll per creator: an older one from the same session ends here.
         if let Some(old) = self.others.iter_mut().find(|o| o.session == sender.session) {
             old.poll.closed = true;
-            let card = view::card(&self.strings.0, &old.poll, Role::Voter);
+            let card = view::card(&self.strings.0, &old.poll, Role::Voter, false);
             host.show(
                 Slot::ChatCard(other_card_id(old.session, old.poll.id)),
                 card,
@@ -848,7 +848,12 @@ impl App {
         if let Some(own) = &self.own {
             host.show(
                 Slot::ChatCard(own_card_id(own.poll.id)),
-                view::card(&self.strings.0, &own.poll, Role::Creator),
+                view::card(
+                    &self.strings.0,
+                    &own.poll,
+                    Role::Creator,
+                    self.granted("chat.triggers"),
+                ),
             );
         }
         self.render_panel(host);
@@ -858,7 +863,7 @@ impl App {
         if let Some(other) = self.others.iter().find(|o| o.session == session) {
             host.show(
                 Slot::ChatCard(other_card_id(session, other.poll.id)),
-                view::card(&self.strings.0, &other.poll, Role::Voter),
+                view::card(&self.strings.0, &other.poll, Role::Voter, false),
             );
         }
         self.render_panel(host);

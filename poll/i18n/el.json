@@ -23,9 +23,9 @@
   "error.poll_open": "Κλείστε πρώτα την τρέχουσα δημοσκόπησή σας.",
   "error.incomplete": "Εισαγάγετε μια ερώτηση και τουλάχιστον δύο επιλογές.",
   "form.hint_triggers": "Όσοι δεν έχουν το πρόσθετο Poll ψηφίζουν στη συνομιλία με !poll και τον αριθμό της επιλογής.",
+  "card.hint_triggers": "Ενεργοποιήστε την ψηφοφορία με !poll στις άδειες του πρόσθετου",
   "chat.closed": "Έκλεισε: {{question}} {{results}}",
   "chat.vote_with": "Ψηφίστε με !poll 1 έως !poll {{count}}",
-  "chat.vote_in_mumcord": "Ψηφίστε στο Mumcord με το πρόσθετο Poll.",
   "notify.title": "Νέα δημοσκόπηση",
   "notify.body": "{{name}} ρωτά: {{question}}",
   "creator_fallback": "Δημιουργός δημοσκόπησης"

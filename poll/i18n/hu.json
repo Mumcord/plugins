@@ -23,9 +23,9 @@
   "error.poll_open": "Előbb zárd le a jelenlegi szavazásodat.",
   "error.incomplete": "Adj meg egy kérdést és legalább két lehetőséget.",
   "form.hint_triggers": "Akinek nincs Poll bővítménye, a csevegésben szavaz: !poll és a lehetőség száma.",
+  "card.hint_triggers": "Kapcsolja be a !poll szavazást a bővítmény engedélyeinél",
   "chat.closed": "Lezárva: {{question}} {{results}}",
   "chat.vote_with": "Szavazz: !poll 1 – !poll {{count}}",
-  "chat.vote_in_mumcord": "Szavazz a Mumcordban a Poll bővítménnyel.",
   "notify.title": "Új szavazás",
   "notify.body": "{{name}} kérdése: {{question}}",
   "creator_fallback": "Szavazás létrehozója"

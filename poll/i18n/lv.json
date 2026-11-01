@@ -24,9 +24,9 @@
   "error.poll_open": "Vispirms aizveriet pašreizējo aptauju.",
   "error.incomplete": "Ievadiet jautājumu un vismaz divus variantus.",
   "form.hint_triggers": "Kam nav spraudņa Poll, balso tērzēšanā ar !poll un atbildes numuru.",
+  "card.hint_triggers": "Ieslēdziet balsošanu ar !poll spraudņa atļaujās",
   "chat.closed": "Aizvērta: {{question}} {{results}}",
   "chat.vote_with": "Balsojiet ar !poll 1 līdz !poll {{count}}",
-  "chat.vote_in_mumcord": "Balsojiet Mumcord ar spraudni Poll.",
   "notify.title": "Jauna aptauja",
   "notify.body": "{{name}} jautā: {{question}}",
   "creator_fallback": "Aptaujas autors"

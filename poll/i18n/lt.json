@@ -24,9 +24,9 @@
   "error.poll_open": "Pirmiausia uždarykite dabartinę apklausą.",
   "error.incomplete": "Įveskite klausimą ir bent du variantus.",
   "form.hint_triggers": "Neturintys Poll papildinio balsuoja pokalbyje su !poll ir varianto numeriu.",
+  "card.hint_triggers": "Įjunkite balsavimą per !poll įskiepio leidimuose",
   "chat.closed": "Uždaryta: {{question}} {{results}}",
   "chat.vote_with": "Balsuokite: !poll 1 – !poll {{count}}",
-  "chat.vote_in_mumcord": "Balsuokite Mumcord su Poll papildiniu.",
   "notify.title": "Nauja apklausa",
   "notify.body": "{{name}} klausia: {{question}}",
   "creator_fallback": "Apklausos kūrėjas"

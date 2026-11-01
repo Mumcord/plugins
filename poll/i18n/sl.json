@@ -25,9 +25,9 @@
   "error.poll_open": "Najprej zaprite svojo trenutno anketo.",
   "error.incomplete": "Vnesite vprašanje in vsaj dve možnosti.",
   "form.hint_triggers": "Kdor nima vtičnika Poll, glasuje v klepetu z !poll in številko možnosti.",
+  "card.hint_triggers": "Vklopite glasovanje z !poll v dovoljenjih vtičnika",
   "chat.closed": "Zaprto: {{question}} {{results}}",
   "chat.vote_with": "Glasujte z !poll 1 do !poll {{count}}",
-  "chat.vote_in_mumcord": "Glasujte v Mumcordu z vtičnikom Poll.",
   "notify.title": "Nova anketa",
   "notify.body": "{{name}} sprašuje: {{question}}",
   "creator_fallback": "Ustvarjalec ankete"

@@ -23,9 +23,9 @@
   "error.poll_open": "Stäng först din nuvarande omröstning.",
   "error.incomplete": "Ange en fråga och minst två alternativ.",
   "form.hint_triggers": "Den som saknar Poll-pluginet röstar i chatten med !poll och alternativets nummer.",
+  "card.hint_triggers": "Slå på röstning med !poll i plugin-behörigheterna",
   "chat.closed": "Stängd: {{question}} {{results}}",
   "chat.vote_with": "Rösta med !poll 1 till !poll {{count}}",
-  "chat.vote_in_mumcord": "Rösta i Mumcord med Poll-pluginet.",
   "notify.title": "Ny omröstning",
   "notify.body": "{{name}} frågar: {{question}}",
   "creator_fallback": "Omröstningens skapare"

@@ -24,9 +24,9 @@
   "error.poll_open": "Închide mai întâi sondajul curent.",
   "error.incomplete": "Introdu o întrebare și cel puțin două opțiuni.",
   "form.hint_triggers": "Cine nu are pluginul Poll votează în chat cu !poll și numărul opțiunii.",
+  "card.hint_triggers": "Activați votul cu !poll în permisiunile pluginului",
   "chat.closed": "Închis: {{question}} {{results}}",
   "chat.vote_with": "Votează cu !poll 1 până la !poll {{count}}",
-  "chat.vote_in_mumcord": "Votează în Mumcord cu pluginul Poll.",
   "notify.title": "Sondaj nou",
   "notify.body": "{{name}} întreabă: {{question}}",
   "creator_fallback": "Creatorul sondajului"

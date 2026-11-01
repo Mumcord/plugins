@@ -26,7 +26,7 @@ steps:
 
   # The plain text line for users without Poll, then the create message for the channel. The
   # popover closes and the panel shows the poll with its End button.
-  - expect: {chat: {text: "Lunch? 1) Pizza 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
   - expect: {message: {to: channel, kind: 1}}
   - expect: {panel-popover: {open: false}}
   - expect: {tree: {slot: panel, text: "End poll"}}

@@ -23,9 +23,9 @@
   "error.poll_open": "Luk først din nuværende afstemning.",
   "error.incomplete": "Skriv et spørgsmål og mindst to valgmuligheder.",
   "form.hint_triggers": "Folk uden Poll-pluginnet stemmer i chatten med !poll og svarets nummer.",
+  "card.hint_triggers": "Slå afstemning med !poll til i plugin-tilladelserne",
   "chat.closed": "Lukket: {{question}} {{results}}",
   "chat.vote_with": "Stem med !poll 1 til !poll {{count}}",
-  "chat.vote_in_mumcord": "Stem i Mumcord med Poll-pluginnet.",
   "notify.title": "Ny afstemning",
   "notify.body": "{{name}} spørger: {{question}}",
   "creator_fallback": "Afstemningens skaber"

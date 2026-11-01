@@ -256,9 +256,7 @@ fn create_posts_the_line_sends_the_poll_and_shows_a_card() {
     let (_app, host) = creator();
     assert_eq!(
         host.chat,
-        vec![
-            "Pizza or pasta? 1) Pizza 2) Pasta · Vote in Mumcord with the Poll plugin.".to_owned()
-        ]
+        vec!["📊 Pizza or pasta? · 1) Pizza · 2) Pasta · Vote with !poll 1 to !poll 2".to_owned()]
     );
     // The popover closes and the panel shows the new poll with its End button.
     assert_eq!(host.popover, Some(false));
@@ -430,7 +428,7 @@ fn creator_votes_on_own_card_without_a_message() {
     app.on_action(&mut host, Some(&own_card_id(1000)), "vote-1", None);
     assert!(host.sent_of(KIND_VOTE).is_empty());
     let card = host.texts(&own_card_id(1000));
-    assert!(card.contains(&"Pasta: 1 vote".to_owned()));
+    assert!(card.contains(&"✓ Pasta: 1 vote".to_owned()));
     assert!(card.contains(&"Pasta: Anna".to_owned()));
 }
 
@@ -925,7 +923,7 @@ fn the_fallback_line_names_the_trigger_when_it_is_granted() {
     app.on_action(&mut host, None, "create", None);
     assert_eq!(
         host.chat,
-        vec!["Q? 1) A 2) B · Vote with !poll 1 to !poll 2".to_owned()]
+        vec!["📊 Q? · 1) A · 2) B · Vote with !poll 1 to !poll 2".to_owned()]
     );
 }
 
@@ -1017,4 +1015,25 @@ fn new_poll_waits_while_my_poll_is_open() {
     assert!(texts.contains(&"[close]".to_owned()));
     app.on_action(&mut host, None, "new-poll", None);
     assert!(!host.texts("panel").contains(&"<question>".to_owned()));
+}
+
+#[test]
+fn the_creators_card_hints_at_the_missing_trigger_permission() {
+    let hint = "Turn on !poll voting in the plugin permissions".to_owned();
+    let (mut app, mut host) = creator();
+    assert!(host.texts(&own_card_id(1000)).contains(&hint));
+    assert!(!host.texts("panel").contains(&hint));
+    app.set_granted(&mut host, vec!["chat.triggers".into()]);
+    assert!(!host.texts(&own_card_id(1000)).contains(&hint));
+}
+
+#[test]
+fn my_vote_is_marked_on_the_card() {
+    let (mut app, mut host) = creator();
+    app.on_action(&mut host, Some(&own_card_id(1000)), "vote-1", None);
+    let card = host.texts(&own_card_id(1000));
+    assert!(
+        card.iter()
+            .any(|t| t.starts_with("[vote-1]") || t.starts_with("✓ Pasta"))
+    );
 }

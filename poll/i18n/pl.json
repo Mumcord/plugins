@@ -25,9 +25,9 @@
   "error.poll_open": "Najpierw zamknij swoją bieżącą ankietę.",
   "error.incomplete": "Wpisz pytanie i co najmniej dwie opcje.",
   "form.hint_triggers": "Osoby bez wtyczki Poll głosują na czacie poleceniem !poll i numerem opcji.",
+  "card.hint_triggers": "Włącz głosowanie przez !poll w uprawnieniach wtyczki",
   "chat.closed": "Zamknięta: {{question}} {{results}}",
   "chat.vote_with": "Głosuj: !poll 1 do !poll {{count}}",
-  "chat.vote_in_mumcord": "Głosuj w Mumcord z wtyczką Poll.",
   "notify.title": "Nowa ankieta",
   "notify.body": "{{name}} pyta: {{question}}",
   "creator_fallback": "Autor ankiety"

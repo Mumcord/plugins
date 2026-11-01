@@ -23,9 +23,9 @@
   "error.poll_open": "Fermez d'abord votre sondage en cours.",
   "error.incomplete": "Saisissez une question et au moins deux choix.",
   "form.hint_triggers": "Sans le plugin Poll, on vote dans le chat avec !poll suivi du numéro du choix.",
+  "card.hint_triggers": "Activez le vote par !poll dans les autorisations du plugin",
   "chat.closed": "Fermé : {{question}} {{results}}",
   "chat.vote_with": "Votez avec !poll 1 à !poll {{count}}",
-  "chat.vote_in_mumcord": "Votez dans Mumcord avec le plugin Poll.",
   "notify.title": "Nouveau sondage",
   "notify.body": "{{name}} demande : {{question}}",
   "creator_fallback": "Créateur du sondage"

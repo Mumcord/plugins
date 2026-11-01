@@ -23,9 +23,9 @@
   "error.poll_open": "Sulge esmalt oma praegune küsitlus.",
   "error.incomplete": "Sisesta küsimus ja vähemalt kaks valikut.",
   "form.hint_triggers": "Need, kellel pole Poll-pluginat, hääletavad vestluses käsuga !poll ja valiku numbriga.",
+  "card.hint_triggers": "Lülita !poll-hääletus sisse pistikprogrammi õigustes",
   "chat.closed": "Suletud: {{question}} {{results}}",
   "chat.vote_with": "Hääleta: !poll 1 kuni !poll {{count}}",
-  "chat.vote_in_mumcord": "Hääleta Mumcordis Poll-pluginaga.",
   "notify.title": "Uus küsitlus",
   "notify.body": "{{name}} küsib: {{question}}",
   "creator_fallback": "Küsitluse looja"

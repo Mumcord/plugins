@@ -23,9 +23,9 @@
   "error.poll_open": "Schließe zuerst deine aktuelle Umfrage.",
   "error.incomplete": "Gib eine Frage und mindestens zwei Antworten ein.",
   "form.hint_triggers": "Wer das Poll-Plugin nicht hat, stimmt im Chat mit !poll und der Nummer der Antwort ab.",
+  "card.hint_triggers": "Aktiviere die !poll-Abstimmung in den Plugin-Berechtigungen",
   "chat.closed": "Geschlossen: {{question}} {{results}}",
   "chat.vote_with": "Abstimmen mit !poll 1 bis !poll {{count}}",
-  "chat.vote_in_mumcord": "Abstimmen in Mumcord mit dem Poll-Plugin.",
   "notify.title": "Neue Umfrage",
   "notify.body": "{{name}} fragt: {{question}}",
   "creator_fallback": "Umfrage-Ersteller"

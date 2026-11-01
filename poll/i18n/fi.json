@@ -23,9 +23,9 @@
   "error.poll_open": "Sulje ensin nykyinen kyselysi.",
   "error.incomplete": "Kirjoita kysymys ja vähintään kaksi vaihtoehtoa.",
   "form.hint_triggers": "Ilman Poll-lisäosaa äänestetään chatissa: !poll ja vaihtoehdon numero.",
+  "card.hint_triggers": "Ota !poll-äänestys käyttöön lisäosan oikeuksissa",
   "chat.closed": "Suljettu: {{question}} {{results}}",
   "chat.vote_with": "Äänestä: !poll 1 – !poll {{count}}",
-  "chat.vote_in_mumcord": "Äänestä Mumcordissa Poll-lisäosalla.",
   "notify.title": "Uusi kysely",
   "notify.body": "{{name}} kysyy: {{question}}",
   "creator_fallback": "Kyselyn luoja"

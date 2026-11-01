@@ -23,9 +23,9 @@
   "error.poll_open": "Sluit eerst je huidige peiling.",
   "error.incomplete": "Voer een vraag en minstens twee opties in.",
   "form.hint_triggers": "Wie de Poll-plugin niet heeft, stemt in de chat met !poll en het nummer van de optie.",
+  "card.hint_triggers": "Zet stemmen met !poll aan in de plugin-rechten",
   "chat.closed": "Gesloten: {{question}} {{results}}",
   "chat.vote_with": "Stem met !poll 1 tot !poll {{count}}",
-  "chat.vote_in_mumcord": "Stem in Mumcord met de Poll-plugin.",
   "notify.title": "Nieuwe peiling",
   "notify.body": "{{name}} vraagt: {{question}}",
   "creator_fallback": "Maker van de peiling"

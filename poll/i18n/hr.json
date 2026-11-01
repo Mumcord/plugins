@@ -24,9 +24,9 @@
   "error.poll_open": "Prvo zatvorite svoju trenutačnu anketu.",
   "error.incomplete": "Unesite pitanje i barem dvije opcije.",
   "form.hint_triggers": "Tko nema dodatak Poll, glasa u chatu s !poll i brojem odgovora.",
+  "card.hint_triggers": "Uključite glasanje s !poll u dopuštenjima dodatka",
   "chat.closed": "Zatvoreno: {{question}} {{results}}",
   "chat.vote_with": "Glasajte s !poll 1 do !poll {{count}}",
-  "chat.vote_in_mumcord": "Glasajte u Mumcordu s dodatkom Poll.",
   "notify.title": "Nova anketa",
   "notify.body": "{{name}} pita: {{question}}",
   "creator_fallback": "Autor ankete"

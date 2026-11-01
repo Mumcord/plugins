@@ -24,9 +24,9 @@
   "error.poll_open": "Nejdřív zavřete svou aktuální anketu.",
   "error.incomplete": "Zadejte otázku a alespoň dvě možnosti.",
   "form.hint_triggers": "Kdo nemá plugin Poll, hlasuje v chatu pomocí !poll a čísla možnosti.",
+  "card.hint_triggers": "Zapněte hlasování pomocí !poll v oprávněních pluginu",
   "chat.closed": "Uzavřeno: {{question}} {{results}}",
   "chat.vote_with": "Hlasujte pomocí !poll 1 až !poll {{count}}",
-  "chat.vote_in_mumcord": "Hlasujte v Mumcordu s pluginem Poll.",
   "notify.title": "Nová anketa",
   "notify.body": "{{name}} se ptá: {{question}}",
   "creator_fallback": "Autor ankety"

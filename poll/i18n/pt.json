@@ -23,9 +23,9 @@
   "error.poll_open": "Encerre primeiro a sua votação atual.",
   "error.incomplete": "Introduza uma pergunta e pelo menos duas opções.",
   "form.hint_triggers": "Quem não tem o plugin Poll vota no chat com !poll e o número da opção.",
+  "card.hint_triggers": "Ative a votação com !poll nas permissões do plugin",
   "chat.closed": "Encerrada: {{question}} {{results}}",
   "chat.vote_with": "Vote com !poll 1 a !poll {{count}}",
-  "chat.vote_in_mumcord": "Vote no Mumcord com o plugin Poll.",
   "notify.title": "Nova votação",
   "notify.body": "{{name}} pergunta: {{question}}",
   "creator_fallback": "Criador da votação"

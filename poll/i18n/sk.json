@@ -24,9 +24,9 @@
   "error.poll_open": "Najprv zavrite svoju aktuálnu anketu.",
   "error.incomplete": "Zadajte otázku a aspoň dve možnosti.",
   "form.hint_triggers": "Kto nemá doplnok Poll, hlasuje v chate pomocou !poll a čísla možnosti.",
+  "card.hint_triggers": "Zapnite hlasovanie cez !poll v oprávneniach doplnku",
   "chat.closed": "Uzavreté: {{question}} {{results}}",
   "chat.vote_with": "Hlasujte pomocou !poll 1 až !poll {{count}}",
-  "chat.vote_in_mumcord": "Hlasujte v Mumcorde s doplnkom Poll.",
   "notify.title": "Nová anketa",
   "notify.body": "{{name}} sa pýta: {{question}}",
   "creator_fallback": "Autor ankety"

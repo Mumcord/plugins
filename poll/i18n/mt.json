@@ -26,9 +26,9 @@
   "error.poll_open": "L-ewwel agħlaq l-istħarrig attwali tiegħek.",
   "error.incomplete": "Daħħal mistoqsija u mill-inqas żewġ għażliet.",
   "form.hint_triggers": "Min m'għandux il-plugin Poll jivvota fiċ-chat b'!poll u n-numru tal-għażla.",
+  "card.hint_triggers": "Ixgħel il-votazzjoni b'!poll fil-permessi tal-plugin",
   "chat.closed": "Magħluq: {{question}} {{results}}",
   "chat.vote_with": "Ivvota b'!poll 1 sa !poll {{count}}",
-  "chat.vote_in_mumcord": "Ivvota f'Mumcord bil-plugin Poll.",
   "notify.title": "Stħarrig ġdid",
   "notify.body": "{{name}} jistaqsi: {{question}}",
   "creator_fallback": "Min ħoloq l-istħarrig"
