@@ -39,7 +39,8 @@ steps:
   - expect: {tree: {slot: {chat-card: fit-3}, text: "Tackle · pasted by Carol"}}
 
   - event: {ui-action: {action: "history:toggle", slot: panel}}
-  - expect: {tree: {slot: panel, text: "Rifter · Tackle"}}
+  # Who pasted it and when sits inside the entry button, under its label.
+  - expect: {tree: {slot: panel, text: "Carol · "}}
   - copy: {label: Copy fitting, slot: panel}
   - expect: {copied: {text: *rifter}}
 

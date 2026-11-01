@@ -310,15 +310,13 @@ pub fn panel_expanded(
             &format!("{HISTORY_OPEN_PREFIX}{:016x}", entry.hash),
             &cut(&entry_label(s, &entry.fit), MAX_TITLE_CHARS),
         )
-        .kind(ButtonKind::Secondary);
+        .kind(ButtonKind::Secondary)
+        .detail(&cut(&detail, CARD_LINE_CHARS));
+        // The entry fills the row and both buttons share its height, so every row lines up.
         list = list.child(
-            ui::row()
-                .justify(Justify::SpaceBetween)
-                .child(
-                    ui::stack(Direction::Column, 2, Align::Start)
-                        .child(open_button)
-                        .child(ui::caption(&cut(&detail, CARD_LINE_CHARS))),
-                )
+            ui::stack(Direction::Row, 8, Align::Stretch)
+                .justify(Justify::FillFirst)
+                .child(open_button)
                 .child(ui::copy_button(&s.t("button.copy"), &entry.text)),
         );
     }

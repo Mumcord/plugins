@@ -456,7 +456,10 @@ fn collect(el: &El, out: &mut Vec<String>) {
     match &el.component {
         Component::Text(t) => out.push(t.text.clone()),
         Component::Chip(c) => out.push(c.text.clone()),
-        Component::Button(b) => out.push(format!("[{}]", b.label)),
+        Component::Button(b) => match &b.detail {
+            Some(detail) => out.push(format!("[{} | {detail}]", b.label)),
+            None => out.push(format!("[{}]", b.label)),
+        },
         Component::CopyButton(b) => out.push(format!("[{}: {} bytes]", b.label, b.text.len())),
         _ => {}
     }
@@ -767,8 +770,7 @@ fn the_history_is_collapsed_until_unfolded() {
         panel_texts(&host),
         [
             "[\u{25be} Fit history (1)]".to_owned(),
-            "[Rifter · Tackle]".to_owned(),
-            "Bob · 14:32".to_owned(),
+            "[Rifter · Tackle | Bob · 14:32]".to_owned(),
             format!("[Copy fitting: {} bytes]", RIFTER.len()),
         ]
     );
@@ -811,10 +813,8 @@ fn the_newest_fit_comes_first_and_duplicates_move_up() {
         shown,
         [
             "[\u{25be} Fit history (2)]",
-            "[Rifter · One]",
-            "Carol · 14:32",
-            "[Rifter · Two]",
-            "Bob · 14:32",
+            "[Rifter · One | Carol · 14:32]",
+            "[Rifter · Two | Bob · 14:32]",
         ]
     );
 }
@@ -828,10 +828,7 @@ fn opened_fits_join_the_history() {
     host.now.0 += 60;
     app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
     app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
-    assert_eq!(
-        panel_texts(&host)[1..3],
-        ["[Rifter · One]", "Alice · 14:33"]
-    );
+    assert_eq!(panel_texts(&host)[1], "[Rifter · One | Alice · 14:33]");
 }
 
 #[test]
@@ -888,8 +885,8 @@ fn the_history_survives_a_restart() {
     let mut app = panel_app(&mut host);
     app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
     let shown = panel_texts(&host);
-    assert_eq!(shown[1..3], ["[Rifter · Tackle]", "Bob · 14:32"]);
-    assert_eq!(shown[4..6], ["[Rifter · One]", "Alice · 14:32"]);
+    assert_eq!(shown[1], "[Rifter · Tackle | Bob · 14:32]");
+    assert_eq!(shown[3], "[Rifter · One | Alice · 14:32]");
 }
 
 #[test]
@@ -908,7 +905,7 @@ fn the_history_keeps_the_newest_fifty_and_their_texts_only() {
     let mut app = panel_app(&mut host);
     app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
     assert_eq!(panel_texts(&host)[0], "[\u{25be} Fit history (50)]");
-    assert_eq!(panel_texts(&host)[1], "[Rifter · 54]");
+    assert_eq!(panel_texts(&host)[1], "[Rifter · 54 | Alice · 14:32]");
 }
 
 #[test]
@@ -961,7 +958,7 @@ fn large_histories_are_paged_to_fit_the_slot() {
         app.on_panel_action(&mut host, view::ACTION_NEWER);
     }
     assert!(!panel_texts(&host).contains(&"[Newer fits]".to_owned()));
-    assert_eq!(panel_texts(&host)[1], "[Rifter · 49]");
+    assert_eq!(panel_texts(&host)[1], "[Rifter · 49 | Alice · 14:32]");
 }
 
 fn copy_bytes(el: &El) -> usize {
