@@ -3,7 +3,7 @@
 
 use mumcord_plugin_sdk::{
     i18n::Strings,
-    ui::{self, ButtonKind, El},
+    ui::{self, Align, ButtonKind, Direction, El},
 };
 
 use crate::app::{Draft, DraftError, Poll};
@@ -15,15 +15,92 @@ pub const QUESTION_INPUT_BYTES: u8 = 64;
 /// Host limit for any text string in a tree (FR-6.42); used for the voter lines.
 const MAX_TEXT_CHARS: usize = 200;
 
-/// The panel: the creation form, or the user's open poll with a Close button.
-pub fn panel(s: &Strings, draft: &Draft, own_open: Option<&Poll>) -> El {
-    if let Some(poll) = own_open {
-        return ui::column()
-            .child(ui::heading(&s.t("panel.your_poll")))
-            .child(ui::text(&poll.question))
-            .child(ui::caption(&votes_text(s, poll.total())))
-            .child(ui::button("close", &s.t("button.close")).kind(ButtonKind::Danger));
+/// Options with a bar and a Vote button in the small inline panel (260×160 px, no scrolling);
+/// the rest is one click away in the popover.
+pub const INLINE_OPTIONS: usize = 2;
+/// About one line of the inline panel.
+const INLINE_QUESTION_CHARS: usize = 36;
+/// An option button inline keeps room for its bar on the same line.
+const INLINE_OPTION_CHARS: usize = 12;
+
+/// What the panel shows.
+pub struct Panel<'a> {
+    pub draft: &'a Draft,
+    /// The creation form is open (only ever in the expanded popover).
+    pub creating: bool,
+    pub expanded: bool,
+    /// The poll of the channel right now, and whether the user created it.
+    pub current: Option<(&'a Poll, Role)>,
+    /// The user's own poll is open, so a new one has to wait.
+    pub own_open: bool,
+    /// `chat.triggers` is granted: people without Mumcord can vote with "!poll <n>".
+    pub triggers: bool,
+}
+
+/// The panel: the creation form, the current poll or an empty state.
+pub fn panel(s: &Strings, p: &Panel) -> El {
+    if p.creating {
+        return form(s, p.draft, p.triggers);
     }
+    let Some((poll, role)) = p.current else {
+        return ui::column()
+            .child(ui::heading(&s.t("panel.empty")))
+            .child(ui::caption(&s.t("panel.empty_hint")))
+            .child(ui::row().child(new_poll_button(s, ButtonKind::Primary)));
+    };
+    let shown = if p.expanded {
+        poll.options.len()
+    } else {
+        INLINE_OPTIONS
+    };
+    // Inline, everything has to fit 160 px without scrolling: tighter gaps and a one-line
+    // question; the popover has room for the full text.
+    let mut column = if p.expanded {
+        ui::column()
+            .child(ui::caption(&status_text(s, poll, role)))
+            .child(ui::heading(&poll.question))
+    } else {
+        ui::stack(Direction::Column, 4, Align::Stretch)
+            .child(ui::caption(&status_text(s, poll, role)))
+            .child(ui::text(&cut_chars(&poll.question, INLINE_QUESTION_CHARS)))
+    };
+    let label_chars = if p.expanded {
+        MAX_TEXT_CHARS
+    } else {
+        INLINE_OPTION_CHARS
+    };
+    for i in 0..poll.options.len().min(shown) {
+        column = column.child(option_row(s, poll, i, label_chars));
+    }
+    if p.expanded {
+        for line in voter_lines(poll) {
+            column = column.child(ui::caption(&line));
+        }
+    }
+    let mut buttons = ui::row();
+    if poll.options.len() > shown {
+        buttons = buttons
+            .child(ui::button("show-all", &s.t("button.show_all")).kind(ButtonKind::Secondary));
+    }
+    // While the user's own poll is open, a new one has to wait: End takes the place of New.
+    if p.own_open {
+        if role == Role::Creator {
+            buttons =
+                buttons.child(ui::button("close", &s.t("button.end")).kind(ButtonKind::Danger));
+        }
+    } else {
+        // Secondary, so it does not look like a chosen option.
+        buttons = buttons.child(new_poll_button(s, ButtonKind::Secondary));
+    }
+    column.child(buttons)
+}
+
+fn new_poll_button(s: &Strings, kind: ButtonKind) -> El {
+    ui::button("new-poll", &s.t("button.new_poll")).kind(kind)
+}
+
+/// The creation form, laid out like the mockup in #284.
+fn form(s: &Strings, draft: &Draft, triggers: bool) -> El {
     let mut form = ui::column()
         .child(ui::heading(&s.t("panel.new_poll")))
         .child(ui::text_input(
@@ -31,7 +108,14 @@ pub fn panel(s: &Strings, draft: &Draft, own_open: Option<&Poll>) -> El {
             &s.t("field.question"),
             &draft.question,
             QUESTION_INPUT_BYTES,
-        ));
+        ))
+        .child(ui::caption(&s.t_with(
+            "field.options",
+            &[
+                ("count", &draft.options.len().to_string()),
+                ("max", &MAX_OPTIONS.to_string()),
+            ],
+        )));
     for (i, option) in draft.options.iter().enumerate() {
         form = form.child(ui::text_input(
             &format!("option-{i}"),
@@ -53,7 +137,6 @@ pub fn panel(s: &Strings, draft: &Draft, own_open: Option<&Poll>) -> El {
                     .disabled(draft.options.len() <= MIN_OPTIONS),
             ),
     );
-    form = form.child(ui::button("create", &s.t("button.create")));
     if let Some(error) = draft.error {
         let key = match error {
             DraftError::PollOpen => "error.poll_open",
@@ -61,7 +144,14 @@ pub fn panel(s: &Strings, draft: &Draft, own_open: Option<&Poll>) -> El {
         };
         form = form.child(ui::caption(&s.t(key)).color("danger"));
     }
-    form
+    if triggers {
+        form = form.child(ui::caption(&s.t("form.hint_triggers")));
+    }
+    form.child(
+        ui::row()
+            .child(ui::button("cancel", &s.t("button.cancel")).kind(ButtonKind::Secondary))
+            .child(ui::button("create", &s.t("button.create")).kind(ButtonKind::Primary)),
+    )
 }
 
 fn option_input_bytes() -> u8 {
@@ -75,47 +165,45 @@ pub enum Role {
     Voter,
 }
 
-/// A poll's chat card: one meter and Vote button per option, the status and the voter list.
+/// A poll's chat card: one bar and Vote button per option, the status and the voter list.
 pub fn card(s: &Strings, poll: &Poll, role: Role) -> El {
-    let open = !poll.closed && !poll.frozen;
-    let total = poll.total();
     let mut card = ui::column()
         .child(ui::heading(&poll.question))
         .child(ui::caption(&status_text(s, poll, role)));
-    for (i, option) in poll.options.iter().enumerate() {
-        let count = poll.counts.get(i).copied().unwrap_or(0);
-        let share = if total == 0 {
-            0.0
-        } else {
-            f32::from(count) / total as f32
-        };
-        let chosen = poll.my_vote == Some(i);
-        let vote = ui::button(
-            &format!("vote-{i}"),
-            &s.t_with("button.vote", &[("option", option)]),
-        )
-        .kind(if chosen {
-            ButtonKind::Primary
-        } else {
-            ButtonKind::Secondary
-        })
-        .disabled(!open);
-        card = card.child(
-            ui::row()
-                .child(ui::meter(
-                    &format!("{option}: {}", votes_text(s, u32::from(count))),
-                    share,
-                ))
-                .child(vote),
-        );
+    for i in 0..poll.options.len() {
+        card = card.child(option_row(s, poll, i, MAX_TEXT_CHARS));
     }
     for line in voter_lines(poll) {
         card = card.child(ui::caption(&line));
     }
     if role == Role::Creator && !poll.closed {
-        card = card.child(ui::button("close", &s.t("button.close")).kind(ButtonKind::Danger));
+        card = card.child(ui::button("close", &s.t("button.end")).kind(ButtonKind::Danger));
     }
     card
+}
+
+/// One option: a button with its name that votes for it (highlighted once chosen), and its bar
+/// with the count as text, so the result is never shown by colour alone.
+fn option_row(s: &Strings, poll: &Poll, i: usize, label_chars: usize) -> El {
+    let option = &poll.options[i];
+    let count = poll.counts.get(i).copied().unwrap_or(0);
+    let total = poll.total();
+    let share = if total == 0 {
+        0.0
+    } else {
+        f32::from(count) / total as f32
+    };
+    let kind = if poll.my_vote == Some(i) {
+        ButtonKind::Primary
+    } else {
+        ButtonKind::Secondary
+    };
+    let vote = ui::button(&format!("vote-{i}"), &cut_chars(option, label_chars))
+        .kind(kind)
+        .disabled(poll.closed || poll.frozen);
+    ui::row()
+        .child(vote)
+        .child(ui::meter(&votes_text(s, u32::from(count)), share))
 }
 
 fn status_text(s: &Strings, poll: &Poll, role: Role) -> String {
@@ -166,15 +254,25 @@ fn cut_chars(text: &str, max: usize) -> String {
     cut
 }
 
-/// The fallback chat line posted at creation, for official Mumble clients. The host prefixes
-/// "[Poll] " and allows 500 characters in total.
-pub fn creation_line(question: &str, options: &[String]) -> String {
+/// The fallback chat line posted at creation, for official Mumble clients and Mumcord users
+/// without Poll. It ends with how to vote: "!poll <n>" when the creator's Poll counts those,
+/// otherwise in Mumcord.
+pub fn creation_line(s: &Strings, question: &str, options: &[String], triggers: bool) -> String {
     let list: Vec<String> = options
         .iter()
         .enumerate()
         .map(|(i, o)| format!("{}) {o}", i + 1))
         .collect();
-    chat_line(&format!("{question} {}", list.join(" ")))
+    let how = if triggers {
+        s.t_with("chat.vote_with", &[("count", &options.len().to_string())])
+    } else {
+        s.t("chat.vote_in_mumcord")
+    };
+    // The hint must survive the length cut, so the question and the options give way.
+    let separator = " · ";
+    let room = CHAT_LINE_BYTES.saturating_sub(how.len() + separator.len());
+    let poll = format!("{question} {}", list.join(" "));
+    chat_line(&format!("{}{separator}{how}", truncate(&poll, room)))
 }
 
 /// The fallback chat line posted when the creator closes the poll.
@@ -194,9 +292,12 @@ pub fn close_line(s: &Strings, poll: &Poll) -> String {
     ))
 }
 
-/// Chat lines are limited to 500 characters including the host's "[Poll] " prefix.
+/// Chat lines are limited to 500 characters including the host's "[Poll] " prefix; counting
+/// bytes keeps well within that.
+const CHAT_LINE_BYTES: usize = 480;
+
 fn chat_line(text: &str) -> String {
-    truncate(text, 480).to_owned()
+    truncate(text, CHAT_LINE_BYTES).to_owned()
 }
 
 #[cfg(test)]
@@ -204,15 +305,31 @@ mod tests {
     use super::*;
     use crate::wire::VoterEntry;
 
+    fn english() -> Strings {
+        Strings::new(mumcord_plugin_sdk::i18n_all!())
+    }
+
     #[test]
-    fn creation_line_fits_the_chat_limit() {
-        let options = vec!["ö".repeat(20); MAX_OPTIONS];
-        let line = creation_line(&"ä".repeat(100), &options);
-        assert!(line.chars().count() + "[Poll] ".len() <= 500);
+    fn creation_line_tells_how_to_vote() {
+        let s = english();
+        let options = vec!["Pizza".to_owned(), "Pasta".to_owned()];
         assert_eq!(
-            creation_line("Pizza or pasta?", &["Pizza".into(), "Pasta".into()]),
-            "Pizza or pasta? 1) Pizza 2) Pasta"
+            creation_line(&s, "Pizza or pasta?", &options, true),
+            "Pizza or pasta? 1) Pizza 2) Pasta · Vote with !poll 1 to !poll 2"
         );
+        assert_eq!(
+            creation_line(&s, "Pizza or pasta?", &options, false),
+            "Pizza or pasta? 1) Pizza 2) Pasta · Vote in Mumcord with the Poll plugin."
+        );
+    }
+
+    #[test]
+    fn creation_line_fits_the_chat_limit_and_keeps_the_hint() {
+        let s = english();
+        let options = vec!["ö".repeat(20); MAX_OPTIONS];
+        let line = creation_line(&s, &"ä".repeat(100), &options, true);
+        assert!(line.chars().count() + "[Poll] ".len() <= 500);
+        assert!(line.ends_with("Vote with !poll 1 to !poll 10"), "{line}");
     }
 
     #[test]

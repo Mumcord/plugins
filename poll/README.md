@@ -4,23 +4,27 @@ Official Mumcord plugin: ask the channel a question with up to ten options and w
 
 ## How it works
 
-- Create a poll in the Poll panel of the plugins strip: a question and 2 to 10 options.
-- Everyone in the channel who runs Poll gets a poll card in the chat and votes with one click. Votes can be changed until the poll is closed.
+- The Poll panel in the plugins strip shows the current poll of your channel: the question, a live bar per option and Vote buttons. The small panel shows the first two options; "All options" opens the large view with every option and the voters. Without a poll it offers "New poll".
+- "New poll" opens the large panel view with the form: a question and 2 to 10 options. "End poll" (only for the creator) closes it.
+- Everyone in the channel who runs Poll gets a poll card in the chat and votes with one click. Votes can be changed until the poll is ended.
+- People without Poll (official Mumble client, or Mumcord without the plugin) vote by writing `!poll 1`, `!poll 2`, … in the channel chat. The creator's Poll counts these like any other vote: one per person, and a later one replaces the earlier one. This needs the optional "read trigger words in the chat" permission on the creator's side; without it the text line says to vote in Mumcord instead.
 - The creator's client counts the votes and sends the tally to the channel, at most once every 2 seconds. Votes count once per person (per user certificate, or per connection for users without one).
 - People who join the channel later get the current poll from the creator (needs the optional "who is in your channel" permission on the creator's side).
 - If the creator leaves, the poll stays visible as "Creator left, poll is frozen".
 - Closing the poll posts the result and sends the final tally and the list of voters.
-- When a poll is created or closed, a plain text line goes to the channel so people on the official Mumble client see it too. Mumcord users with Poll see the card instead of that line.
+- When a poll is created or ended, a plain text line goes to the channel so people on the official Mumble client see it too, e.g. `[Poll] Pizza or pasta? 1) Pizza 2) Pasta · Vote with !poll 1 to !poll 2`. Mumcord users with Poll see the card instead of that line.
+- If several people in the channel run a poll at the same time, a `!poll 2` counts for each of their polls.
 
 ## Permissions
 
 | Permission | Why |
 |---|---|
-| Panel (required) | The form to create a poll |
+| Panel (required) | The current poll, voting, and the form to create one |
 | Chat cards (required) | The poll card in the chat |
 | Messages to the same plugin (required) | Send polls, votes and tallies |
 | Post into the chat (required) | The text line for people without Poll |
 | Replace text lines with cards (required) | Show the card instead of the text line |
+| Read trigger words in the chat (optional, suggested) | Count `!poll <number>` votes from people without Poll; Poll only ever sees lines that start with `!poll` |
 | Who is in your channel (optional, suggested) | Send your poll to people who join later and notice when a creator leaves |
 | Notifications (optional) | Tell you when someone else starts a poll |
 
@@ -37,7 +41,7 @@ Plugin data id `mumcord.p.poll`. Payloads are binary: integers big-endian, strin
 
 Only messages from the creator's session change a poll; malformed messages are dropped.
 
-The question field in the panel holds 64 bytes (the limit of a plugin text field); the message format accepts up to 200.
+The question field in the panel holds 64 bytes (the limit of a plugin text field); the message format accepts up to 200. Votes typed as `!poll <number>` never travel as plugin messages: the creator reads them from the chat.
 
 ## Build and test
 
@@ -61,4 +65,4 @@ mumcord-plugin build
 mumcord-plugin test dist/poll-1.0.0.mcplugin scenarios/*.yaml
 ```
 
-They cover creating and closing a poll (card, text line, final tally), resending to a user who joins later, voting and tally updates on someone else's poll, a frozen poll when the creator leaves, and missing permissions. The poll id is the current second, so creator-side steps check message kinds and targets, not exact payloads.
+They cover creating and ending a poll (popover, card, text line, final tally), resending to a user who joins later, voting and tally updates on someone else's poll, `!poll` votes from the chat, a frozen poll when the creator leaves, and missing permissions. The poll id is the current second, so creator-side steps check message kinds and targets, not exact payloads.

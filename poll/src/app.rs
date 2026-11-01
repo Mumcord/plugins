@@ -52,6 +52,11 @@ pub trait Host {
     fn show(&mut self, slot: Slot, tree: El);
     /// The user's own display name, if the host can tell.
     fn my_name(&mut self) -> Option<String>;
+    /// The user's own session, if the host can tell.
+    fn my_session(&mut self) -> Option<u32>;
+    /// Opens the panel popover; only right after a click in the plugin's UI.
+    fn open_popover(&mut self) -> Result<(), Error>;
+    fn close_popover(&mut self);
     fn warn(&mut self, message: &str);
 }
 
@@ -210,6 +215,17 @@ pub struct App {
     resend_timers: Vec<(u32, u32)>,
     granted: Vec<String>,
     last_poll_id: u32,
+    /// The creation form is open; it only shows in the expanded panel.
+    creating: bool,
+    /// The panel shows as the large popover rather than inline.
+    expanded: bool,
+}
+
+/// The poll a vote is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Target {
+    Own,
+    Other(u32),
 }
 
 pub fn own_card_id(poll_id: u32) -> String {
@@ -230,7 +246,6 @@ impl App {
         if !self.strings.0.on_event(event) {
             return false;
         }
-        self.render_panel(host);
         self.render_own(host);
         let sessions: Vec<u32> = self.others.iter().map(|o| o.session).collect();
         for session in sessions {
@@ -239,8 +254,23 @@ impl App {
         true
     }
 
-    pub fn set_granted(&mut self, granted: Vec<String>) {
+    pub fn set_granted(&mut self, host: &mut impl Host, granted: Vec<String>) {
         self.granted = granted;
+        self.render_panel(host);
+    }
+
+    fn granted(&self, permission: &str) -> bool {
+        self.granted.iter().any(|p| p == permission)
+    }
+
+    /// The panel was hidden, shown inline or expanded. Leaving the popover leaves the form, so
+    /// the small inline panel never shows it; the draft is kept.
+    pub fn set_expanded(&mut self, host: &mut impl Host, expanded: bool) {
+        self.expanded = expanded;
+        if !expanded {
+            self.creating = false;
+        }
+        self.render_panel(host);
     }
 
     /// A `ui-action`: `card` is the chat card it came from, or `None` for the panel.
@@ -269,9 +299,23 @@ impl App {
                 self.render_panel(host);
             }
             (None, "create") => self.create(host),
+            (None, "new-poll") => self.open_form(host),
+            (None, "cancel") => {
+                self.creating = false;
+                self.leave_popover(host);
+            }
+            (None, "show-all") => {
+                if self.open_popover(host) {
+                    self.render_panel(host);
+                }
+            }
             (_, "close") => self.close(host),
             (None, other) => {
-                if let Some(slot) =
+                if let Some(option) = parse_index(other, "vote-") {
+                    if let Some(target) = self.current() {
+                        self.vote(host, target, option);
+                    }
+                } else if let Some(slot) =
                     parse_index(other, "option-").and_then(|i| self.draft.options.get_mut(i))
                 {
                     *slot = text.unwrap_or_default();
@@ -279,15 +323,80 @@ impl App {
                 }
             }
             (Some(card), other) => {
-                if let Some(option) = parse_index(other, "vote-") {
-                    self.vote(host, card, option);
+                if let Some(option) = parse_index(other, "vote-")
+                    && let Some(target) = self.target_of_card(card)
+                {
+                    self.vote(host, target, option);
                 }
             }
         }
     }
 
+    /// "New poll": the form opens in the popover. While the user's own poll is open the button
+    /// is disabled, so this is a stale click.
+    fn open_form(&mut self, host: &mut impl Host) {
+        if self.own_open() {
+            return;
+        }
+        if self.open_popover(host) || self.expanded {
+            self.creating = true;
+            self.draft.error = None;
+        }
+        self.render_panel(host);
+    }
+
+    fn open_popover(&mut self, host: &mut impl Host) -> bool {
+        match host.open_popover() {
+            Ok(()) => {
+                self.expanded = true;
+                true
+            }
+            Err(e) => {
+                host.warn(&format!("could not open the panel popover: {e:?}"));
+                false
+            }
+        }
+    }
+
+    fn leave_popover(&mut self, host: &mut impl Host) {
+        host.close_popover();
+        self.expanded = false;
+        self.render_panel(host);
+    }
+
+    fn own_open(&self) -> bool {
+        self.own.as_ref().is_some_and(|o| !o.poll.closed)
+    }
+
+    /// The poll the panel shows: the user's own open poll, else the newest open poll of
+    /// someone still in the channel.
+    fn current(&self) -> Option<Target> {
+        if self.own_open() {
+            return Some(Target::Own);
+        }
+        self.others
+            .iter()
+            .rev()
+            .find(|o| !o.poll.closed && !o.poll.frozen)
+            .map(|o| Target::Other(o.session))
+    }
+
+    fn target_of_card(&self, card: &str) -> Option<Target> {
+        if self
+            .own
+            .as_ref()
+            .is_some_and(|o| own_card_id(o.poll.id) == card)
+        {
+            return Some(Target::Own);
+        }
+        self.others
+            .iter()
+            .find(|o| other_card_id(o.session, o.poll.id) == card)
+            .map(|o| Target::Other(o.session))
+    }
+
     fn create(&mut self, host: &mut impl Host) {
-        if self.own.as_ref().is_some_and(|o| !o.poll.closed) {
+        if self.own_open() {
             self.draft.error = Some(DraftError::PollOpen);
             self.render_panel(host);
             return;
@@ -309,7 +418,8 @@ impl App {
         self.last_poll_id = id;
 
         // The click is the gesture that allows exactly one chat line (FR-6.44).
-        let line = view::creation_line(&question, &options);
+        let triggers = self.granted("chat.triggers");
+        let line = view::creation_line(&self.strings.0, &question, &options, triggers);
         let line_hash = match host.chat_send(&line) {
             Ok(()) => host.line_hash(&line),
             Err(e) => {
@@ -333,9 +443,13 @@ impl App {
             tally_due: false,
         });
         self.draft = Draft::default();
+        self.creating = false;
         self.flush(host);
+        if self.expanded {
+            host.close_popover();
+            self.expanded = false;
+        }
         self.render_own(host);
-        self.render_panel(host);
     }
 
     fn close(&mut self, host: &mut impl Host) {
@@ -365,11 +479,13 @@ impl App {
         }
         self.flush(host);
         self.render_own(host);
-        self.render_panel(host);
     }
 
-    fn vote(&mut self, host: &mut impl Host, card: &str, option: usize) {
-        if let Some(own) = self.own.as_mut().filter(|o| own_card_id(o.poll.id) == card) {
+    fn vote(&mut self, host: &mut impl Host, target: Target, option: usize) {
+        let Target::Other(session) = target else {
+            let Some(own) = self.own.as_mut() else {
+                return;
+            };
             if own.poll.closed || option >= own.poll.options.len() {
                 return;
             }
@@ -381,12 +497,8 @@ impl App {
             self.tally_changed(host);
             self.render_own(host);
             return;
-        }
-        let Some(other) = self
-            .others
-            .iter_mut()
-            .find(|o| other_card_id(o.session, o.poll.id) == card)
-        else {
+        };
+        let Some(other) = self.others.iter_mut().find(|o| o.session == session) else {
             return;
         };
         let poll = &mut other.poll;
@@ -398,7 +510,6 @@ impl App {
             poll_id: poll.id,
             option: u8::try_from(option).unwrap_or(u8::MAX),
         };
-        let session = other.session;
         self.queue(To::Direct(session), KIND_VOTE, vote.encode(), false);
         self.flush(host);
         self.render_other(host, session);
@@ -511,6 +622,35 @@ impl App {
             None => Voter::Session(sender.session),
         };
         record_ballot(own, voter, usize::from(vote.option), sender.name.clone());
+        self.tally_changed(host);
+        self.render_own(host);
+    }
+
+    /// `chat.triggers`: someone in the channel wrote "!poll <n>". Only the creator counts it,
+    /// like a vote from the plugin: one per person, and a later one replaces it. The arguments
+    /// are untrusted text.
+    pub fn on_chat_trigger(&mut self, host: &mut impl Host, sender: &Peer, args: &str) {
+        let Some(own) = self.own.as_ref().filter(|o| !o.poll.closed) else {
+            return;
+        };
+        let Some(option) = parse_choice(args, own.poll.options.len()) else {
+            return;
+        };
+        let voter = if host.my_session() == Some(sender.session) {
+            Voter::Me
+        } else {
+            match &sender.key {
+                Some(key) => Voter::Key(key.clone()),
+                None => Voter::Session(sender.session),
+            }
+        };
+        let Some(own) = self.own.as_mut() else {
+            return;
+        };
+        if voter == Voter::Me {
+            own.poll.my_vote = Some(option);
+        }
+        record_ballot(own, voter, option, sender.name.clone());
         self.tally_changed(host);
         self.render_own(host);
     }
@@ -682,10 +822,28 @@ impl App {
     }
 
     fn render_panel(&self, host: &mut impl Host) {
-        let open = self.own.as_ref().map(|o| &o.poll).filter(|p| !p.closed);
-        host.show(Slot::Panel, view::panel(&self.strings.0, &self.draft, open));
+        let current = match self.current() {
+            Some(Target::Own) => self.own.as_ref().map(|o| (&o.poll, Role::Creator)),
+            Some(Target::Other(session)) => self
+                .others
+                .iter()
+                .find(|o| o.session == session)
+                .map(|o| (&o.poll, Role::Voter)),
+            None => None,
+        };
+        let panel = view::Panel {
+            draft: &self.draft,
+            creating: self.creating && self.expanded,
+            expanded: self.expanded,
+            current,
+            own_open: self.own_open(),
+            triggers: self.granted("chat.triggers"),
+        };
+        host.show(Slot::Panel, view::panel(&self.strings.0, &panel));
     }
 
+    /// The card, then the panel, which shows the current poll live. Also shows the panel
+    /// when there is no own poll.
     fn render_own(&self, host: &mut impl Host) {
         if let Some(own) = &self.own {
             host.show(
@@ -693,6 +851,7 @@ impl App {
                 view::card(&self.strings.0, &own.poll, Role::Creator),
             );
         }
+        self.render_panel(host);
     }
 
     fn render_other(&self, host: &mut impl Host, session: u32) {
@@ -702,6 +861,7 @@ impl App {
                 view::card(&self.strings.0, &other.poll, Role::Voter),
             );
         }
+        self.render_panel(host);
     }
 }
 
@@ -718,6 +878,14 @@ fn record_ballot(own: &mut Own, voter: Voter, option: usize, name: String) {
         });
     }
     own.recount();
+}
+
+/// "2", "2.", "#2" or "2 pizza" → option index 1, if the poll has that option.
+fn parse_choice(args: &str, options: usize) -> Option<usize> {
+    let first = args.split_whitespace().next()?;
+    let digits = first.trim_start_matches('#').trim_end_matches(['.', ')']);
+    let number: usize = digits.parse().ok()?;
+    (1..=options).contains(&number).then(|| number - 1)
 }
 
 fn parse_index(action: &str, prefix: &str) -> Option<usize> {

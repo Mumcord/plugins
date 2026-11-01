@@ -13,7 +13,7 @@ use std::cell::RefCell;
 
 use mumcord_plugin_sdk::{
     Plugin, chat,
-    events::{ActionSource, ActionValue, Event},
+    events::{ActionSource, ActionValue, Event, PanelVisibility},
     log, notify, peers, timers,
     types::{Error, StartInfo},
     ui::{self, El, Slot},
@@ -79,6 +79,23 @@ impl Host for Mumcord {
         peers::presence().ok()?.into_iter().next().map(|p| p.name)
     }
 
+    fn my_session(&mut self) -> Option<u32> {
+        // Needs `events.presence`; the user is the first entry of the snapshot.
+        peers::presence()
+            .ok()?
+            .into_iter()
+            .next()
+            .map(|p| p.session)
+    }
+
+    fn open_popover(&mut self) -> Result<(), Error> {
+        ui::open_panel_popover()
+    }
+
+    fn close_popover(&mut self) {
+        ui::close_panel_popover();
+    }
+
     fn warn(&mut self, message: &str) {
         log::warn(message);
     }
@@ -127,7 +144,13 @@ fn handle(app: &mut App, event: Event) {
         Event::Joined(peer) => app.on_joined(host, &peer),
         Event::Left(peer) => app.on_left(host, &peer),
         Event::Timer(id) => app.on_timer(host, id),
-        Event::SettingsChanged(settings) => app.set_granted(settings.granted),
+        Event::SettingsChanged(settings) => app.set_granted(host, settings.granted),
+        Event::PanelVisibilityChanged(visibility) => {
+            app.set_expanded(host, visibility == PanelVisibility::Expanded);
+        }
+        Event::ChatTrigger(trigger) if trigger.trigger == "!poll" => {
+            app.on_chat_trigger(host, &trigger.sender, &trigger.args);
+        }
         _ => {}
     }
 }

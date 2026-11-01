@@ -18,6 +18,7 @@ steps:
   # Tally from the creator: id, closed, closing line hash, count, counts u16.
   - event: {peer-message: {from: 2, kind: 3, hex: "00000001 00 00000000 02 0001 0002"}}
   - expect: {tree: {slot: {chat-card: p-2-1}, text: "3 votes"}}
+  - expect: {tree: {slot: panel, text: "3 votes"}}
 
   # A tally from someone who is not the creator changes nothing.
   - event: {peer-message: {from: 3, kind: 3, hex: "00000001 01 00000000 02 0009 0009"}}
@@ -26,6 +27,7 @@ steps:
   # Final tally closes the poll.
   - event: {peer-message: {from: 2, kind: 3, hex: "00000001 01 00000000 02 0001 0002"}}
   - expect: {tree: {slot: {chat-card: p-2-1}, text: "Closed"}}
+  - expect: {tree: {slot: panel, text: "No poll in this channel"}}
 
   # Malformed messages are dropped without stopping the plugin.
   - event: {peer-message: {from: 2, kind: 3, hex: "00"}}

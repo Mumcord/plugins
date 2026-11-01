@@ -29,6 +29,11 @@ struct Fake {
     /// Answers for the next `send` calls; `Ok` once they run out.
     send_results: Vec<Result<(), Error>>,
     chat_result: Option<Error>,
+    session: Option<u32>,
+    /// Whether the popover is open; `None` until the plugin opens or closes it.
+    popover: Option<bool>,
+    /// The host refuses to open the popover (no fresh gesture).
+    popover_refused: bool,
 }
 
 impl Host for Fake {
@@ -87,6 +92,22 @@ impl Host for Fake {
         self.name.clone()
     }
 
+    fn my_session(&mut self) -> Option<u32> {
+        self.session
+    }
+
+    fn open_popover(&mut self) -> Result<(), Error> {
+        if self.popover_refused {
+            return Err(Error::NotPermitted);
+        }
+        self.popover = Some(true);
+        Ok(())
+    }
+
+    fn close_popover(&mut self) {
+        self.popover = Some(false);
+    }
+
     fn warn(&mut self, message: &str) {
         self.warnings.push(message.to_owned());
     }
@@ -118,6 +139,12 @@ impl Fake {
 }
 
 fn collect_texts(el: &El, out: &mut Vec<String>) {
+    // An option row (its button, then its bar) also reads as "Option: n votes".
+    if let [button, meter] = el.children.as_slice()
+        && let (Component::Button(b), Component::Meter(m)) = (&button.component, &meter.component)
+    {
+        out.push(format!("{}: {}", b.label, m.label));
+    }
     match &el.component {
         Component::Text(t) => out.push(t.text.clone()),
         Component::Button(b) => out.push(format!(
@@ -155,6 +182,7 @@ fn creator() -> (App, Fake) {
         ..Fake::default()
     };
     app.start(&mut host);
+    app.on_action(&mut host, None, "new-poll", None);
     app.on_action(&mut host, None, "question", text("Pizza or pasta?"));
     app.on_action(&mut host, None, "option-0", text("Pizza"));
     app.on_action(&mut host, None, "option-1", text(" Pasta "));
@@ -176,7 +204,7 @@ fn create_payload(id: u32, hash: u32) -> Vec<u8> {
 fn voter() -> (App, Fake) {
     let mut app = App::default();
     let mut host = Fake::default();
-    app.set_granted(vec!["notify".into()]);
+    app.set_granted(&mut host, vec!["notify".into()]);
     app.on_peer_message(
         &mut host,
         &peer(1, "Anna", Some("ka")),
@@ -188,10 +216,17 @@ fn voter() -> (App, Fake) {
 }
 
 #[test]
-fn panel_starts_with_an_empty_form() {
+fn panel_starts_empty_and_new_poll_opens_the_form_in_the_popover() {
     let mut app = App::default();
     let mut host = Fake::default();
     app.start(&mut host);
+    let texts = host.texts("panel");
+    assert!(texts.contains(&"No poll in this channel".to_owned()));
+    assert!(texts.contains(&"[new-poll]".to_owned()));
+    assert!(!texts.contains(&"<question>".to_owned()));
+
+    app.on_action(&mut host, None, "new-poll", None);
+    assert_eq!(host.popover, Some(true));
     let texts = host.texts("panel");
     assert!(texts.contains(&"<question>".to_owned()));
     assert!(texts.contains(&"<option-1>".to_owned()));
@@ -206,6 +241,7 @@ fn panel_starts_with_an_empty_form() {
 fn options_can_be_added_up_to_ten() {
     let mut app = App::default();
     let mut host = Fake::default();
+    app.on_action(&mut host, None, "new-poll", None);
     for _ in 0..12 {
         app.on_action(&mut host, None, "add-option", None);
     }
@@ -220,8 +256,12 @@ fn create_posts_the_line_sends_the_poll_and_shows_a_card() {
     let (_app, host) = creator();
     assert_eq!(
         host.chat,
-        vec!["Pizza or pasta? 1) Pizza 2) Pasta".to_owned()]
+        vec![
+            "Pizza or pasta? 1) Pizza 2) Pasta · Vote in Mumcord with the Poll plugin.".to_owned()
+        ]
     );
+    // The popover closes and the panel shows the new poll with its End button.
+    assert_eq!(host.popover, Some(false));
     let creates = host.sent_of(KIND_CREATE);
     assert_eq!(creates.len(), 1);
     assert_eq!(creates[0].0, To::Channel);
@@ -238,6 +278,7 @@ fn create_posts_the_line_sends_the_poll_and_shows_a_card() {
 fn invalid_form_is_refused_without_side_effects() {
     let mut app = App::default();
     let mut host = Fake::default();
+    app.on_action(&mut host, None, "new-poll", None);
     app.on_action(&mut host, None, "question", text("Only a question"));
     app.on_action(&mut host, None, "option-0", text("One"));
     app.on_action(&mut host, None, "create", None);
@@ -420,13 +461,13 @@ fn close_posts_the_result_and_sends_final_tally_and_voters() {
             name: "Ben".into()
         }]
     );
-    // Closed: no Close button, votes refused, the panel shows the form again.
+    // Closed: no End button, votes refused, the panel is empty with "New poll" again.
     assert!(
         !host
             .texts(&own_card_id(1000))
             .contains(&"[close]".to_owned())
     );
-    assert!(host.texts("panel").contains(&"<question>".to_owned()));
+    assert!(host.texts("panel").contains(&"[new-poll]".to_owned()));
     app.on_peer_message(
         &mut host,
         &peer(3, "Cy", None),
@@ -478,7 +519,7 @@ fn no_notification_without_permission_or_for_resends() {
         &create_payload(1, 0),
         false,
     );
-    app.set_granted(vec!["notify".into()]);
+    app.set_granted(&mut host, vec!["notify".into()]);
     app.on_peer_message(
         &mut host,
         &peer(2, "Ben", None),
@@ -797,6 +838,183 @@ fn a_language_change_shows_the_panel_again_in_that_language() {
     let mut host = Fake::default();
     app.start(&mut host);
     assert!(app.on_event(&mut host, &Event::LanguageChanged("de-AT".into())));
-    assert!(host.texts("panel").iter().any(|t| t == "Neue Umfrage"));
+    assert!(
+        host.texts("panel")
+            .iter()
+            .any(|t| t == "Keine Umfrage in diesem Kanal")
+    );
     assert!(!app.on_event(&mut host, &Event::Timer(1)));
+}
+
+fn trigger(app: &mut App, host: &mut Fake, sender: &Peer, args: &str) {
+    app.on_chat_trigger(host, sender, args);
+}
+
+#[test]
+fn chat_triggers_count_once_per_person_and_can_change() {
+    let (mut app, mut host) = creator();
+    host.session = Some(9);
+    let ben = peer(2, "Ben", Some("kb"));
+    let dora = peer(4, "Dora", None);
+    trigger(&mut app, &mut host, &ben, "1");
+    trigger(&mut app, &mut host, &dora, "2 pasta please");
+    trigger(&mut app, &mut host, &ben, "2");
+    // Ben's plugin vote replaces his chat vote: the same peer key.
+    app.on_peer_message(
+        &mut host,
+        &peer(7, "Ben", Some("kb")),
+        KIND_VOTE,
+        &Vote {
+            poll_id: 1000,
+            option: 0,
+        }
+        .encode(),
+        true,
+    );
+    // The creator's own "!poll 2" counts as their own vote.
+    trigger(&mut app, &mut host, &peer(9, "Anna", Some("ka")), "#2");
+    let timer = host.timer_with(TALLY_DELAY_MS);
+    app.on_timer(&mut host, timer);
+    let tally = Tally::decode(&host.sent_of(KIND_TALLY)[0].1).expect("tally");
+    assert_eq!(tally.counts, vec![1, 2]);
+    assert!(
+        host.texts(&own_card_id(1000))
+            .contains(&"[vote-1]".to_owned())
+    );
+}
+
+#[test]
+fn bad_chat_triggers_change_nothing() {
+    let (mut app, mut host) = creator();
+    let ben = peer(2, "Ben", Some("kb"));
+    for args in ["", "0", "3", "-1", "abc", "1.5", "99999999999999999999"] {
+        trigger(&mut app, &mut host, &ben, args);
+    }
+    assert!(host.timers.iter().all(|&(_, ms)| ms != TALLY_DELAY_MS));
+    app.on_action(&mut host, None, "close", None);
+    trigger(&mut app, &mut host, &ben, "1");
+    let tallies = host.sent_of(KIND_TALLY);
+    assert_eq!(tallies.len(), 1);
+    assert_eq!(
+        Tally::decode(&tallies[0].1).expect("tally").counts,
+        vec![0, 0]
+    );
+}
+
+#[test]
+fn only_the_creator_counts_chat_triggers() {
+    let (mut app, mut host) = voter();
+    trigger(&mut app, &mut host, &peer(2, "Ben", None), "1");
+    assert!(host.sent.is_empty());
+}
+
+#[test]
+fn the_fallback_line_names_the_trigger_when_it_is_granted() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.set_granted(&mut host, vec!["chat.triggers".into()]);
+    app.on_action(&mut host, None, "new-poll", None);
+    assert!(
+        host.texts("panel")
+            .iter()
+            .any(|t| t.contains("!poll and the option number"))
+    );
+    app.on_action(&mut host, None, "question", text("Q?"));
+    app.on_action(&mut host, None, "option-0", text("A"));
+    app.on_action(&mut host, None, "option-1", text("B"));
+    app.on_action(&mut host, None, "create", None);
+    assert_eq!(
+        host.chat,
+        vec!["Q? 1) A 2) B · Vote with !poll 1 to !poll 2".to_owned()]
+    );
+}
+
+#[test]
+fn the_form_only_shows_in_the_popover() {
+    let mut app = App::default();
+    let mut host = Fake {
+        popover_refused: true,
+        ..Fake::default()
+    };
+    app.start(&mut host);
+    app.on_action(&mut host, None, "new-poll", None);
+    assert!(!host.texts("panel").contains(&"<question>".to_owned()));
+    assert_eq!(host.warnings.len(), 1);
+
+    // Expanded by the user, "New poll" works without opening anything.
+    app.set_expanded(&mut host, true);
+    app.on_action(&mut host, None, "new-poll", None);
+    assert!(host.texts("panel").contains(&"<question>".to_owned()));
+    app.on_action(&mut host, None, "question", text("Kept?"));
+
+    // Back inline: the form goes away, the draft stays for next time.
+    app.set_expanded(&mut host, false);
+    assert!(!host.texts("panel").contains(&"<question>".to_owned()));
+    app.set_expanded(&mut host, true);
+    app.on_action(&mut host, None, "new-poll", None);
+    assert!(host.texts("panel").contains(&"<question>".to_owned()));
+
+    app.on_action(&mut host, None, "cancel", None);
+    assert_eq!(host.popover, Some(false));
+    assert!(host.texts("panel").contains(&"[new-poll]".to_owned()));
+}
+
+#[test]
+fn the_panel_shows_the_current_poll_compact_inline_and_full_expanded() {
+    let (mut app, mut host) = voter();
+    let options: Vec<String> = ["A", "B", "C", "D"].map(str::to_owned).to_vec();
+    let create = Create {
+        poll_id: 2000,
+        line_hash: 0,
+        question: "Four?".into(),
+        options,
+    };
+    app.on_peer_message(
+        &mut host,
+        &peer(5, "Eve", None),
+        KIND_CREATE,
+        &create.encode(),
+        false,
+    );
+    let inline = host.texts("panel");
+    assert!(inline.contains(&"Four?".to_owned()), "the newest poll");
+    assert!(inline.contains(&"[vote-1]".to_owned()));
+    assert!(!inline.contains(&"[vote-2]".to_owned()));
+    assert!(inline.contains(&"[show-all]".to_owned()));
+    assert!(inline.contains(&"[new-poll]".to_owned()));
+    assert!(
+        !inline.contains(&"[close]".to_owned()),
+        "End is for the creator only"
+    );
+
+    app.on_action(&mut host, None, "show-all", None);
+    assert_eq!(host.popover, Some(true));
+    let expanded = host.texts("panel");
+    assert!(expanded.contains(&"[vote-3]".to_owned()));
+    assert!(!expanded.contains(&"[show-all]".to_owned()));
+
+    // A vote from the panel goes to that poll's creator.
+    app.on_action(&mut host, None, "vote-3", None);
+    let (to, payload) = host.sent_of(KIND_VOTE).pop().expect("vote sent");
+    assert_eq!(to, To::Direct(5));
+    assert_eq!(Vote::decode(&payload).expect("vote").option, 3);
+
+    // Eve leaves: her poll freezes and Anna's is current again.
+    app.on_left(&mut host, &peer(5, "Eve", None));
+    assert!(host.texts("panel").contains(&"Pizza or pasta?".to_owned()));
+    app.on_left(&mut host, &peer(1, "Anna", None));
+    assert!(
+        host.texts("panel")
+            .contains(&"No poll in this channel".to_owned())
+    );
+}
+
+#[test]
+fn new_poll_waits_while_my_poll_is_open() {
+    let (mut app, mut host) = creator();
+    let texts = host.texts("panel");
+    assert!(!texts.contains(&"[new-poll]".to_owned()));
+    assert!(texts.contains(&"[close]".to_owned()));
+    app.on_action(&mut host, None, "new-poll", None);
+    assert!(!host.texts("panel").contains(&"<question>".to_owned()));
 }

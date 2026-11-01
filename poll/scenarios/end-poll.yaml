@@ -1,0 +1,30 @@
+# The creator ends the poll from the small panel: result line, final tally, and the panel goes
+# back to "New poll". A voter's panel never offers "End poll".
+name: Ending a poll from the panel
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  # Bob's poll: the panel shows it with Vote buttons but no End button.
+  - event: {peer-message: {from: 2, kind: 1, hex: "00000001 00000000 06 4c756e63683f 02 05 5069 7a7a61 05 5375736869"}}
+  - expect: {tree: {slot: panel, text: "Poll by Bob"}}
+  - event: {ui-action: {action: close}}
+  - expect: nothing
+
+  # A vote from the panel goes to Bob.
+  - event: {ui-action: {action: vote-0}}
+  - expect: {message: {to: 2, kind: 2, hex: "00000001 00"}}
+
+  # Alice's own poll takes over the panel; she ends it there.
+  - event: {ui-action: {action: new-poll}}
+  - expect: {panel-popover: {open: true}}
+  - event: {ui-action: {action: question, value: "Movie?"}}
+  - event: {ui-action: {action: option-0, value: "Yes"}}
+  - event: {ui-action: {action: option-1, value: "No"}}
+  - event: {ui-action: {action: create}}
+  - expect: {tree: {slot: panel, text: "End poll"}}
+  - event: {ui-action: {action: close}}
+  - expect: {chat: {text: "Movie?"}}
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: {tree: {slot: panel, text: "Poll by Bob"}}
