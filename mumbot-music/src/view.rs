@@ -1,7 +1,9 @@
 //! UI trees for the dialog and the settings form. Everything from the bot is already cleaned by
 //! `api::clean`; the renderer shows it as plain text.
 
-use mumcord_plugin_sdk::ui::{self, ButtonKind, Component, El, InputPurpose, TextInput};
+use mumcord_plugin_sdk::ui::{
+    self, ButtonKind, Component, El, InputPurpose, Justify, TextInput, Tone,
+};
 
 use crate::{
     api::{self, Queue, Track},
@@ -18,11 +20,11 @@ pub fn dialog(dialog: &Dialog) -> El {
     match &dialog.mode {
         Mode::NoCertificate => root.child(ui::text(&t("no_certificate"))),
         _ if !dialog.present => root
-            .child(ui::heading(&dialog.name))
-            .child(ui::text(&t("not_in_channel")))
+            .child(ui::heading(&t("not_in_channel")))
+            .child(ui::text(&t("not_in_channel_body")))
             .child(ui::caption(&t("bot_kept"))),
         Mode::Setup(setup) => setup_form(dialog, setup),
-        Mode::Player(player) => player_view(dialog, player),
+        Mode::Player(player) => player_view(player),
     }
 }
 
@@ -33,74 +35,75 @@ fn setup_form(dialog: &Dialog, setup: &Setup) -> El {
     } else {
         t("key_label")
     };
-    let (status, status_color) = match &setup.test {
-        Test::Passed => (t("status_test_passed"), Some("success")),
-        _ if editing => (t("status_connected"), Some("success")),
-        _ => (t("status_not_saved"), None),
+    let (status, tone) = match &setup.test {
+        Test::Passed => (t("status_test_passed"), Tone::Success),
+        _ if editing => (t("status_connected"), Tone::Success),
+        _ => (t("status_not_saved"), Tone::Danger),
     };
-    let mut status_chip = ui::chip(&status);
-    if let Some(color) = status_color {
-        status_chip = status_chip.color(color);
-    }
     // The key rejection belongs under the key field, every other failure under the address.
     let key_failed = matches!(&setup.test, Test::Failed(text) if *text == api::key_rejected_text());
+    let mut address = address_input("address", &setup.address, &t("address_placeholder"));
+    match &setup.test {
+        Test::Failed(text) if !key_failed => address = address.error(text),
+        Test::Passed => address = address.help(&t("address_ok")).help_tone(Tone::Success),
+        _ if bots::base_url(&setup.address).is_some_and(|url| url.starts_with("http://")) => {
+            address = address.help(&t("address_note_http"));
+        }
+        _ => {}
+    }
+    let mut key = ui::password("key", &key_label, &dialog.bot.secret(setup.slot));
+    match &setup.test {
+        Test::Failed(text) if key_failed => key = key.error(text),
+        Test::Passed => key = key.help(&t("test_ok")).help_tone(Tone::Success),
+        _ => {}
+    }
     let mut form = ui::column()
         .child(
             ui::row()
-                .child(ui::caption(&dialog.name))
-                .child(status_chip),
+                .justify(Justify::End)
+                .child(ui::chip(&status).tone(tone)),
         )
         .child(ui::text(&t(if editing {
             "setup_intro_edit"
         } else {
             "setup_intro"
         })))
-        .child(address_input(
-            "address",
-            &setup.address,
-            &t("address_placeholder"),
-        ));
-    if let Test::Failed(text) = &setup.test {
-        if !key_failed {
-            form = form.child(ui::caption(text).color("danger"));
-        }
-    } else if bots::base_url(&setup.address).is_some_and(|url| url.starts_with("http://")) {
-        form = form.child(ui::caption(&t("address_note_http")));
+        .child(address)
+        .child(key);
+    if setup.test == Test::Running {
+        form = form.child(ui::progress(&t("testing"), None));
     }
-    form = form.child(ui::password(
-        "key",
-        &key_label,
-        &dialog.bot.secret(setup.slot),
-    ));
-    match &setup.test {
-        Test::Running => form = form.child(ui::progress(&t("testing"), None)),
-        Test::Passed => form = form.child(ui::caption(&t("test_ok")).color("success")),
-        Test::Failed(text) if key_failed => form = form.child(ui::caption(text).color("danger")),
-        _ => {}
-    }
-    let mut actions = ui::row().child(
-        ui::button("test", &t("test"))
-            .kind(ButtonKind::Secondary)
-            .disabled(setup.test == Test::Running),
-    );
-    if editing {
-        actions = actions.child(ui::button("cancel", &t("cancel")).kind(ButtonKind::Secondary));
-    }
-    form.child(actions.child(ui::button("save", &t("save")).disabled(setup.test != Test::Passed)))
-        .child(ui::caption(&t("setup_footer")))
+    let actions = ui::row()
+        .justify(Justify::SpaceBetween)
+        .child(
+            ui::button("test", &t("test"))
+                .kind(ButtonKind::Secondary)
+                .disabled(setup.test == Test::Running),
+        )
+        .child(
+            ui::row()
+                .justify(Justify::End)
+                .child(ui::button("cancel", &t("cancel")).kind(ButtonKind::Secondary))
+                .child(
+                    ui::button("save", &t("save"))
+                        .kind(ButtonKind::Primary)
+                        .disabled(setup.test != Test::Passed),
+                ),
+        );
+    form.child(actions).child(ui::caption(&t("setup_footer")))
 }
 
-fn player_view(dialog: &Dialog, player: &Player) -> El {
+fn player_view(player: &Player) -> El {
     let off = player.offline.is_some();
-    let mut root = ui::column().child(ui::caption(&dialog.name));
+    let queue = player.queue.as_ref();
+    let mut left = ui::column();
     if let Some(text) = &player.offline {
-        root = root
+        left = left
             .child(ui::text(text).color("danger"))
             .child(ui::caption(&t("offline_retry")));
     }
-    let queue = player.queue.as_ref();
-    root = root.child(now_playing(queue.and_then(|q| q.now_playing.as_ref())));
-    root = root.child(
+    left = left.child(now_playing(queue.and_then(|q| q.now_playing.as_ref())));
+    left = left.child(
         ui::row()
             .child(ui::button("skip", &t("skip")).disabled(off))
             .child(
@@ -110,12 +113,12 @@ fn player_view(dialog: &Dialog, player: &Player) -> El {
             ),
     );
     let volume = queue.map_or(0, |q| q.volume);
-    root = root.child(
+    left = left.child(
         ui::slider("volume", &t("volume"), 0.0, 100.0, 5.0, f32::from(volume))
             .disabled(off || queue.is_none()),
     );
-    root = root.child(queue_list(queue));
-    root = root
+    left = left.child(queue_list(queue));
+    left = left
         .child(ui::divider())
         .child(
             ui::text_input("add-text", &t("add_label"), &player.add_text, INPUT_BYTES)
@@ -125,27 +128,43 @@ fn player_view(dialog: &Dialog, player: &Player) -> El {
         .child(
             ui::row()
                 .child(
-                    ui::button("add", &t("add_track")).disabled(off || player.add_text.is_empty()),
+                    ui::button("add", &t("add_track"))
+                        .kind(ButtonKind::Primary)
+                        .disabled(off || player.add_text.is_empty()),
                 )
                 .child(ui::file_picker("upload", &t("upload"), &[".mp3"]).disabled(off)),
         );
     if let Some(text) = &player.message {
-        root = root.child(ui::text(text).color("warning"));
+        left = left.child(ui::text(text).color("warning"));
     }
-    root = root.child(ui::divider());
+    ui::row().child(left).child(bot_settings(player))
+}
+
+/// The "Bot settings" column next to the player.
+fn bot_settings(player: &Player) -> El {
+    let column = ui::column().child(ui::heading(&t("settings_title"))).child(
+        ui::text_input(
+            "address-shown",
+            &t("address_label"),
+            &player.config.address,
+            INPUT_BYTES,
+        )
+        .disabled(true),
+    );
     if player.confirm_remove {
-        root.child(ui::text(&t("remove_confirm"))).child(
+        return column.child(ui::text(&t("remove_confirm"))).child(
             ui::row()
                 .child(ui::button("remove-confirm", &t("remove")).kind(ButtonKind::Danger))
                 .child(ui::button("remove-cancel", &t("cancel")).kind(ButtonKind::Secondary)),
-        )
-    } else {
-        root.child(
+        );
+    }
+    column
+        .child(
             ui::row()
                 .child(ui::button("edit", &t("edit_address_key")).kind(ButtonKind::Secondary))
                 .child(ui::button("remove", &t("remove_bot")).kind(ButtonKind::Danger)),
         )
-    }
+        .child(ui::caption(&t("remove_note")))
 }
 
 fn now_playing(track: Option<&Track>) -> El {
@@ -168,7 +187,11 @@ fn queue_list(queue: Option<&Queue>) -> El {
     if tracks.is_empty() {
         return ui::caption(&t("queue_empty"));
     }
-    ui::list(&t("queue")).children(
+    ui::list(&t_with(
+        "queue_count",
+        &[("count", &tracks.len().to_string())],
+    ))
+    .children(
         tracks
             .iter()
             .take(50)
@@ -190,23 +213,53 @@ fn address_input(action: &str, value: &str, placeholder: &str) -> El {
         purpose: InputPurpose::ServerAddress,
         action: action.to_owned(),
         disabled: false,
+        help: None,
+        help_tone: None,
+        error: None,
     }))
 }
 
-pub fn settings(saved: &[(String, BotConfig)], edit: Option<&SettingsEdit>) -> El {
+/// Where a saved bot is right now, shown as a status pill on its row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BotStatus {
+    InChannel,
+    NotInChannel,
+    NotConnected,
+}
+
+pub fn settings(saved: &[(String, BotConfig, BotStatus)], edit: Option<&SettingsEdit>) -> El {
     let mut root = ui::column().child(ui::heading(&t("saved_bots")));
     if saved.is_empty() {
         return root.child(ui::caption(&t("no_bots")));
     }
-    let rows = saved.iter().map(|(key, config)| {
+    let rows = saved.iter().map(|(key, config, status)| {
+        let chip = match status {
+            BotStatus::InChannel => ui::chip(&t("status_in_channel")).tone(Tone::Success),
+            BotStatus::NotInChannel => ui::chip(&t("status_not_in_channel")).tone(Tone::Warning),
+            BotStatus::NotConnected => ui::chip(&t("status_not_connected")).tone(Tone::Neutral),
+        };
         ui::row()
+            .justify(Justify::SpaceBetween)
             .child(
-                ui::column()
-                    .child(ui::text(&config.name))
-                    .child(ui::caption(&config.address)),
+                ui::row()
+                    .child(ui::image("assets/icon-32.png", "", 32, 32))
+                    .child(
+                        ui::column()
+                            .child(ui::text(&config.name))
+                            .child(ui::caption(&config.address)),
+                    )
+                    .child(chip),
             )
-            .child(ui::button(&format!("edit:{key}"), &t("edit")).kind(ButtonKind::Secondary))
-            .child(ui::button(&format!("remove:{key}"), &t("remove")).kind(ButtonKind::Danger))
+            .child(
+                ui::row()
+                    .justify(Justify::End)
+                    .child(
+                        ui::button(&format!("edit:{key}"), &t("edit")).kind(ButtonKind::Secondary),
+                    )
+                    .child(
+                        ui::button(&format!("remove:{key}"), &t("remove")).kind(ButtonKind::Danger),
+                    ),
+            )
     });
     root = root.child(ui::list(&t("saved_bots")).children(rows));
     if let Some(edit) = edit {

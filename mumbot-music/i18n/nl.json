@@ -4,7 +4,7 @@
   "configure_bot": "Bot configureren",
   "not_in_channel": "Mumbot zit niet in je kanaal",
   "no_certificate": "Deze gebruiker heeft geen certificaat, dus Mumcord kan hem niet opnieuw als bot herkennen.",
-  "bot_kept": "De instellingen blijven bewaard. De bediening komt terug zodra de bot terug is.",
+  "bot_kept": "Je opgeslagen adres en sleutel blijven bewaard.",
   "edit_address_key": "Adres / sleutel bewerken",
   "key_label_edit": "Nieuwe API-sleutel (leeg laten om de huidige te behouden)",
   "key_label": "API-sleutel",
@@ -64,5 +64,13 @@
   "setup_footer": "Alleen voor deze bot opgeslagen. De sleutel gaat naar de sleutelhanger van je systeem en wordt nooit meer getoond.",
   "status_test_passed": "Test geslaagd",
   "status_not_saved": "Niet opgeslagen",
-  "status_connected": "Verbonden"
+  "status_connected": "Verbonden",
+  "address_ok": "Bereikbaar. De bot is online.",
+  "settings_title": "Botinstellingen",
+  "queue_count": "Wachtrij · {{count}}",
+  "status_in_channel": "In jouw kanaal",
+  "status_not_in_channel": "Niet in jouw kanaal",
+  "status_not_connected": "Niet verbonden",
+  "not_in_channel_body": "De muziekbediening is alleen beschikbaar zolang de bot in hetzelfde kanaal zit als jij. Ze komt vanzelf terug als de bot terugkomt.",
+  "remove_note": "Verwijderen wist het adres en de sleutel van deze computer."
 }

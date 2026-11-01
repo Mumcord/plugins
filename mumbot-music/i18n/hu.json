@@ -4,7 +4,7 @@
   "configure_bot": "Bot beállítása",
   "not_in_channel": "A Mumbot nincs a csatornádban",
   "no_certificate": "Ennek a felhasználónak nincs tanúsítványa, ezért a Mumcord nem tudja újra botként felismerni.",
-  "bot_kept": "A beállításai megmaradnak. A vezérlők visszatérnek, amikor a bot visszatér.",
+  "bot_kept": "A mentett cím és kulcs megmarad.",
   "edit_address_key": "Cím / kulcs szerkesztése",
   "key_label_edit": "Új API-kulcs (hagyd üresen a jelenlegi megtartásához)",
   "key_label": "API-kulcs",
@@ -64,5 +64,13 @@
   "setup_footer": "Csak ehhez a bothoz mentve. A kulcs a rendszer kulcstartójába kerül, és soha többé nem jelenik meg.",
   "status_test_passed": "A teszt sikeres",
   "status_not_saved": "Nincs mentve",
-  "status_connected": "Csatlakoztatva"
+  "status_connected": "Csatlakoztatva",
+  "address_ok": "Elérhető. A bot online van.",
+  "settings_title": "Bot beállításai",
+  "queue_count": "Várólista · {{count}}",
+  "status_in_channel": "A te csatornádban",
+  "status_not_in_channel": "Nincs a te csatornádban",
+  "status_not_connected": "Nincs kapcsolat",
+  "not_in_channel_body": "A zenevezérlők csak akkor érhetők el, ha a bot ugyanabban a csatornában van, mint te. Maguktól visszatérnek, amikor a bot visszajön.",
+  "remove_note": "Az eltávolítás törli a címet és a kulcsot erről a számítógépről."
 }

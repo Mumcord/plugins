@@ -4,7 +4,7 @@
   "configure_bot": "Configurează botul",
   "not_in_channel": "Mumbot nu este în canalul dvs.",
   "no_certificate": "Acest utilizator nu are certificat, așa că Mumcord nu îl poate recunoaște din nou ca bot.",
-  "bot_kept": "Setările sale sunt păstrate. Controalele revin când botul revine.",
+  "bot_kept": "Adresa și cheia salvate sunt păstrate.",
   "edit_address_key": "Editează adresa / cheia",
   "key_label_edit": "Cheie API nouă (lăsați gol pentru a păstra cheia actuală)",
   "key_label": "Cheie API",
@@ -64,5 +64,13 @@
   "setup_footer": "Salvat doar pentru acest bot. Cheia ajunge în breloul de chei al sistemului și nu mai este afișată niciodată.",
   "status_test_passed": "Test reușit",
   "status_not_saved": "Nesalvat",
-  "status_connected": "Conectat"
+  "status_connected": "Conectat",
+  "address_ok": "Accesibil. Botul este online.",
+  "settings_title": "Setările botului",
+  "queue_count": "Coadă · {{count}}",
+  "status_in_channel": "În canalul tău",
+  "status_not_in_channel": "Nu e în canalul tău",
+  "status_not_connected": "Neconectat",
+  "not_in_channel_body": "Comenzile muzicale sunt disponibile doar cât timp botul se află în același canal cu tine. Revin singure când botul se întoarce.",
+  "remove_note": "Eliminarea șterge adresa și cheia de pe acest calculator."
 }

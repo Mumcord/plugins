@@ -85,10 +85,14 @@ impl Host for Mumcord {
         }
     }
 
-    fn open_dialog(&mut self, title: &str) {
-        if let Err(e) = ui::open_dialog(title) {
+    fn open_dialog(&mut self, title: &str, subtitle: &str) {
+        if let Err(e) = ui::open_dialog_with(title, Some(subtitle)) {
             log::error(&format!("could not open the dialog: {e:?}"));
         }
+    }
+
+    fn close_dialog(&mut self) {
+        ui::close_dialog();
     }
 
     fn set_menu_entry(&mut self, label: &str, sessions: &[u32]) {

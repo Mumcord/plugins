@@ -78,9 +78,10 @@ impl Host for Mock {
     fn show(&mut self, slot: Slot, tree: El) {
         self.trees.insert(format!("{slot:?}"), tree);
     }
-    fn open_dialog(&mut self, title: &str) {
+    fn open_dialog(&mut self, title: &str, _subtitle: &str) {
         self.dialogs.push(title.into());
     }
+    fn close_dialog(&mut self) {}
     fn set_menu_entry(&mut self, label: &str, sessions: &[u32]) {
         self.menu = Some((label.to_owned(), sessions.to_vec()));
     }
@@ -108,6 +109,13 @@ impl Mock {
                 Component::Progress(p) => (Some(p.label.clone()), false),
                 _ => (None, false),
             };
+            // Field notes and errors are part of what the user reads.
+            match &el.component {
+                Component::TextInput(c) => out.extend(c.help.iter().chain(&c.error).cloned()),
+                Component::Password(c) => out.extend(c.help.iter().chain(&c.error).cloned()),
+                Component::Chip(c) => out.push(c.text.clone()),
+                _ => {}
+            }
             if let Some(text) = text {
                 out.push(if disabled {
                     format!("{text} [x]")

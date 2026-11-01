@@ -29,6 +29,11 @@ impl BotId {
     }
 
     /// Whether `peer_key` (a full peer key from the host) is this bot.
+    /// Whether this bot belongs to the server the user is on.
+    pub fn on_server(&self, server: Option<&str>) -> bool {
+        server.is_some_and(|s| short(s) == self.server)
+    }
+
     pub fn matches(&self, server: Option<&str>, peer_key: Option<&str>) -> bool {
         server.is_some_and(|s| short(s) == self.server)
             && peer_key.is_some_and(|k| short(k) == self.peer)

@@ -4,7 +4,7 @@
   "configure_bot": "Konfigurera bot",
   "not_in_channel": "Mumbot finns inte i din kanal",
   "no_certificate": "Den här användaren har inget certifikat, så Mumcord kan inte känna igen den som en bot igen.",
-  "bot_kept": "Inställningarna sparas. Kontrollerna kommer tillbaka när boten återvänder.",
+  "bot_kept": "Din sparade adress och nyckel behålls.",
   "edit_address_key": "Redigera adress / nyckel",
   "key_label_edit": "Ny API-nyckel (lämna tomt för att behålla den nuvarande)",
   "key_label": "API-nyckel",
@@ -64,5 +64,13 @@
   "setup_footer": "Sparas bara för den här boten. Nyckeln läggs i systemets nyckelring och visas aldrig igen.",
   "status_test_passed": "Testet lyckades",
   "status_not_saved": "Inte sparad",
-  "status_connected": "Ansluten"
+  "status_connected": "Ansluten",
+  "address_ok": "Nåbar. Boten är online.",
+  "settings_title": "Botinställningar",
+  "queue_count": "Kö · {{count}}",
+  "status_in_channel": "I din kanal",
+  "status_not_in_channel": "Inte i din kanal",
+  "status_not_connected": "Inte ansluten",
+  "not_in_channel_body": "Musikkontrollerna är bara tillgängliga medan boten är i samma kanal som du. De kommer tillbaka av sig själva när boten återvänder.",
+  "remove_note": "Borttagning raderar adressen och nyckeln från den här datorn."
 }

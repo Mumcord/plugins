@@ -4,7 +4,7 @@
   "configure_bot": "Configurar bot",
   "not_in_channel": "O Mumbot não está no seu canal",
   "no_certificate": "Este utilizador não tem certificado, por isso o Mumcord não consegue reconhecê-lo novamente como bot.",
-  "bot_kept": "As definições são mantidas. Os controlos voltam quando o bot regressar.",
+  "bot_kept": "O teu endereço e a tua chave guardados são mantidos.",
   "edit_address_key": "Editar endereço / chave",
   "key_label_edit": "Nova chave de API (deixe vazio para manter a atual)",
   "key_label": "Chave de API",
@@ -64,5 +64,13 @@
   "setup_footer": "Guardado apenas para este bot. A chave vai para o porta-chaves do sistema e nunca volta a ser mostrada.",
   "status_test_passed": "Teste concluído",
   "status_not_saved": "Não guardado",
-  "status_connected": "Ligado"
+  "status_connected": "Ligado",
+  "address_ok": "Acessível. O bot está online.",
+  "settings_title": "Definições do bot",
+  "queue_count": "Fila · {{count}}",
+  "status_in_channel": "No teu canal",
+  "status_not_in_channel": "Não está no teu canal",
+  "status_not_connected": "Não ligado",
+  "not_in_channel_body": "Os controlos de música só estão disponíveis enquanto o bot estiver no mesmo canal que tu. Voltam sozinhos quando ele regressar.",
+  "remove_note": "Ao remover, o endereço e a chave são apagados deste computador."
 }

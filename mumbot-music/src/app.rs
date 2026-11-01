@@ -17,7 +17,7 @@ use crate::{
     api::{self, Call, Outcome, Queue},
     bots::{self, BotConfig, BotId, KeySlot},
     text::{t, t_with},
-    view,
+    view::{self, BotStatus},
 };
 
 /// The poll interval. FR-6.84 says 2 s, but mumbot allows 30 requests per minute per key, so
@@ -39,7 +39,8 @@ pub trait Host {
     fn keys(&mut self, prefix: &str) -> Vec<String>;
     fn delete_secret(&mut self, name: &str);
     fn show(&mut self, slot: Slot, tree: El);
-    fn open_dialog(&mut self, title: &str);
+    fn open_dialog(&mut self, title: &str, subtitle: &str);
+    fn close_dialog(&mut self);
     fn set_menu_entry(&mut self, label: &str, sessions: &[u32]);
     /// The users in the user's channel, the user first.
     fn presence(&mut self) -> Vec<Peer>;
@@ -224,6 +225,7 @@ impl App {
             }
             _ => (BotId::new("", ""), Mode::NoCertificate),
         };
+        let subtitle = format!("Mumbot · {name}");
         self.dialog = Some(Dialog {
             present: self.is_present(&bot),
             bot,
@@ -232,7 +234,7 @@ impl App {
             notified: false,
         });
         self.generation += 1;
-        host.open_dialog(&t("configure_bot"));
+        host.open_dialog(&t("configure_bot"), &subtitle);
         self.update(host);
     }
 
@@ -283,6 +285,11 @@ impl App {
                 }
                 ("save", _) if setup.test == Test::Passed => self.save_setup(host),
                 ("cancel", _) => {
+                    if setup.saved.is_none() {
+                        host.close_dialog();
+                        self.close(host);
+                        return;
+                    }
                     if let Some(config) = setup.saved.clone() {
                         if setup.key_entered {
                             host.delete_secret(&dialog.bot.secret(setup.slot));
@@ -666,12 +673,20 @@ impl App {
     }
 
     fn render_settings(&mut self, host: &mut impl Host) {
-        let saved: Vec<(String, BotConfig)> = host
+        let saved: Vec<(String, BotConfig, BotStatus)> = host
             .keys(bots::PREFIX)
             .into_iter()
             .filter_map(|key| {
                 let bot = BotId::from_storage_key(&key)?;
-                Some((key, load_config(host, &bot)?))
+                let config = load_config(host, &bot)?;
+                let status = if self.is_present(&bot) {
+                    BotStatus::InChannel
+                } else if bot.on_server(self.server.as_deref()) {
+                    BotStatus::NotInChannel
+                } else {
+                    BotStatus::NotConnected
+                };
+                Some((key, config, status))
             })
             .collect();
         host.show(

@@ -4,7 +4,7 @@
   "configure_bot": "Configura bot",
   "not_in_channel": "Mumbot non è nel tuo canale",
   "no_certificate": "Questo utente non ha un certificato, quindi Mumcord non può riconoscerlo di nuovo come bot.",
-  "bot_kept": "Le sue impostazioni vengono conservate. I controlli tornano quando il bot ritorna.",
+  "bot_kept": "Il tuo indirizzo e la tua chiave salvati vengono conservati.",
   "edit_address_key": "Modifica indirizzo / chiave",
   "key_label_edit": "Nuova chiave API (lascia vuoto per mantenere quella attuale)",
   "key_label": "Chiave API",
@@ -64,5 +64,13 @@
   "setup_footer": "Salvato solo per questo bot. La chiave va nel portachiavi del sistema e non viene più mostrata.",
   "status_test_passed": "Test superato",
   "status_not_saved": "Non salvato",
-  "status_connected": "Connesso"
+  "status_connected": "Connesso",
+  "address_ok": "Raggiungibile. Il bot è online.",
+  "settings_title": "Impostazioni del bot",
+  "queue_count": "Coda · {{count}}",
+  "status_in_channel": "Nel tuo canale",
+  "status_not_in_channel": "Non nel tuo canale",
+  "status_not_connected": "Non connesso",
+  "not_in_channel_body": "I controlli musicali sono disponibili solo finché il bot è nello stesso canale tuo. Tornano da soli quando il bot ritorna.",
+  "remove_note": "La rimozione elimina l'indirizzo e la chiave da questo computer."
 }

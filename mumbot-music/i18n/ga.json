@@ -4,7 +4,7 @@
   "configure_bot": "Cumraigh an bot",
   "not_in_channel": "Níl Mumbot i do chainéal",
   "no_certificate": "Níl teastas ag an úsáideoir seo, mar sin ní féidir le Mumcord é a aithint arís mar bhot.",
-  "bot_kept": "Coinnítear a shocruithe. Fillfidh na rialuithe nuair a fhillfidh an bot.",
+  "bot_kept": "Coinnítear do sheoladh agus d'eochair shábháilte.",
   "edit_address_key": "Cuir an seoladh / eochair in eagar",
   "key_label_edit": "Eochair API nua (fág folamh chun an eochair reatha a choinneáil)",
   "key_label": "Eochair API",
@@ -64,5 +64,13 @@
   "setup_footer": "Sábháilte don bhot seo amháin. Téann an eochair isteach i do eochairshlabhra córais agus ní thaispeántar arís í go deo.",
   "status_test_passed": "Triail rite",
   "status_not_saved": "Gan sábháil",
-  "status_connected": "Ceangailte"
+  "status_connected": "Ceangailte",
+  "address_ok": "Inrochtana. Tá an bot ar líne.",
+  "settings_title": "Socruithe an bhot",
+  "queue_count": "Scuaine · {{count}}",
+  "status_in_channel": "I do chainéal",
+  "status_not_in_channel": "Ní i do chainéal",
+  "status_not_connected": "Gan nasc",
+  "not_in_channel_body": "Níl rialuithe an cheoil ar fáil ach amháin nuair a bhíonn an bot sa chainéal céanna leatsa. Filleann siad leo féin nuair a fhilleann sé.",
+  "remove_note": "Scriostar an seoladh agus an eochair den ríomhaire seo nuair a bhaintear é."
 }
