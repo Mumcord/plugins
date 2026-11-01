@@ -27,6 +27,13 @@ before merging. It checks every version file the pull request adds or changes.
   author keys and the permissions each new version adds or removes compared with the previous
   published version. It ends with "Needs one maintainer approval" when the review rule above
   applies. The same text is in the job summary.
+- **Official plugin translations:** every official plugin (the folders `poll/`, `dice/`,
+  `echolings/`, `mumbot-music/` and any registry plugin whose `[source]` is this repository) must
+  ship `i18n/<tag>.json` for all 24 Mumcord languages: `bg cs da de el en es et fi fr ga hr hu it
+  lt lv mt nl pl pt ro sk sl sv`. Each file has exactly the keys of `en.json`. Plural variants
+  (`_zero`, `_one`, `_two`, `_few`, `_many`) may differ per language, but `_other` must exist for
+  every plural key. The job lists the missing languages and keys. Third-party plugins only need
+  `en.json`. Run it locally with `python3 .github/scripts/registry.py i18n`.
 - **Mock-host load test:** the package is started in the mock host of `mumcord-plugin test`.
 - **Licence scan:** the manifest `license` must be on the OSI allow-list in
   `.github/scripts/registry.py`, the source folder must have a `LICENSE` file, and the Rust

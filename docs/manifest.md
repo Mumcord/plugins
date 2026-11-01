@@ -9,6 +9,12 @@ A package is a zip file with the extension `.mcplugin`. `mumcord-plugin build` c
 | `manifest.json` | yes | At most 16 KiB. See below. |
 | `plugin.wasm` | yes | A WebAssembly component for the world `mumcord:plugin@1.0.0`. |
 | `i18n/en.json` | yes | English texts. Other languages are `i18n/<tag>.json` (BCP 47, for example `de`). At most 64 KiB each. |
+
+**Translations.** Third-party plugins only need `i18n/en.json`. Official plugins (published from the
+Mumcord plugins repository) must ship `i18n/<tag>.json` for all 24 Mumcord languages (`bg cs da de
+el en es et fi fr ga hr hu it lt lv mt nl pl pt ro sk sl sv`), each with exactly the keys of
+`en.json`. Plural keys may use different `_zero`/`_one`/`_two`/`_few`/`_many` variants per language,
+but `_other` is required everywhere. CI fails and lists missing languages and keys.
 | `assets/**` | no | Images for `ui::image`, the plugin icon. At most 512 KiB each. SVGs are sanitised on install. |
 | `README.md`, `LICENSE` | official plugins | Recommended for every plugin. |
 

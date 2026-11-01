@@ -51,6 +51,8 @@ jobs:
           while read -r id version; do
             python3 .github/scripts/registry.py verify "$id" "$version"
           done < "$RUNNER_TEMP/changed.txt"
+      - name: Official plugin translations
+        run: python3 .github/scripts/registry.py i18n
       - name: Permission diff
         if: github.event_name == 'pull_request' && !cancelled()
         env:
