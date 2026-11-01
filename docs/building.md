@@ -44,7 +44,7 @@ a WebAssembly component with `wit-component` and packs it with `manifest.json`, 
 runtime refuses. A plugin may only import `mumcord:plugin/*@1.0.0`, so avoid crates that need
 system APIs (files, sockets, threads, wall-clock time).
 
-Keep the plugin small: the package is limited to 5 MiB, and memory to 32 MiB at runtime. The
+Keep the plugin small: the package is limited to 5 MiB (official plugins with a bundled web app: 64 MiB), and memory to 32 MiB at runtime. The
 template's release profile (`opt-level = "s"`, `lto`, `codegen-units = 1`) is a good start.
 
 ## Reproducible builds
