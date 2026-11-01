@@ -3,6 +3,7 @@
   "manifest.description": "Viser EVE Online-skibsfits, der indsættes i chatten, som et overskueligt kort med hele fittet ét klik væk.",
   "chat_patterns.0.description": "Beskeder, der starter med et EVE Online-fit, f.eks. [Rifter, Tackle]",
   "card.open": "Åbn",
+  "button.copy": "Kopiér fit",
   "card.byline": "{{name}} · indsat af {{sender}}",
   "card.pasted_by": "Indsat af {{sender}}",
   "card.dropped": "Gemmes ikke længere. Indsæt fittet igen for at åbne det.",

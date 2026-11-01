@@ -3,6 +3,7 @@
   "manifest.description": "Zeigt EVE-Online-Schiffsfits aus dem Chat als übersichtliche Karte, das ganze Fit nur einen Klick entfernt.",
   "chat_patterns.0.description": "Nachrichten, die mit einem EVE-Online-Fit beginnen, z. B. [Rifter, Tackle]",
   "card.open": "Öffnen",
+  "button.copy": "Fitting kopieren",
   "card.byline": "{{name}} · eingefügt von {{sender}}",
   "card.pasted_by": "Eingefügt von {{sender}}",
   "card.dropped": "Nicht mehr gespeichert. Füge das Fit erneut ein, um es zu öffnen.",

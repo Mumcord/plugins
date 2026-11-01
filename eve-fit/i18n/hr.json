@@ -3,6 +3,7 @@
   "manifest.description": "Prikazuje fitove brodova iz EVE Onlinea zalijepljene u chat kao preglednu karticu, s cijelim fitom jedan klik dalje.",
   "chat_patterns.0.description": "Poruke koje počinju fitom iz EVE Onlinea, npr. [Rifter, Tackle]",
   "card.open": "Otvori",
+  "button.copy": "Kopiraj fit",
   "card.byline": "{{name}} · zalijepio/la {{sender}}",
   "card.pasted_by": "Zalijepio/la {{sender}}",
   "card.dropped": "Više se ne čuva. Ponovno zalijepite fit da biste ga otvorili.",

@@ -33,10 +33,11 @@ pub fn card(s: &Strings, p: &Pasted) -> El {
     let title = ui::stack(Direction::Column, 2, Align::Start)
         .child(ui::heading(&cut(&fit.ship, CARD_LINE_CHARS)))
         .child(ui::caption(&cut(&byline, CARD_LINE_CHARS)));
-    let top = ui::row()
-        .justify(Justify::SpaceBetween)
-        .child(title)
-        .child(ui::button(ACTION_OPEN, &s.t("card.open")).kind(ButtonKind::Primary));
+    let top = ui::row().justify(Justify::SpaceBetween).child(title).child(
+        ui::row()
+            .child(copy_button(s, p))
+            .child(ui::button(ACTION_OPEN, &s.t("card.open")).kind(ButtonKind::Primary)),
+    );
     let mut chips = ui::stack(Direction::Row, 4, Align::Center);
     for group in &fit.groups {
         if group.section != Section::Other {
@@ -81,8 +82,9 @@ pub fn dialog_subtitle(s: &Strings, p: &Pasted) -> String {
 }
 
 /// The full fit, one block per section.
-pub fn dialog(s: &Strings, fit: &Fit) -> El {
-    let mut column = ui::column();
+pub fn dialog(s: &Strings, p: &Pasted) -> El {
+    let fit = &p.fit;
+    let mut column = ui::column().child(ui::row().child(copy_button(s, p)));
     for (i, group) in fit.groups.iter().enumerate() {
         if i > 0 {
             column = column.child(ui::divider());
@@ -102,6 +104,12 @@ pub fn dialog(s: &Strings, fit: &Fit) -> El {
         column = column.child(block);
     }
     column
+}
+
+/// Copies the fit exactly as it was pasted, ready to import into EVE or Pyfa; the host does the
+/// copying when the user clicks, so the plugin needs no clipboard access.
+fn copy_button(s: &Strings, p: &Pasted) -> El {
+    ui::copy_button(&s.t("button.copy"), &p.text)
 }
 
 /// "High 7/8" for slots, "Drones 5" for bays.

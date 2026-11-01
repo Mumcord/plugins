@@ -3,6 +3,7 @@
   "manifest.description": "A chatbe beillesztett EVE Online hajófiteket áttekinthető kártyaként mutatja, a teljes fit egy kattintásra.",
   "chat_patterns.0.description": "EVE Online fittel kezdődő üzenetek, pl. [Rifter, Tackle]",
   "card.open": "Megnyitás",
+  "button.copy": "Fit másolása",
   "card.byline": "{{name}} · beillesztette: {{sender}}",
   "card.pasted_by": "Beillesztette: {{sender}}",
   "card.dropped": "Már nincs megőrizve. Illeszd be újra a fitet a megnyitáshoz.",

@@ -10,7 +10,7 @@ steps:
       chat-match:
         sender: 2
         pattern-index: 0
-        text: |
+        text: &fit |
           [Rifter, Tackle]
           Damage Control II
           Gyrostabilizer II
@@ -32,7 +32,13 @@ steps:
           Nanite Repair Paste x50
   - expect: {tree: {slot: {chat-card: fit-1}, text: "Tackle · pasted by Bob"}}
 
+  # Copy fitting puts the fit on the clipboard exactly as it was pasted, ready for EVE or Pyfa.
+  - copy: {label: Copy fitting, slot: {chat-card: fit-1}}
+  - expect: {copied: {text: *fit}}
+
   - event: {ui-action: {action: open, slot: {chat-card: fit-1}}}
   - expect: {dialog: {title: "Tackle"}}
   - expect: {tree: {slot: dialog, text: "2× 200mm AutoCannon II · Republic Fleet EMP S"}}
+  - copy: {label: Copy fitting, slot: dialog}
+  - expect: {copied: {text: *fit}}
   - expect: nothing

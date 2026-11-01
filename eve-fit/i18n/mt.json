@@ -3,6 +3,7 @@
   "manifest.description": "Juri l-fits tal-vapuri ta' EVE Online imwaħħla fiċ-chat bħala karta ordnata, bil-fit sħiħ klikk waħda 'l bogħod.",
   "chat_patterns.0.description": "Messaġġi li jibdew b'fit ta' EVE Online, eż. [Rifter, Tackle]",
   "card.open": "Iftaħ",
+  "button.copy": "Ikkopja l-fit",
   "card.byline": "{{name}} · imwaħħal minn {{sender}}",
   "card.pasted_by": "Imwaħħal minn {{sender}}",
   "card.dropped": "M'għadux miżmum. Waħħal il-fit mill-ġdid biex tiftħu.",

@@ -3,6 +3,7 @@
   "manifest.description": "Muestra los fits de naves de EVE Online pegados en el chat como una tarjeta clara, con el fit completo a un clic.",
   "chat_patterns.0.description": "Mensajes que empiezan con un fit de EVE Online, p. ej. [Rifter, Tackle]",
   "card.open": "Abrir",
+  "button.copy": "Copiar fit",
   "card.byline": "{{name}} · pegado por {{sender}}",
   "card.pasted_by": "Pegado por {{sender}}",
   "card.dropped": "Ya no se guarda. Vuelve a pegar el fit para abrirlo.",

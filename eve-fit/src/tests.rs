@@ -313,6 +313,7 @@ fn collect(el: &El, out: &mut Vec<String>) {
         Component::Text(t) => out.push(t.text.clone()),
         Component::Chip(c) => out.push(c.text.clone()),
         Component::Button(b) => out.push(format!("[{}]", b.label)),
+        Component::CopyButton(b) => out.push(format!("[{}: {} bytes]", b.label, b.text.len())),
         _ => {}
     }
     for child in &el.children {
@@ -331,6 +332,7 @@ fn a_pasted_fit_shows_a_card_with_the_summary() {
         [
             "Rifter",
             "Tackle · pasted by Alice",
+            &format!("[Copy fitting: {} bytes]", RIFTER.len()),
             "[Open]",
             "Low 2/3",
             "Mid 3/3",
@@ -340,6 +342,27 @@ fn a_pasted_fit_shows_a_card_with_the_summary() {
             "Cargo 1050",
             "3× 200mm AutoCannon II · 2× Small Projectile Burst Aerator I",
         ]
+    );
+}
+
+/// The text of the first copy button in a tree.
+fn copy_text(el: &El) -> Option<&str> {
+    if let Component::CopyButton(b) = &el.component {
+        return Some(&b.text);
+    }
+    el.children.iter().find_map(copy_text)
+}
+
+#[test]
+fn copy_fitting_copies_the_text_as_pasted() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.on_chat_match(&mut host, "Alice", LEGION);
+    assert_eq!(copy_text(host.last_card(&card_id(1))), Some(LEGION));
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    assert_eq!(
+        copy_text(host.dialog.as_ref().expect("dialog")),
+        Some(LEGION)
     );
 }
 
@@ -414,7 +437,7 @@ fn old_cards_lose_their_open_button() {
         app.on_chat_match(&mut host, "Alice", RIFTER);
     }
     let first = texts(host.last_card(&card_id(1)));
-    assert!(!first.iter().any(|t| t == "[Open]"), "{first:?}");
+    assert!(!first.iter().any(|t| t.starts_with('[')), "{first:?}");
     app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
     assert!(host.dialog.is_none());
     app.on_card_action(&mut host, &card_id(2), view::ACTION_OPEN);

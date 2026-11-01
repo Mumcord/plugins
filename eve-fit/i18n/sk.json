@@ -3,6 +3,7 @@
   "manifest.description": "Zobrazí fity lodí z EVE Online vložené do chatu ako prehľadnú kartu, celý fit na jedno kliknutie.",
   "chat_patterns.0.description": "Správy, ktoré začínajú fitom z EVE Online, napr. [Rifter, Tackle]",
   "card.open": "Otvoriť",
+  "button.copy": "Kopírovať fit",
   "card.byline": "{{name}} · vložil(a) {{sender}}",
   "card.pasted_by": "Vložil(a) {{sender}}",
   "card.dropped": "Už sa neuchováva. Vložte fit znova, aby ste ho otvorili.",

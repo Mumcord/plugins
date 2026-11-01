@@ -3,6 +3,7 @@
   "manifest.description": "Affiche les fits de vaisseaux EVE Online collés dans le chat sous forme de carte claire, le fit complet à un clic.",
   "chat_patterns.0.description": "Messages commençant par un fit EVE Online, p. ex. [Rifter, Tackle]",
   "card.open": "Ouvrir",
+  "button.copy": "Copier le fit",
   "card.byline": "{{name}} · collé par {{sender}}",
   "card.pasted_by": "Collé par {{sender}}",
   "card.dropped": "N'est plus conservé. Collez à nouveau le fit pour l'ouvrir.",

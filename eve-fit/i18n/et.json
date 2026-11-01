@@ -3,6 +3,7 @@
   "manifest.description": "Näitab vestlusse kleebitud EVE Online'i laevafitte selge kaardina, kogu fit ühe klõpsu kaugusel.",
   "chat_patterns.0.description": "Sõnumid, mis algavad EVE Online'i fitiga, nt [Rifter, Tackle]",
   "card.open": "Ava",
+  "button.copy": "Kopeeri fit",
   "card.byline": "{{name}} · kleepis {{sender}}",
   "card.pasted_by": "Kleepis {{sender}}",
   "card.dropped": "Enam ei hoita. Kleebi fit uuesti, et see avada.",

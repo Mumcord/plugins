@@ -3,6 +3,7 @@
   "manifest.description": "Näyttää chattiin liitetyt EVE Online -alusfitit selkeänä korttina, koko fitti yhden klikkauksen päässä.",
   "chat_patterns.0.description": "Viestit, jotka alkavat EVE Online -fitillä, esim. [Rifter, Tackle]",
   "card.open": "Avaa",
+  "button.copy": "Kopioi fitti",
   "card.byline": "{{name}} · liittänyt {{sender}}",
   "card.pasted_by": "Liittänyt {{sender}}",
   "card.dropped": "Ei enää tallessa. Liitä fitti uudelleen avataksesi sen.",

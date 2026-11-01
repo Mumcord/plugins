@@ -3,6 +3,7 @@
   "manifest.description": "Prikaže fite ladij iz EVE Online, prilepljene v klepet, kot pregledno kartico s celotnim fitom en klik stran.",
   "chat_patterns.0.description": "Sporočila, ki se začnejo s fitom iz EVE Online, npr. [Rifter, Tackle]",
   "card.open": "Odpri",
+  "button.copy": "Kopiraj fit",
   "card.byline": "{{name}} · prilepil(a) {{sender}}",
   "card.pasted_by": "Prilepil(a) {{sender}}",
   "card.dropped": "Ni več shranjen. Znova prilepite fit, da ga odprete.",

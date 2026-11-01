@@ -3,6 +3,7 @@
   "manifest.description": "Εμφανίζει τα fit πλοίων του EVE Online που επικολλώνται στη συνομιλία ως τακτοποιημένη κάρτα, με όλο το fit ένα κλικ μακριά.",
   "chat_patterns.0.description": "Μηνύματα που ξεκινούν με fit του EVE Online, π.χ. [Rifter, Tackle]",
   "card.open": "Άνοιγμα",
+  "button.copy": "Αντιγραφή fit",
   "card.byline": "{{name}} · επικόλληση από {{sender}}",
   "card.pasted_by": "Επικόλληση από {{sender}}",
   "card.dropped": "Δεν διατηρείται πια. Επικολλήστε ξανά το fit για να το ανοίξετε.",

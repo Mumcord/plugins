@@ -3,6 +3,7 @@
   "manifest.description": "Afișează fiturile de nave EVE Online lipite în chat ca un card clar, cu fitul complet la un clic distanță.",
   "chat_patterns.0.description": "Mesaje care încep cu un fit EVE Online, de ex. [Rifter, Tackle]",
   "card.open": "Deschide",
+  "button.copy": "Copiază fitul",
   "card.byline": "{{name}} · lipit de {{sender}}",
   "card.pasted_by": "Lipit de {{sender}}",
   "card.dropped": "Nu mai este păstrat. Lipește din nou fitul pentru a-l deschide.",

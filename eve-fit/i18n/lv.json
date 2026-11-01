@@ -3,6 +3,7 @@
   "manifest.description": "Rāda tērzēšanā ielīmētos EVE Online kuģu fitus kā pārskatāmu karti, viss fits ir viena klikšķa attālumā.",
   "chat_patterns.0.description": "Ziņas, kas sākas ar EVE Online fitu, piem., [Rifter, Tackle]",
   "card.open": "Atvērt",
+  "button.copy": "Kopēt fitu",
   "card.byline": "{{name}} · ielīmēja {{sender}}",
   "card.pasted_by": "Ielīmēja {{sender}}",
   "card.dropped": "Vairs netiek glabāts. Ielīmējiet fitu vēlreiz, lai to atvērtu.",

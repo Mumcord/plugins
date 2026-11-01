@@ -23,6 +23,8 @@ pub struct Pasted {
     pub card: u32,
     pub sender: String,
     pub fit: Fit,
+    /// The message as pasted (at most 4 KiB), for the Copy fitting button.
+    pub text: String,
 }
 
 pub struct App {
@@ -74,6 +76,7 @@ impl App {
             card,
             sender: sender.to_owned(),
             fit,
+            text: text.to_owned(),
         };
         host.show_card(&card_id(card), view::card(&self.strings, &pasted));
         self.fits.push_back(pasted);
@@ -113,7 +116,7 @@ impl App {
             host.warn(&format!("could not open the fit dialog: {e:?}"));
             return;
         }
-        host.show_dialog(view::dialog(&self.strings, &pasted.fit));
+        host.show_dialog(view::dialog(&self.strings, pasted));
         self.open = Some(card);
     }
 
@@ -137,7 +140,7 @@ impl App {
             if let Err(e) = host.open_dialog(&title, Some(&subtitle)) {
                 host.warn(&format!("could not retitle the fit dialog: {e:?}"));
             }
-            host.show_dialog(view::dialog(&self.strings, &pasted.fit));
+            host.show_dialog(view::dialog(&self.strings, pasted));
         }
     }
 }

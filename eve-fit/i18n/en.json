@@ -3,6 +3,7 @@
   "manifest.description": "Shows EVE Online ship fits pasted into the chat as a tidy card with the full fit one click away.",
   "chat_patterns.0.description": "Messages that start with an EVE Online fit, e.g. [Rifter, Tackle]",
   "card.open": "Open",
+  "button.copy": "Copy fitting",
   "card.byline": "{{name}} · pasted by {{sender}}",
   "card.pasted_by": "Pasted by {{sender}}",
   "card.dropped": "No longer kept. Paste the fit again to open it.",

@@ -3,6 +3,7 @@
   "manifest.description": "Показва фитовете на кораби от EVE Online, поставени в чата, като прегледна карта с целия фит на един клик.",
   "chat_patterns.0.description": "Съобщения, които започват с фит от EVE Online, напр. [Rifter, Tackle]",
   "card.open": "Отвори",
+  "button.copy": "Копирай фита",
   "card.byline": "{{name}} · поставено от {{sender}}",
   "card.pasted_by": "Поставено от {{sender}}",
   "card.dropped": "Вече не се пази. Поставете фита отново, за да го отворите.",

@@ -3,6 +3,7 @@
   "manifest.description": "Toont EVE Online-scheepsfits die in de chat worden geplakt als een overzichtelijke kaart, met de volledige fit één klik verderop.",
   "chat_patterns.0.description": "Berichten die beginnen met een EVE Online-fit, bijv. [Rifter, Tackle]",
   "card.open": "Openen",
+  "button.copy": "Fit kopiëren",
   "card.byline": "{{name}} · geplakt door {{sender}}",
   "card.pasted_by": "Geplakt door {{sender}}",
   "card.dropped": "Niet meer bewaard. Plak de fit opnieuw om hem te openen.",

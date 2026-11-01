@@ -3,6 +3,7 @@
   "manifest.description": "Rodo į pokalbį įklijuotus EVE Online laivų fitus kaip tvarkingą kortelę, visas fitas – vienu paspaudimu.",
   "chat_patterns.0.description": "Žinutės, prasidedančios EVE Online fitu, pvz., [Rifter, Tackle]",
   "card.open": "Atidaryti",
+  "button.copy": "Kopijuoti fitą",
   "card.byline": "{{name}} · įklijavo {{sender}}",
   "card.pasted_by": "Įklijavo {{sender}}",
   "card.dropped": "Nebesaugomas. Įklijuokite fitą dar kartą, kad jį atidarytumėte.",

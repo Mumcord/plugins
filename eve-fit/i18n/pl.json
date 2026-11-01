@@ -3,6 +3,7 @@
   "manifest.description": "Pokazuje fity statków z EVE Online wklejone do czatu jako przejrzystą kartę, z pełnym fitem jedno kliknięcie dalej.",
   "chat_patterns.0.description": "Wiadomości zaczynające się od fitu z EVE Online, np. [Rifter, Tackle]",
   "card.open": "Otwórz",
+  "button.copy": "Kopiuj fit",
   "card.byline": "{{name}} · wkleił(a) {{sender}}",
   "card.pasted_by": "Wkleił(a) {{sender}}",
   "card.dropped": "Nie jest już przechowywany. Wklej fit ponownie, aby go otworzyć.",
