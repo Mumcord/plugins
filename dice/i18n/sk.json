@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Naposledy: {{row}}",
   "panel.none": "Zatiaľ žiadny hod",
+  "help.label": "Pomocník",
   "help.title": "Ako hádzať",
   "help.notation": "Napíšte /roll a hod, napríklad 2d6+3 (dve šesťstenné kocky plus 3) alebo 3d8-1 (tri osemstenné kocky mínus 1).",
   "help.advantage": "d20 adv hodí dvakrát a ponechá vyšší výsledok, d20 dis ponechá nižší.",

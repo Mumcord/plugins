@@ -46,6 +46,7 @@
   "history.row": "{{who}} : {{roll}} {{result}}",
   "panel.last": "Dernier : {{row}}",
   "panel.none": "Aucun lancer pour l'instant",
+  "help.label": "Aide",
   "help.title": "Comment lancer",
   "help.notation": "Tapez /roll et un lancer comme 2d6+3 (deux dés à 6 faces plus 3) ou 3d8-1 (trois dés à 8 faces moins 1).",
   "help.advantage": "d20 adv lance deux fois et garde le meilleur résultat, d20 dis garde le plus faible.",

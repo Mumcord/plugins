@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Naposledy: {{row}}",
   "panel.none": "Zatím žádný hod",
+  "help.label": "Nápověda",
   "help.title": "Jak házet",
   "help.notation": "Napište /roll a hod, například 2d6+3 (dvě šestistěnné kostky plus 3) nebo 3d8-1 (tři osmistěnné kostky minus 1).",
   "help.advantage": "d20 adv hodí dvakrát a ponechá vyšší výsledek, d20 dis ponechá nižší.",

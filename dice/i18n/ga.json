@@ -47,6 +47,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Is déanaí: {{row}}",
   "panel.none": "Gan caitheamh fós",
+  "help.label": "Cabhair",
   "help.title": "Conas a chaitheann tú",
   "help.notation": "Clóscríobh /roll agus caitheamh ar nós 2d6+3 (dhá dhísle le 6 aghaidh móide 3) nó 3d8-1 (trí dhísle le 8 n-aghaidh lúide 1).",
   "help.advantage": "Caitheann d20 adv faoi dhó agus coinníonn sé an toradh is airde, coinníonn d20 dis an toradh is ísle.",

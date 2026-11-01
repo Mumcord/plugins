@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Last: {{row}}",
   "panel.none": "No roll yet",
+  "help.label": "Help",
   "help.title": "How to roll",
   "help.notation": "Type /roll and a roll like 2d6+3 (two 6-sided dice plus 3) or 3d8-1 (three 8-sided dice minus 1).",
   "help.advantage": "d20 adv rolls twice and keeps the higher result, d20 dis keeps the lower.",

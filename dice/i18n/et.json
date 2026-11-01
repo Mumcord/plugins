@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Viimane: {{row}}",
   "panel.none": "Veel pole veeretatud",
+  "help.label": "Abi",
   "help.title": "Kuidas veeretada",
   "help.notation": "Kirjuta /roll ja veeretus, näiteks 2d6+3 (kaks 6-tahulist täringut pluss 3) või 3d8-1 (kolm 8-tahulist täringut miinus 1).",
   "help.advantage": "d20 adv veeretab kaks korda ja jätab suurema tulemuse, d20 dis väiksema.",

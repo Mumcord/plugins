@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Viimeisin: {{row}}",
   "panel.none": "Ei vielä heittoja",
+  "help.label": "Ohje",
   "help.title": "Näin heität",
   "help.notation": "Kirjoita /roll ja heitto, esimerkiksi 2d6+3 (kaksi 6-sivuista noppaa plus 3) tai 3d8-1 (kolme 8-sivuista noppaa miinus 1).",
   "help.advantage": "d20 adv heittää kahdesti ja pitää korkeamman tuloksen, d20 dis pitää matalamman.",

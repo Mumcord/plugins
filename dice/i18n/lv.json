@@ -47,6 +47,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Pēdējais: {{row}}",
   "panel.none": "Vēl nav metienu",
+  "help.label": "Palīdzība",
   "help.title": "Kā mest",
   "help.notation": "Ierakstiet /roll un metienu, piemēram, 2d6+3 (divi 6 skaldņu kauliņi plus 3) vai 3d8-1 (trīs 8 skaldņu kauliņi mīnus 1).",
   "help.advantage": "d20 adv met divreiz un patur augstāko rezultātu, d20 dis patur zemāko.",

@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Zadnje: {{row}}",
   "panel.none": "Još nema bacanja",
+  "help.label": "Pomoć",
   "help.title": "Kako baciti",
   "help.notation": "Upišite /roll i bacanje poput 2d6+3 (dvije kocke sa 6 strana plus 3) ili 3d8-1 (tri kocke s 8 strana minus 1).",
   "help.advantage": "d20 adv baca dvaput i zadržava viši rezultat, d20 dis zadržava niži.",

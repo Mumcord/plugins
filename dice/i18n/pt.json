@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Último: {{row}}",
   "panel.none": "Ainda sem lançamentos",
+  "help.label": "Ajuda",
   "help.title": "Como lançar",
   "help.notation": "Escreva /roll e um lançamento como 2d6+3 (dois dados de 6 faces mais 3) ou 3d8-1 (três dados de 8 faces menos 1).",
   "help.advantage": "d20 adv lança duas vezes e fica com o resultado mais alto, d20 dis com o mais baixo.",

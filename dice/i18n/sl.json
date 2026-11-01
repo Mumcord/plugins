@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Zadnji: {{row}}",
   "panel.none": "Še ni metov",
+  "help.label": "Pomoč",
   "help.title": "Kako metati",
   "help.notation": "Vnesite /roll in met, na primer 2d6+3 (dve 6-strani kocki plus 3) ali 3d8-1 (tri 8-strane kocke minus 1).",
   "help.advantage": "d20 adv vrže dvakrat in obdrži višji rezultat, d20 dis obdrži nižjega.",

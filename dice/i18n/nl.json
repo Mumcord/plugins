@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Laatst: {{row}}",
   "panel.none": "Nog geen worp",
+  "help.label": "Help",
   "help.title": "Zo gooi je",
   "help.notation": "Typ /roll en een worp zoals 2d6+3 (twee dobbelstenen met 6 zijden plus 3) of 3d8-1 (drie dobbelstenen met 8 zijden min 1).",
   "help.advantage": "d20 adv gooit twee keer en houdt de hoogste uitkomst, d20 dis houdt de laagste.",

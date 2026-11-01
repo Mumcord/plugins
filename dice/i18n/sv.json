@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Senaste: {{row}}",
   "panel.none": "Inga tärningskast ännu",
+  "help.label": "Hjälp",
   "help.title": "Så slår du",
   "help.notation": "Skriv /roll och ett kast som 2d6+3 (två 6-sidiga tärningar plus 3) eller 3d8-1 (tre 8-sidiga tärningar minus 1).",
   "help.advantage": "d20 adv slår två gånger och behåller det högsta resultatet, d20 dis behåller det lägsta.",

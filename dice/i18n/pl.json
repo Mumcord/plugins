@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Ostatni: {{row}}",
   "panel.none": "Jeszcze nie rzucano",
+  "help.label": "Pomoc",
   "help.title": "Jak rzucać",
   "help.notation": "Wpisz /roll i rzut, np. 2d6+3 (dwie kości 6-ścienne plus 3) lub 3d8-1 (trzy kości 8-ścienne minus 1).",
   "help.advantage": "d20 adv rzuca dwa razy i zachowuje wyższy wynik, d20 dis zachowuje niższy.",

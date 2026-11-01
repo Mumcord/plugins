@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Sidst: {{row}}",
   "panel.none": "Intet slag endnu",
+  "help.label": "Hjælp",
   "help.title": "Sådan slår du",
   "help.notation": "Skriv /roll og et slag som 2d6+3 (to 6-sidede terninger plus 3) eller 3d8-1 (tre 8-sidede terninger minus 1).",
   "help.advantage": "d20 adv slår to gange og beholder det højeste resultat, d20 dis beholder det laveste.",

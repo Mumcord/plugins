@@ -1,4 +1,4 @@
-name: A quick-roll button rolls like /roll and the "?" button opens the popover
+name: A quick-roll button rolls like /roll and the help button opens the popover
 grant: [ui.panel, ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
 me: {session: 1, name: Alice}
 peers:

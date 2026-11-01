@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Ultimo: {{row}}",
   "panel.none": "Ancora nessun lancio",
+  "help.label": "Aiuto",
   "help.title": "Come lanciare",
   "help.notation": "Scrivi /roll e un lancio come 2d6+3 (due dadi a 6 facce più 3) o 3d8-1 (tre dadi a 8 facce meno 1).",
   "help.advantage": "d20 adv lancia due volte e tiene il risultato più alto, d20 dis tiene il più basso.",

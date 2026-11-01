@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Última: {{row}}",
   "panel.none": "Aún no hay tiradas",
+  "help.label": "Ayuda",
   "help.title": "Cómo tirar",
   "help.notation": "Escribe /roll y una tirada como 2d6+3 (dos dados de 6 caras más 3) o 3d8-1 (tres dados de 8 caras menos 1).",
   "help.advantage": "d20 adv tira dos veces y se queda con el resultado más alto, d20 dis con el más bajo.",

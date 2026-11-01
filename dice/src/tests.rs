@@ -1067,6 +1067,9 @@ fn buttons(el: &El) -> Vec<(String, String)> {
     if let Component::Button(b) = &el.component {
         out.push((b.action.clone(), b.label.clone()));
     }
+    if let Component::IconButton(b) = &el.component {
+        out.push((b.action.clone(), b.label.clone()));
+    }
     for child in &el.children {
         out.extend(buttons(child));
     }
@@ -1086,7 +1089,7 @@ fn the_inline_panel_has_quick_rolls_the_last_roll_and_a_help_button() {
     assert_eq!(
         labels,
         [
-            "d4", "d6", "d8", "d10", "d12", "d20", "d100", "2d6", "d20 adv", "d20 dis", "?"
+            "d4", "d6", "d8", "d10", "d12", "d20", "d100", "2d6", "d20 adv", "d20 dis", "Help"
         ]
     );
     assert!(has_text(panel_of(&host), "No roll yet"));

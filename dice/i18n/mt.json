@@ -47,6 +47,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "L-aħħar: {{row}}",
   "panel.none": "Għad m'hemmx tlugħ",
+  "help.label": "Għajnuna",
   "help.title": "Kif tarmi",
   "help.notation": "Ikteb /roll u tlugħ bħal 2d6+3 (żewġ dadi b'6 uċuħ flimkien ma' 3) jew 3d8-1 (tliet dadi b'8 uċuħ nieqes 1).",
   "help.advantage": "d20 adv jarmi darbtejn u jżomm l-ogħla riżultat, d20 dis iżomm l-aktar baxx.",

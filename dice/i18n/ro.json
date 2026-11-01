@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Ultima: {{row}}",
   "panel.none": "Încă nicio aruncare",
+  "help.label": "Ajutor",
   "help.title": "Cum arunci",
   "help.notation": "Scrie /roll și o aruncare precum 2d6+3 (două zaruri cu 6 fețe plus 3) sau 3d8-1 (trei zaruri cu 8 fețe minus 1).",
   "help.advantage": "d20 adv aruncă de două ori și păstrează rezultatul mai mare, d20 dis îl păstrează pe cel mai mic.",

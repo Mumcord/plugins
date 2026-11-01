@@ -296,7 +296,7 @@ fn history_list(entries: &[Entry]) -> El {
     root
 }
 
-/// Action id of the "?" button.
+/// Action id of the help icon button.
 pub const HELP_ACTION: &str = "help";
 /// Prefix of the quick-roll buttons' action ids; the rest is the notation to roll.
 pub const QUICK_PREFIX: &str = "quick:";
@@ -332,11 +332,11 @@ fn last_roll(entries: &[Entry]) -> El {
 
 /// The panel shown inline in the Plugins strip: quick rolls, the last roll and the help button.
 pub fn panel_inline(entries: &[Entry]) -> El {
-    quick_rolls().child(
-        ui::row()
-            .child(last_roll(entries))
-            .child(ui::button(HELP_ACTION, "?").kind(ButtonKind::Secondary)),
-    )
+    quick_rolls().child(ui::row().child(last_roll(entries)).child(ui::icon_button(
+        HELP_ACTION,
+        "assets/icons/help.svg",
+        &t("help.label"),
+    )))
 }
 
 /// The panel in the large popover: the help and the history.

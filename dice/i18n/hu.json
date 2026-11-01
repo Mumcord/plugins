@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Utolsó: {{row}}",
   "panel.none": "Még nincs dobás",
+  "help.label": "Súgó",
   "help.title": "Hogyan dobj",
   "help.notation": "Írd be: /roll, majd egy dobást, például 2d6+3 (két 6 oldalú kocka plusz 3) vagy 3d8-1 (három 8 oldalú kocka mínusz 1).",
   "help.advantage": "A d20 adv kétszer dob, és a magasabb eredményt tartja meg, a d20 dis az alacsonyabbat.",

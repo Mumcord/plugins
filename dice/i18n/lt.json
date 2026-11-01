@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Paskutinis: {{row}}",
   "panel.none": "Dar nėra metimų",
+  "help.label": "Pagalba",
   "help.title": "Kaip mesti",
   "help.notation": "Įveskite /roll ir metimą, pvz., 2d6+3 (du 6 sienų kauliukai plius 3) arba 3d8-1 (trys 8 sienų kauliukai minus 1).",
   "help.advantage": "d20 adv meta du kartus ir palieka didesnį rezultatą, d20 dis palieka mažesnį.",

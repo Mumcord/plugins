@@ -46,6 +46,7 @@
   "history.row": "{{who}}: {{roll}} {{result}}",
   "panel.last": "Zuletzt: {{row}}",
   "panel.none": "Noch kein Wurf",
+  "help.label": "Hilfe",
   "help.title": "So würfelst du",
   "help.notation": "Tippe /roll und einen Wurf wie 2d6+3 (zwei 6-seitige Würfel plus 3) oder 3d8-1 (drei 8-seitige Würfel minus 1).",
   "help.advantage": "d20 adv würfelt zweimal und behält das höhere Ergebnis, d20 dis das niedrigere.",
