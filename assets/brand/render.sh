@@ -10,7 +10,7 @@ root=$(cd "$here/../.." && pwd)
 rsvg-convert -w 1280 -h 640 "$here/plugins-banner.svg" -o "$here/plugins-banner.png"
 rsvg-convert -w 512 -h 512 "$here/plugins-icon.svg" -o "$here/plugins-icon.png"
 
-for plugin in poll dice echolings mumbot-music; do
+for plugin in poll dice echolings mumbot-music eve-fit; do
     for size in 512 128 32; do
         rsvg-convert -w "$size" -h "$size" "$root/$plugin/assets/icon.svg" -o "$root/$plugin/assets/icon-$size.png"
     done
