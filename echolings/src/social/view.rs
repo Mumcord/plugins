@@ -3,7 +3,7 @@
 use mumcord_plugin_sdk::ui::{self, Align, Animation, ButtonKind, Direction, El};
 
 use super::{OtherPet, PatNote, action};
-use crate::pet::{Mood, Stage};
+use crate::pet::{Mood, SMALL_MAX, Stage};
 use crate::ui::{Motion, i18n::I18n, mood_key, species_key, stage_key};
 
 pub struct OtherView<'a> {
@@ -43,10 +43,20 @@ impl OtherView<'_> {
     }
 
     fn picture(&self, size: u16) -> El {
-        let image = ui::image(&self.pet.card.asset(), &self.label(), size, size);
-        match self.animation() {
+        let image = ui::image(
+            &self.pet.card.asset(size <= SMALL_MAX),
+            &self.label(),
+            size,
+            size,
+        );
+        let image = match self.animation() {
             Some(animation) => image.animate(animation),
             None => image,
+        };
+        if self.pet.card.mood == Mood::Sleeping {
+            crate::ui::with_zzz(image, size, &self.t.t("mood.sleeping"))
+        } else {
+            image
         }
     }
 

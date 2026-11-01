@@ -7,7 +7,7 @@ mod tests;
 
 use mumcord_plugin_sdk::ui::{self, Align, Animation, ButtonKind, Direction, El};
 
-use crate::pet::{Mood, Now, Pet, Reaction, Refusal, Session, Species, balance};
+use crate::pet::{Mood, Now, Pet, Reaction, Refusal, SMALL_MAX, Session, Species, balance};
 use crate::storage::AnimationLevel;
 use i18n::I18n;
 
@@ -134,10 +134,20 @@ impl View<'_> {
     }
 
     fn picture(&self, size: u16) -> El {
-        let image = ui::image(&self.pet.asset(), &self.label(), size, size);
-        match self.animation() {
+        let image = ui::image(
+            &self.pet.asset(size <= SMALL_MAX),
+            &self.label(),
+            size,
+            size,
+        );
+        let image = match self.animation() {
             Some(animation) => image.animate(animation),
             None => image,
+        };
+        if self.pet.asleep(self.session, self.now) {
+            with_zzz(image, size, &self.t.t("mood.sleeping"))
+        } else {
+            image
         }
     }
 
@@ -509,4 +519,14 @@ fn animation_key(level: AnimationLevel) -> &'static str {
         AnimationLevel::Subtle => "animation.subtle",
         AnimationLevel::Still => "animation.still",
     }
+}
+
+/// A sleeping pet gets a "z z" next to its picture. It is a separate small icon because the
+/// package file limit leaves no room for a sleeping variant of every pet picture.
+pub(crate) fn with_zzz(picture: El, size: u16, alt: &str) -> El {
+    let zzz_size = (size / 3).max(10);
+    let zzz = ui::image("assets/icons/zzz.svg", alt, zzz_size, zzz_size);
+    ui::stack(Direction::Row, 0, Align::Start)
+        .child(picture)
+        .child(zzz)
 }

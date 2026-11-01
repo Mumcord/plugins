@@ -332,13 +332,13 @@ impl Pet {
         }
     }
 
-    /// Asset path of the pet's picture.
-    pub fn asset(&self) -> String {
-        format!(
-            "assets/pets/{}-{}-{}.svg",
+    /// Asset path of the pet's picture; `small` is the tight crop with thick outlines for badges.
+    pub fn asset(&self, small: bool) -> String {
+        asset_path(
             self.species.id(),
             self.stage().id(),
-            self.colour_id()
+            self.colour_id(),
+            small,
         )
     }
 
@@ -609,4 +609,13 @@ impl Pet {
         self.roll_day(now);
         self.streak.mark(now.day());
     }
+}
+
+/// Pictures at or below this many pixels use the small crop.
+pub const SMALL_MAX: u16 = 32;
+
+/// Shared by the user's own pet and other people's cards so both use the same files.
+pub fn asset_path(species: &str, stage: &str, colour: &str, small: bool) -> String {
+    let size = if small { "-small" } else { "" };
+    format!("assets/pets/{species}-{stage}-{colour}{size}.svg")
 }

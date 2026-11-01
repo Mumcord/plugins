@@ -49,7 +49,7 @@ fn check(nodes: &[Node]) {
             Component::Text(t) => (None, vec![&t.text]),
             Component::Chip(c) => (None, vec![&c.text]),
             Component::Image(i) => {
-                assert!(i.asset.starts_with("assets/pets/"));
+                assert!(i.asset.starts_with("assets/pets/") || i.asset == "assets/icons/zzz.svg");
                 (Some(&i.alt), vec![&i.alt])
             }
             _ => (None, vec![]),
