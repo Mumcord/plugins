@@ -55,6 +55,7 @@
   "stat.today": "+{notes} today",
   "stat.streak": "{days}-day streak",
   "stat.together": "{days} days together",
+  "stat.together.one": "{days} day together",
   "stat.bond": "Bond {bond}",
   "action.pat": "Pat",
   "action.treat": "Treat (♪ {cost})",

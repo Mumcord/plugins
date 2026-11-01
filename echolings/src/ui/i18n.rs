@@ -61,6 +61,16 @@ fn parse(json: &str) -> HashMap<String, String> {
     serde_json::from_str(json).unwrap_or_default()
 }
 
+/// The key to use for a counted string: `{key}.one` for exactly one, otherwise `key`.
+/// A singular key only needs to exist in the languages that have one; the others fall back.
+pub fn count_key(key: &str, count: u32) -> String {
+    if count == 1 {
+        format!("{key}.one")
+    } else {
+        key.to_owned()
+    }
+}
+
 /// `de-AT` → `de-AT`, `de`, `en`.
 fn fallback_chain(language: &str) -> Vec<String> {
     let mut chain = vec![language.to_owned()];
@@ -97,5 +107,18 @@ mod tests {
         assert_eq!(t.t("no.such.key"), "no.such.key");
         assert_eq!(t.missing(), vec!["no.such.key".to_owned()]);
         assert_eq!(fallback_chain("en"), vec!["en".to_owned()]);
+    }
+
+    #[test]
+    fn counted_strings_use_the_singular_only_for_one() {
+        let t = I18n::new("en");
+        let text = |days: u32| {
+            let shown = days.to_string();
+            t.f(&count_key("stat.together", days), &[("days", &shown)])
+        };
+        assert_eq!(text(1), "1 day together");
+        assert_eq!(text(0), "0 days together");
+        assert_eq!(text(2), "2 days together");
+        assert!(t.missing().is_empty());
     }
 }

@@ -210,7 +210,10 @@ impl View<'_> {
             self.notes_chip(),
             ui::chip(&self.t.f("stat.today", &[("notes", &today)])),
             ui::chip(&self.t.f("stat.streak", &[("days", &streak)])),
-            ui::chip(&self.t.f("stat.together", &[("days", &together)])),
+            ui::chip(&self.t.f(
+                &i18n::count_key("stat.together", self.pet.streak.days_together),
+                &[("days", &together)],
+            )),
         ])
     }
 
@@ -297,7 +300,10 @@ impl View<'_> {
             )
             .child(ui::row().children([
                 ui::chip(&self.t.f("stat.bond", &[("bond", &bond)])),
-                ui::chip(&self.t.f("stat.together", &[("days", &together)])),
+                ui::chip(&self.t.f(
+                    &i18n::count_key("stat.together", self.pet.streak.days_together),
+                    &[("days", &together)],
+                )),
                 ui::chip(&self.t.f("stat.streak", &[("days", &streak)])),
             ]))
     }

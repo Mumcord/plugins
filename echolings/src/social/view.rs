@@ -4,7 +4,7 @@ use mumcord_plugin_sdk::ui::{self, Align, Animation, ButtonKind, Direction, El};
 
 use super::{OtherPet, PatNote, action};
 use crate::pet::{Mood, Stage};
-use crate::ui::{Motion, i18n::I18n, mood_key, species_key, stage_key};
+use crate::ui::{Motion, i18n::I18n, i18n::count_key, mood_key, species_key, stage_key};
 
 pub struct OtherView<'a> {
     pub pet: &'a OtherPet,
@@ -88,7 +88,7 @@ impl OtherView<'_> {
                 ui::row().children([
                     ui::chip(&self.t.f("stat.bond", &[("bond", &card.bond.to_string())])),
                     ui::chip(&self.t.f(
-                        "stat.together",
+                        &count_key("stat.together", u32::from(card.days_together)),
                         &[("days", &card.days_together.to_string())],
                     )),
                     ui::chip(
