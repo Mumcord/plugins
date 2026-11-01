@@ -7,6 +7,7 @@ docs/plugin-registry-format.md in Mumcord/mumcord (section "Registry source").
 Subcommands:
   changed DIFF_BASE              list "<id> <version>" for version files added or changed since DIFF_BASE
   verify ID VERSION              rebuild one version from its source and run every package check
+  i18n                           require all 24 languages in every official plugin
   permission-diff DIFF_BASE      write the Markdown permission diff for a pull request to stdout
   build-missing OUT              rebuild and check every version without a GitHub release into OUT
   release-built OUT              create the GitHub releases for the packages in OUT
@@ -328,6 +329,37 @@ def next_sequence(index_url: str) -> int:
     return max(int(time.time()), published + 1)
 
 
+OFFICIAL_FOLDERS = ("poll", "dice", "echolings", "mumbot-music")
+OFFICIAL_REPOSITORY = "https://github.com/Mumcord/plugins"
+
+
+def official_plugin_folders(work: Path) -> list[Path]:
+    """Source folders of every official plugin: the folders of this repository that already hold a
+    plugin, plus the latest version of each registry plugin whose source is this repository."""
+    folders = [REPO / name for name in OFFICIAL_FOLDERS if (REPO / name / "manifest.json").is_file()]
+    for plugin_dir in sorted(PLUGINS.glob("*/")):
+        versions = sorted((plugin_dir / "versions").glob("*.toml"), key=lambda f: version_key(f.stem))
+        if not versions:
+            continue
+        source = tomllib.loads(versions[-1].read_text(encoding="utf-8")).get("source", {})
+        repository = source.get("repository", "").removesuffix(".git").rstrip("/")
+        if repository.lower() == OFFICIAL_REPOSITORY.lower():
+            folders.append(fetch_source(source, work / plugin_dir.name))
+    return folders
+
+
+def check_i18n() -> None:
+    from i18n_check import check_folder
+
+    failures = []
+    with tempfile.TemporaryDirectory(prefix="i18n-") as work:
+        for folder in official_plugin_folders(Path(work)):
+            for problem in check_folder(folder):
+                failures.append(f"{folder.name}/i18n/{problem}")
+    if failures:
+        raise CheckError("official plugins must ship all 24 languages:\n" + "\n".join(failures))
+
+
 def main(argv: list[str]) -> int:
     command, args = (argv[0], argv[1:]) if argv else ("", [])
     try:
@@ -339,6 +371,9 @@ def main(argv: list[str]) -> int:
             print(f"verified {verify(args[0], args[1], out)}")
         elif command == "permission-diff" and len(args) == 1:
             sys.stdout.write(permission_diff(args[0]))
+        elif command == "i18n" and not args:
+            check_i18n()
+            print("official plugins: all 24 languages complete")
         elif command == "build-missing" and len(args) == 1:
             build_missing(Path(args[0]))
         elif command == "release-built" and len(args) == 1:
