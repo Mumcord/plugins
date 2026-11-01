@@ -16,6 +16,7 @@ use mumcord_plugin_sdk::{
 use crate::{
     api::{self, Call, Outcome, Queue},
     bots::{self, BotConfig, BotId, KeySlot},
+    text::{t, t_with},
     view,
 };
 
@@ -24,9 +25,6 @@ use crate::{
 pub const POLL_MS: u32 = 3_000;
 /// The longest interval after repeated 429 answers.
 pub const MAX_POLL_MS: u32 = 12_000;
-
-pub const MENU_ENTRY: &str = "Configure bot";
-pub const DIALOG_TITLE: &str = "Configure bot";
 
 /// The real or a mocked host.
 pub trait Host {
@@ -161,7 +159,14 @@ pub struct App {
 impl App {
     pub fn start(&mut self, host: &mut impl Host) {
         self.interval = POLL_MS;
-        host.set_menu_entry(Some(MENU_ENTRY));
+        host.set_menu_entry(Some(&t("configure_bot")));
+        self.render_settings(host);
+    }
+
+    /// The menu entry label is set once, so it has to be set again in the new language.
+    pub fn language_changed(&mut self, host: &mut impl Host) {
+        host.set_menu_entry(Some(&t("configure_bot")));
+        self.update(host);
         self.render_settings(host);
     }
 
@@ -227,7 +232,7 @@ impl App {
             notified: false,
         });
         self.generation += 1;
-        host.open_dialog(DIALOG_TITLE);
+        host.open_dialog(&t("configure_bot"));
         self.update(host);
     }
 
@@ -262,8 +267,8 @@ impl App {
                     let bot = dialog.bot.clone();
                     let setup = setup.clone();
                     let test = match (bots::base_url(&setup.address), setup.key_slot()) {
-                        (None, _) => Test::Failed("Enter the bot's address".into()),
-                        (_, None) => Test::Failed("Enter the API key".into()),
+                        (None, _) => Test::Failed(t("enter_address")),
+                        (_, None) => Test::Failed(t("enter_key")),
                         (Some(base), Some(slot)) => {
                             let request = api::request(&base, &bot.secret(slot), &Call::Queue);
                             match self.send(host, request, Purpose::Test) {
@@ -415,10 +420,8 @@ impl App {
             Mode::Setup(setup) if purpose == Purpose::Test => {
                 setup.test = match api::outcome(result, &setup.address) {
                     Outcome::Ok(body) if api::parse_queue(&body).is_some() => Test::Passed,
-                    Outcome::Ok(_) => {
-                        Test::Failed("That address does not answer like a mumbot".into())
-                    }
-                    Outcome::RateLimited => Test::Failed(api::RATE_LIMITED_TEXT.into()),
+                    Outcome::Ok(_) => Test::Failed(t("not_mumbot")),
+                    Outcome::RateLimited => Test::Failed(api::rate_limited_text()),
                     Outcome::Offline(text) | Outcome::Failed(text) => Test::Failed(text),
                 };
             }
@@ -431,7 +434,9 @@ impl App {
                         match purpose {
                             Purpose::Poll => {
                                 player.queue = api::parse_queue(&body);
-                                if player.message.as_deref() == Some(api::RATE_LIMITED_TEXT) {
+                                if player.message.as_deref()
+                                    == Some(api::rate_limited_text().as_str())
+                                {
                                     player.message = None;
                                 }
                             }
@@ -452,13 +457,16 @@ impl App {
                     }
                     Outcome::Offline(text) => {
                         if !dialog.notified && notify {
-                            host.notify("Mumbot Music", &format!("{} went offline", dialog.name));
+                            host.notify(
+                                &t("manifest.name"),
+                                &t_with("went_offline", &[("name", &dialog.name)]),
+                            );
                         }
                         dialog.notified = true;
                         player.offline = Some(text);
                     }
                     Outcome::RateLimited => {
-                        player.message = Some(api::RATE_LIMITED_TEXT.into());
+                        player.message = Some(api::rate_limited_text());
                         slow_down = true;
                     }
                     Outcome::Failed(text) => player.message = Some(text),
@@ -490,7 +498,7 @@ impl App {
             key,
         };
         if !save_config(host, &dialog.bot, &config) {
-            setup_failed(dialog, "Could not save the bot");
+            setup_failed(dialog, &t("save_failed"));
             return;
         }
         // The old key is no longer needed once the new one is active.
@@ -553,8 +561,8 @@ impl App {
                 self.pending.insert(id, (self.generation, purpose));
                 Ok(())
             }
-            Err(Error::RateLimited) => Err(api::RATE_LIMITED_TEXT.into()),
-            Err(e) => Err(format!("Mumcord refused the request ({})", e.name())),
+            Err(Error::RateLimited) => Err(api::rate_limited_text()),
+            Err(e) => Err(t_with("refused", &[("reason", e.name())])),
         }
     }
 

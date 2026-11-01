@@ -11,8 +11,8 @@ use mumcord_plugin_sdk::{
 
 use crate::{
     api,
-    app::{App, DIALOG_TITLE, Host, MAX_POLL_MS, MENU_ENTRY, POLL_MS},
-    view::{NO_CERTIFICATE_TEXT, NOT_IN_CHANNEL_TEXT},
+    app::{App, Host, MAX_POLL_MS, POLL_MS},
+    text::t,
 };
 
 const SERVER: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -216,7 +216,7 @@ fn configured() -> (App, Mock) {
 #[test]
 fn start_adds_the_menu_entry_and_an_empty_settings_list() {
     let (_, host) = setup();
-    assert_eq!(host.menu, Some(Some(MENU_ENTRY.into())));
+    assert_eq!(host.menu, Some(Some(t("configure_bot"))));
     assert!(
         host.texts(Slot::Settings)
             .iter()
@@ -228,7 +228,7 @@ fn start_adds_the_menu_entry_and_an_empty_settings_list() {
 fn a_new_bot_opens_the_setup_form_with_save_disabled() {
     let (mut app, mut host) = setup();
     app.menu_requested(&mut host, &bot(7));
-    assert_eq!(host.dialogs, vec![DIALOG_TITLE.to_owned()]);
+    assert_eq!(host.dialogs, vec![t("configure_bot")]);
     assert!(host.shows(Slot::Dialog, "Save [x]"));
     assert!(host.shows(Slot::Dialog, &format!("API key -> {SECRET_A}")));
     assert!(
@@ -268,29 +268,29 @@ fn a_refused_request_shows_a_short_message() {
 
 #[test]
 fn setup_errors_keep_save_disabled() {
-    let cases: Vec<(HttpResult, &str)> = vec![
-        (status(0, 401, "{}"), api::KEY_REJECTED_TEXT),
-        (status(0, 503, "{}"), api::BOT_DISCONNECTED_TEXT),
+    let cases: Vec<(HttpResult, String)> = vec![
+        (status(0, 401, "{}"), api::key_rejected_text()),
+        (status(0, 503, "{}"), api::bot_disconnected_text()),
         (
             HttpResult {
                 id: 0,
                 outcome: Err(HttpError::Connect("refused".into())),
             },
-            "Can't reach the bot at 127.0.0.1:9",
+            "Can't reach the bot at 127.0.0.1:9".to_owned(),
         ),
         (
             HttpResult {
                 id: 0,
                 outcome: Err(HttpError::HostNotAllowed),
             },
-            api::PLAIN_HTTP_TEXT,
+            api::plain_http_text(),
         ),
         (
             HttpResult {
                 id: 0,
                 outcome: Err(HttpError::Tls("expired".into())),
             },
-            api::BAD_CERTIFICATE_TEXT,
+            api::bad_certificate_text(),
         ),
     ];
     for (mut result, message) in cases {
@@ -306,7 +306,7 @@ fn setup_errors_keep_save_disabled() {
         result.id = host.last_id();
         app.http_response(&mut host, result);
         assert!(
-            host.shows(Slot::Dialog, message),
+            host.shows(Slot::Dialog, &message),
             "{message}: {:?}",
             host.texts(Slot::Dialog)
         );
@@ -379,7 +379,7 @@ fn polling_only_runs_while_open_and_one_at_a_time() {
 fn the_bot_leaving_hides_the_controls_and_stops_polling() {
     let (mut app, mut host) = configured();
     app.left(&mut host, &bot(7));
-    assert!(host.shows(Slot::Dialog, NOT_IN_CHANNEL_TEXT));
+    assert!(host.shows(Slot::Dialog, &t("not_in_channel")));
     assert!(!host.shows(Slot::Dialog, "Skip"));
     assert_eq!(host.cancelled, vec![100]);
     let before = host.requests.len();
@@ -397,7 +397,7 @@ fn moving_to_another_channel_counts_as_the_bot_leaving() {
     let (mut app, mut host) = configured();
     host.channel = vec![me()];
     app.self_changed(&mut host, &state(2));
-    assert!(host.shows(Slot::Dialog, NOT_IN_CHANNEL_TEXT));
+    assert!(host.shows(Slot::Dialog, &t("not_in_channel")));
 }
 
 #[test]
@@ -463,7 +463,7 @@ fn rate_limits_slow_polling_down_and_success_resets_it() {
         let id = host.last_id();
         app.http_response(&mut host, status(id, 429, "{}"));
         assert_eq!(app.poll_interval(), expected);
-        assert!(host.shows(Slot::Dialog, api::RATE_LIMITED_TEXT));
+        assert!(host.shows(Slot::Dialog, &api::rate_limited_text()));
     }
     assert_eq!(host.timers.last().unwrap().1, MAX_POLL_MS);
     app.dialog_action(&mut host, "skip", ActionValue::None);
@@ -651,7 +651,7 @@ fn a_user_without_certificate_cannot_be_configured() {
             key: None,
         },
     );
-    assert!(host.shows(Slot::Dialog, NO_CERTIFICATE_TEXT));
+    assert!(host.shows(Slot::Dialog, &t("no_certificate")));
     assert!(host.requests.is_empty());
 }
 
@@ -667,4 +667,49 @@ fn late_answers_for_a_closed_dialog_are_ignored() {
     app.menu_requested(&mut host, &bot(7));
     app.http_response(&mut host, ok(id, QUEUE_BODY));
     assert!(host.shows(Slot::Dialog, "Save [x]"));
+}
+
+/// The `{{name}}` placeholders of a text, sorted.
+fn placeholders(text: &str) -> Vec<&str> {
+    let mut found: Vec<&str> = text
+        .split("{{")
+        .skip(1)
+        .filter_map(|s| s.split("}}").next())
+        .collect();
+    found.sort_unstable();
+    found
+}
+
+#[test]
+fn every_language_has_the_keys_and_placeholders_of_english() {
+    let load = |tag: &str| -> std::collections::BTreeMap<String, String> {
+        let path = format!("{}/i18n/{tag}.json", env!("CARGO_MANIFEST_DIR"));
+        serde_json::from_str(&std::fs::read_to_string(&path).expect("language file"))
+            .expect("flat string map")
+    };
+    let english = load("en");
+    for tag in mumcord_plugin_sdk::i18n::LANGUAGES {
+        let strings = load(tag);
+        assert!(
+            strings.keys().eq(english.keys()),
+            "{tag}: keys differ from en.json"
+        );
+        for (key, text) in &strings {
+            assert_eq!(
+                placeholders(text),
+                placeholders(&english[key]),
+                "{tag}: {key}"
+            );
+            assert!(text.chars().count() <= 200, "{tag}: {key} is too long");
+        }
+    }
+}
+
+#[test]
+fn language_change_sets_the_menu_entry_again() {
+    let (mut app, mut host) = setup();
+    crate::text::set_language("de");
+    app.language_changed(&mut host);
+    assert_eq!(host.menu, Some(Some("Bot konfigurieren".into())));
+    crate::text::set_language("en");
 }

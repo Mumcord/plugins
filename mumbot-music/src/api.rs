@@ -7,6 +7,8 @@ use mumcord_plugin_sdk::{
 };
 use serde::Deserialize;
 
+use crate::text::{t, t_with};
+
 /// Longest track title shown; bot answers are untrusted and the UI allows 200 characters.
 const MAX_TITLE: usize = 80;
 
@@ -171,49 +173,62 @@ pub enum Outcome {
     Failed(String),
 }
 
-pub const RATE_LIMITED_TEXT: &str = "Too many requests, slowing down";
-pub const PLAIN_HTTP_TEXT: &str = "Plain http is only allowed for local addresses";
-pub const KEY_REJECTED_TEXT: &str = "The API key was rejected";
-pub const BAD_CERTIFICATE_TEXT: &str = "The bot's certificate is not valid";
-pub const BOT_DISCONNECTED_TEXT: &str = "The bot is not connected to the server";
+pub fn rate_limited_text() -> String {
+    t("rate_limited")
+}
+
+pub fn plain_http_text() -> String {
+    t("plain_http")
+}
+
+pub fn key_rejected_text() -> String {
+    t("key_rejected")
+}
+
+pub fn bad_certificate_text() -> String {
+    t("bad_certificate")
+}
+
+pub fn bot_disconnected_text() -> String {
+    t("bot_disconnected")
+}
 
 pub fn outcome(result: HttpResult, address: &str) -> Outcome {
-    let unreachable = || Outcome::Offline(format!("Can't reach the bot at {}", clean(address, 64)));
+    let unreachable =
+        || Outcome::Offline(t_with("unreachable", &[("address", &clean(address, 64))]));
     let response = match result.outcome {
         Ok(response) => response,
         Err(HttpError::Connect(_) | HttpError::Timeout) => return unreachable(),
-        Err(HttpError::HostNotAllowed) => return Outcome::Failed(PLAIN_HTTP_TEXT.into()),
-        Err(HttpError::Tls(_)) => return Outcome::Failed(BAD_CERTIFICATE_TEXT.into()),
+        Err(HttpError::HostNotAllowed) => return Outcome::Failed(plain_http_text()),
+        Err(HttpError::Tls(_)) => return Outcome::Failed(bad_certificate_text()),
         Err(HttpError::Redirect) => {
-            return Outcome::Failed(
-                "The bot answered with a redirect, which is not followed".into(),
-            );
+            return Outcome::Failed(t("redirect"));
         }
         Err(HttpError::InvalidRequest) => {
-            return Outcome::Failed("Enter the address and the API key first".into());
+            return Outcome::Failed(t("enter_both"));
         }
         Err(HttpError::ResponseTooLarge) => {
-            return Outcome::Failed("The bot's answer was too large".into());
+            return Outcome::Failed(t("answer_too_large"));
         }
     };
     let text = match response.status {
         200..=299 => return Outcome::Ok(response.body),
         429 => return Outcome::RateLimited,
-        503 => return Outcome::Offline(BOT_DISCONNECTED_TEXT.into()),
-        400 => "The bot refused this: not an MP3 or an invalid request",
-        401 => KEY_REJECTED_TEXT,
-        403 => "Not allowed: this key can't play there, or that URL or host is not allowed",
-        404 => "Not found: check the file name",
-        408 => "The upload took too long",
-        409 => "The queue is full",
-        413 => "The track is too big",
-        422 => "The track is too long",
-        502 => "The bot couldn't download that URL",
+        503 => return Outcome::Offline(bot_disconnected_text()),
+        400 => t("http_400"),
+        401 => key_rejected_text(),
+        403 => t("http_403"),
+        404 => t("http_404"),
+        408 => t("http_408"),
+        409 => t("http_409"),
+        413 => t("http_413"),
+        422 => t("http_422"),
+        502 => t("http_502"),
         status => {
-            return Outcome::Failed(format!("The bot answered with an error (status {status})"));
+            return Outcome::Failed(t_with("status_error", &[("status", &status.to_string())]));
         }
     };
-    Outcome::Failed(text.into())
+    Outcome::Failed(text)
 }
 
 #[cfg(test)]
@@ -334,11 +349,11 @@ mod tests {
     fn failures_map_to_plain_text() {
         assert_eq!(
             outcome(status(401), "a"),
-            Outcome::Failed(KEY_REJECTED_TEXT.into())
+            Outcome::Failed(key_rejected_text())
         );
         assert_eq!(
             outcome(status(503), "a"),
-            Outcome::Offline(BOT_DISCONNECTED_TEXT.into())
+            Outcome::Offline(bot_disconnected_text())
         );
         assert_eq!(outcome(status(429), "a"), Outcome::RateLimited);
         assert_eq!(outcome(status(204), "a"), Outcome::Ok(b"{}".to_vec()));
@@ -359,11 +374,11 @@ mod tests {
         );
         assert_eq!(
             outcome(failed(HttpError::HostNotAllowed), "a"),
-            Outcome::Failed(PLAIN_HTTP_TEXT.into())
+            Outcome::Failed(plain_http_text())
         );
         assert_eq!(
             outcome(failed(HttpError::Tls("expired".into())), "a"),
-            Outcome::Failed(BAD_CERTIFICATE_TEXT.into())
+            Outcome::Failed(bad_certificate_text())
         );
     }
 }

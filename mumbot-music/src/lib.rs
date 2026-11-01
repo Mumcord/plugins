@@ -5,6 +5,7 @@
 mod api;
 mod app;
 mod bots;
+mod text;
 mod view;
 
 #[cfg(test)]
@@ -121,6 +122,10 @@ impl Plugin for MumbotMusic {
         APP.with_borrow_mut(|app| {
             let host = &mut Mumcord;
             match event {
+                Event::LanguageChanged(tag) => {
+                    text::set_language(&tag);
+                    app.language_changed(host);
+                }
                 Event::SettingsChanged(settings) => app.set_granted(&settings.granted),
                 Event::SelfChanged(state) => app.self_changed(host, &state),
                 Event::Joined(peer) => app.joined(host, peer),

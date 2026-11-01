@@ -7,11 +7,8 @@ use crate::{
     api::{Queue, Track},
     app::{Dialog, Mode, Player, SettingsEdit, Setup, Test},
     bots::BotConfig,
+    text::{t, t_with},
 };
-
-pub const NOT_IN_CHANNEL_TEXT: &str = "Mumbot is not in your channel";
-pub const NO_CERTIFICATE_TEXT: &str =
-    "This user has no certificate, so Mumcord can't recognise it as a bot again.";
 
 /// The text-input's byte limit.
 const INPUT_BYTES: u8 = 64;
@@ -19,13 +16,11 @@ const INPUT_BYTES: u8 = 64;
 pub fn dialog(dialog: &Dialog) -> El {
     let root = ui::column();
     match &dialog.mode {
-        Mode::NoCertificate => root.child(ui::text(NO_CERTIFICATE_TEXT)),
+        Mode::NoCertificate => root.child(ui::text(&t("no_certificate"))),
         _ if !dialog.present => root
             .child(ui::heading(&dialog.name))
-            .child(ui::text(NOT_IN_CHANNEL_TEXT))
-            .child(ui::caption(
-                "Its settings are kept. The controls come back when the bot returns.",
-            )),
+            .child(ui::text(&t("not_in_channel")))
+            .child(ui::caption(&t("bot_kept"))),
         Mode::Setup(setup) => setup_form(dialog, setup),
         Mode::Player(player) => player_view(dialog, player),
     }
@@ -34,36 +29,36 @@ pub fn dialog(dialog: &Dialog) -> El {
 fn setup_form(dialog: &Dialog, setup: &Setup) -> El {
     let editing = setup.saved.is_some();
     let heading = if editing {
-        "Edit address / key"
+        t("edit_address_key")
     } else {
-        "Set up this bot"
+        t("set_up_bot")
     };
     let key_label = if editing {
-        "New API key (leave empty to keep the current one)"
+        t("key_label_edit")
     } else {
-        "API key"
+        t("key_label")
     };
     let mut form = ui::column()
-        .child(ui::heading(heading))
+        .child(ui::heading(&heading))
         .child(ui::caption(&dialog.name))
         .child(address_input(
             "address",
             &setup.address,
-            "192.168.1.20:8081 or https://bot.example.org",
+            &t("address_placeholder"),
         ))
         .child(ui::password(
             "key",
-            key_label,
+            &key_label,
             &dialog.bot.secret(setup.slot),
         ));
     let status = match &setup.test {
         Test::Idle => None,
-        Test::Running => Some(ui::progress("Testing the connection", None)),
-        Test::Passed => Some(ui::text("Connection works").color("success")),
+        Test::Running => Some(ui::progress(&t("testing"), None)),
+        Test::Passed => Some(ui::text(&t("test_ok")).color("success")),
         Test::Failed(text) => Some(ui::text(text).color("danger")),
     };
     form = form.child(
-        ui::button("test", "Test connection")
+        ui::button("test", &t("test"))
             .kind(ButtonKind::Secondary)
             .disabled(setup.test == Test::Running),
     );
@@ -71,9 +66,9 @@ fn setup_form(dialog: &Dialog, setup: &Setup) -> El {
         form = form.child(status);
     }
     let mut actions =
-        ui::row().child(ui::button("save", "Save").disabled(setup.test != Test::Passed));
+        ui::row().child(ui::button("save", &t("save")).disabled(setup.test != Test::Passed));
     if editing {
-        actions = actions.child(ui::button("cancel", "Cancel").kind(ButtonKind::Secondary));
+        actions = actions.child(ui::button("cancel", &t("cancel")).kind(ButtonKind::Secondary));
     }
     form.child(actions)
 }
@@ -84,68 +79,64 @@ fn player_view(dialog: &Dialog, player: &Player) -> El {
     if let Some(text) = &player.offline {
         root = root
             .child(ui::text(text).color("danger"))
-            .child(ui::caption("The bot seems offline. Retrying…"));
+            .child(ui::caption(&t("offline_retry")));
     }
     let queue = player.queue.as_ref();
     root = root.child(now_playing(queue.and_then(|q| q.now_playing.as_ref())));
     root = root.child(
         ui::row()
-            .child(ui::button("skip", "Skip").disabled(off))
+            .child(ui::button("skip", &t("skip")).disabled(off))
             .child(
-                ui::button("stop", "Stop")
+                ui::button("stop", &t("stop"))
                     .kind(ButtonKind::Danger)
                     .disabled(off),
             ),
     );
     let volume = queue.map_or(0, |q| q.volume);
     root = root.child(
-        ui::slider("volume", "Volume", 0.0, 100.0, 5.0, f32::from(volume))
+        ui::slider("volume", &t("volume"), 0.0, 100.0, 5.0, f32::from(volume))
             .disabled(off || queue.is_none()),
     );
     root = root.child(queue_list(queue));
     root = root
         .child(ui::divider())
         .child(
-            ui::text_input(
-                "add-text",
-                "Add a file name or URL",
-                &player.add_text,
-                INPUT_BYTES,
-            )
-            .disabled(off),
+            ui::text_input("add-text", &t("add_label"), &player.add_text, INPUT_BYTES)
+                .disabled(off),
         )
-        .child(ui::toggle("interrupt", "Play next, interrupt", player.interrupt).disabled(off))
+        .child(ui::toggle("interrupt", &t("interrupt"), player.interrupt).disabled(off))
         .child(
             ui::row()
-                .child(ui::button("add", "Add track").disabled(off || player.add_text.is_empty()))
-                .child(ui::file_picker("upload", "Upload an MP3", &[".mp3"]).disabled(off)),
+                .child(
+                    ui::button("add", &t("add_track")).disabled(off || player.add_text.is_empty()),
+                )
+                .child(ui::file_picker("upload", &t("upload"), &[".mp3"]).disabled(off)),
         );
     if let Some(text) = &player.message {
         root = root.child(ui::text(text).color("warning"));
     }
     root = root.child(ui::divider());
     if player.confirm_remove {
-        root.child(ui::text("Remove this bot and its API key?"))
-            .child(
-                ui::row()
-                    .child(ui::button("remove-confirm", "Remove").kind(ButtonKind::Danger))
-                    .child(ui::button("remove-cancel", "Cancel").kind(ButtonKind::Secondary)),
-            )
+        root.child(ui::text(&t("remove_confirm"))).child(
+            ui::row()
+                .child(ui::button("remove-confirm", &t("remove")).kind(ButtonKind::Danger))
+                .child(ui::button("remove-cancel", &t("cancel")).kind(ButtonKind::Secondary)),
+        )
     } else {
         root.child(
             ui::row()
-                .child(ui::button("edit", "Edit address / key").kind(ButtonKind::Secondary))
-                .child(ui::button("remove", "Remove this bot").kind(ButtonKind::Danger)),
+                .child(ui::button("edit", &t("edit_address_key")).kind(ButtonKind::Secondary))
+                .child(ui::button("remove", &t("remove_bot")).kind(ButtonKind::Danger)),
         )
     }
 }
 
 fn now_playing(track: Option<&Track>) -> El {
     match track {
-        None => ui::column().child(ui::text("Nothing is playing")),
+        None => ui::column().child(ui::text(&t("nothing_playing"))),
         Some(track) => {
             let mut el = ui::column()
-                .child(ui::caption("Now playing"))
+                .child(ui::caption(&t("now_playing")))
                 .child(ui::heading(&track.title));
             if let Some(secs) = track.duration_secs {
                 el = el.child(ui::caption(&duration(secs)));
@@ -158,9 +149,9 @@ fn now_playing(track: Option<&Track>) -> El {
 fn queue_list(queue: Option<&Queue>) -> El {
     let tracks = queue.map(|q| q.queue.as_slice()).unwrap_or_default();
     if tracks.is_empty() {
-        return ui::caption("The queue is empty");
+        return ui::caption(&t("queue_empty"));
     }
-    ui::list("Queue").children(
+    ui::list(&t("queue")).children(
         tracks
             .iter()
             .take(50)
@@ -175,7 +166,7 @@ fn duration(secs: u64) -> String {
 
 fn address_input(action: &str, value: &str, placeholder: &str) -> El {
     El::new(Component::TextInput(TextInput {
-        label: "Address".into(),
+        label: t("address"),
         value: value.to_owned(),
         placeholder: placeholder.to_owned(),
         max_bytes: INPUT_BYTES,
@@ -186,11 +177,9 @@ fn address_input(action: &str, value: &str, placeholder: &str) -> El {
 }
 
 pub fn settings(saved: &[(String, BotConfig)], edit: Option<&SettingsEdit>) -> El {
-    let mut root = ui::column().child(ui::heading("Saved bots"));
+    let mut root = ui::column().child(ui::heading(&t("saved_bots")));
     if saved.is_empty() {
-        return root.child(ui::caption(
-            "No bots yet. Right-click a bot in your channel and choose Configure bot.",
-        ));
+        return root.child(ui::caption(&t("no_bots")));
     }
     let rows = saved.iter().map(|(key, config)| {
         ui::row()
@@ -199,24 +188,27 @@ pub fn settings(saved: &[(String, BotConfig)], edit: Option<&SettingsEdit>) -> E
                     .child(ui::text(&config.name))
                     .child(ui::caption(&config.address)),
             )
-            .child(ui::button(&format!("edit:{key}"), "Edit").kind(ButtonKind::Secondary))
-            .child(ui::button(&format!("remove:{key}"), "Remove").kind(ButtonKind::Danger))
+            .child(ui::button(&format!("edit:{key}"), &t("edit")).kind(ButtonKind::Secondary))
+            .child(ui::button(&format!("remove:{key}"), &t("remove")).kind(ButtonKind::Danger))
     });
-    root = root.child(ui::list("Saved bots").children(rows));
+    root = root.child(ui::list(&t("saved_bots")).children(rows));
     if let Some(edit) = edit {
         root = root
             .child(ui::divider())
-            .child(ui::text(&format!("Edit {}", edit.config.name)))
+            .child(ui::text(&t_with(
+                "edit_named",
+                &[("name", &edit.config.name)],
+            )))
             .child(address_input("edit-address", &edit.address, ""))
             .child(ui::password(
                 "edit-key",
-                "New API key (leave empty to keep the current one)",
+                &t("key_label_edit"),
                 &edit.bot.secret(edit.config.key.other()),
             ))
             .child(
                 ui::row()
-                    .child(ui::button("edit-save", "Save"))
-                    .child(ui::button("edit-cancel", "Cancel").kind(ButtonKind::Secondary)),
+                    .child(ui::button("edit-save", &t("save")))
+                    .child(ui::button("edit-cancel", &t("cancel")).kind(ButtonKind::Secondary)),
             );
     }
     root
