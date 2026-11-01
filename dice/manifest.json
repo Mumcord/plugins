@@ -1,0 +1,24 @@
+{
+  "manifest": 1,
+  "id": "dice",
+  "name": "Dice roller",
+  "description": "Roll dice in chat with /roll. Everyone with the plugin checks each roll, so nobody can fake a result.",
+  "version": "1.0.0",
+  "api": "^1.0",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["games", "fun"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": ["ui.chat-card", "peers.messages", "chat.send", "chat.supersedes", "random.bytes", "commands"],
+    "optional": ["ui.panel"]
+  },
+  "commands": [
+    {
+      "name": "roll",
+      "description": "Roll dice that everyone can check",
+      "usage": "d20, 2d6+3, d20 adv, d20 dis, 4d6 dl, 4d6 dh"
+    }
+  ],
+  "messaging": { "default_visibility": "everyone" }
+}

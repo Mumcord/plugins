@@ -1,0 +1,4 @@
+{
+  "manifest.name": "Dice roller",
+  "manifest.description": "Roll dice in chat with /roll. Everyone with the plugin checks each roll, so nobody can fake a result."
+}
