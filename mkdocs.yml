@@ -1,0 +1,112 @@
+# Documentation site, published at https://mumcord.github.io/plugins/docs/ next to the registry.
+# The pages live in docs/ so they stay readable on GitHub; docs-site/hooks.py adds the files that
+# live elsewhere in the repository (review policy, icons) and fixes links that leave docs/.
+site_name: Mumcord Plugins
+site_description: Small, safe extras for your voice chat, and how to build your own.
+site_url: https://mumcord.github.io/plugins/docs/
+repo_url: https://github.com/Mumcord/plugins
+repo_name: Mumcord/plugins
+edit_uri: edit/main/docs/
+copyright: Docs and template Apache-2.0 · Official plugins AGPL-3.0-or-later
+
+docs_dir: docs
+site_dir: build/docs-site
+# docs/README.md is the folder index on GitHub; the hook publishes it as developers/ instead.
+exclude_docs: |
+  README.md
+  LICENSE
+
+hooks:
+  - docs-site/hooks.py
+
+theme:
+  name: material
+  custom_dir: docs-site/overrides
+  language: en
+  logo: _repo/assets/brand/plugins-icon.svg
+  favicon: _repo/assets/brand/plugins-icon.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Follow the system theme
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+extra_css:
+  - stylesheets/brand.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - github-callouts
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+
+nav:
+  - Home: index.md
+  - Using plugins:
+      - Install plugins: install.md
+      - Permissions explained: permissions-explained.md
+      - Safety model: safety.md
+      - FAQ: faq.md
+  - Plugins:
+      - plugins/index.md
+      - Poll: plugins/poll.md
+      - Dice roller: plugins/dice.md
+      - Echolings: plugins/echolings.md
+      - Mumbot Music: plugins/mumbot-music.md
+      - EVE Fit (coming soon): plugins/eve-fit.md
+  - Build plugins:
+      - Overview: developers.md
+      - Getting started: getting-started.md
+      - Manifest and package: manifest.md
+      - API reference: api.md
+      - Permissions: permissions.md
+      - Building: building.md
+      - Testing: testing.md
+      - Publishing: publishing.md
+      - Third-party repositories: third-party-repositories.md
+      - Review policy: review-policy.md

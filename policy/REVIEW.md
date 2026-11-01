@@ -48,7 +48,8 @@ After a merge to `main`, `.github/workflows/publish.yml`:
    `mumcord-plugin site-data`, using a `sequence` above the published one;
 3. signs `index.json` and `revoked.json` in the protected `publish` environment and checks the
    signatures against `.github/registry-key.pub`;
-4. deploys GitHub Pages (`https://mumcord.github.io/plugins/v1/`);
+4. deploys GitHub Pages: the registry at `https://mumcord.github.io/plugins/v1/` and the
+   documentation site built from `docs/` at `https://mumcord.github.io/plugins/docs/`;
 5. sends the `repository_dispatch` event `plugins-published` to the repository in the variable
    `SITE_DISPATCH_REPO` with the token `SITE_DISPATCH_TOKEN` (skipped while either is unset).
 
