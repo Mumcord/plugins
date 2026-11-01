@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mumcord/plugins/schemas/plugin.schema.json",
+  "title": "plugins/<id>/plugin.toml",
+  "description": "Registry entry of one plugin. Reference: docs/plugin-registry-format.md (Registry source) in Mumcord/mumcord.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "summary", "author_keys"],
+  "properties": {
+    "name": { "$ref": "#/$defs/texts" },
+    "summary": { "$ref": "#/$defs/texts" },
+    "categories": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "authors": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "author_keys": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/key" } },
+    "reviewed": { "type": "boolean" },
+    "description": { "$ref": "#/$defs/file" },
+    "icon": { "$ref": "#/$defs/file" },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "alt"],
+        "properties": {
+          "file": { "$ref": "#/$defs/file" },
+          "alt": { "$ref": "#/$defs/texts" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "texts": {
+      "description": "Language tag to text; `en` is required.",
+      "type": "object",
+      "required": ["en"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "key": {
+      "description": "Minisign public key: the base64 line of a .pub file.",
+      "type": "string",
+      "pattern": "^RW[A-Za-z0-9+/]{54}$"
+    },
+    "file": {
+      "description": "File in the plugin folder; no absolute path and no `..`.",
+      "type": "string",
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+    }
+  }
+}
