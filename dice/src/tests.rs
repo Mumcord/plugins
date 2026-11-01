@@ -351,6 +351,10 @@ fn texts(el: &El) -> Vec<String> {
     out
 }
 
+fn has_button(el: &El, label: &str) -> bool {
+    buttons(el).iter().any(|b| b.1 == label)
+}
+
 fn has_text(el: &El, text: &str) -> bool {
     texts(el).iter().any(|t| t == text)
 }
@@ -1142,9 +1146,11 @@ fn the_help_button_opens_the_popover_and_the_popover_shows_help_and_history() {
     app.on_panel_action(&mut host, "help");
     assert_eq!(host.popovers, 1);
     app.on_panel_visibility(&mut host, true);
+    app.on_panel_action(&mut host, "toggle:help");
+    app.on_panel_action(&mut host, "toggle:marks");
     let panel = panel_of(&host);
+    assert!(has_button(panel, "\u{25be} How to roll"));
     for text in [
-        "How to roll",
         "Up to 20 dice with 2 to 1000 sides, and one modifier.",
         "Verified",
         "Unverified (rolled alone)",
@@ -1153,9 +1159,36 @@ fn the_help_button_opens_the_popover_and_the_popover_shows_help_and_history() {
     ] {
         assert!(has_text(panel, text), "missing {text}");
     }
-    assert!(buttons(panel).is_empty());
+    assert_eq!(buttons(panel).len(), 2);
     app.on_panel_visibility(&mut host, false);
-    assert!(!has_text(panel_of(&host), "How to roll"));
+    assert!(!has_button(panel_of(&host), "\u{25be} How to roll"));
+}
+
+#[test]
+fn the_help_sections_start_collapsed_and_toggle_on_click() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_panel_visibility(&mut host, true);
+    let panel = panel_of(&host);
+    assert!(has_button(panel, "\u{25b8} How to roll"));
+    assert!(has_button(panel, "\u{25b8} What the marks mean"));
+    assert!(!has_text(panel, "Not revealed"));
+    assert!(!has_text(
+        panel,
+        "Up to 20 dice with 2 to 1000 sides, and one modifier."
+    ));
+    assert!(has_text(panel, "Roll history"));
+    app.on_panel_action(&mut host, "toggle:marks");
+    assert!(has_text(panel_of(&host), "Not revealed"));
+    assert!(has_button(panel_of(&host), "\u{25b8} How to roll"));
+    app.on_panel_action(&mut host, "toggle:marks");
+    assert!(!has_text(panel_of(&host), "Not revealed"));
+    app.on_panel_action(&mut host, "toggle:help");
+    assert!(has_text(
+        panel_of(&host),
+        "Up to 20 dice with 2 to 1000 sides, and one modifier."
+    ));
 }
 
 #[test]

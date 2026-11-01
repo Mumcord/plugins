@@ -1,0 +1,11 @@
+name: The help sections in the popover are collapsed and unfold on a click
+grant: [ui.panel]
+me: {session: 1, name: Alice}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - expect: {tree: {slot: panel, text: "▸ How to roll"}}
+  - event: {ui-action: {action: "toggle:help"}}
+  - expect: {tree: {slot: panel, text: "Up to 20 dice with 2 to 1000 sides, and one modifier."}}
+  - event: {ui-action: {action: "toggle:help"}}
+  - expect: {tree: {slot: panel, text: "▸ How to roll"}}

@@ -124,6 +124,8 @@ pub struct App {
     shown: Vec<Shown>,
     panel: bool,
     expanded: bool,
+    /// Unfolded help sections; in memory only, so they start collapsed every session.
+    sections: view::Sections,
     error_cards: u32,
 }
 
@@ -503,7 +505,7 @@ impl App {
 
     fn show_history(&self, host: &mut impl Host) {
         let tree = if self.expanded {
-            view::panel_expanded(&self.history)
+            view::panel_expanded(&self.history, self.sections)
         } else {
             view::panel_inline(&self.history)
         };
@@ -524,6 +526,12 @@ impl App {
     pub fn on_panel_action(&mut self, host: &mut impl Host, action: &str) {
         if action == view::HELP_ACTION {
             host.open_popover();
+        } else if action == view::TOGGLE_HELP_ACTION {
+            self.sections.help = !self.sections.help;
+            self.show_history(host);
+        } else if action == view::TOGGLE_MARKS_ACTION {
+            self.sections.marks = !self.sections.marks;
+            self.show_history(host);
         } else if let Some(notation) = action.strip_prefix(view::QUICK_PREFIX) {
             self.on_command(host, notation);
         }

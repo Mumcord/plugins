@@ -339,24 +339,53 @@ pub fn panel_inline(entries: &[Entry]) -> El {
     )))
 }
 
-/// The panel in the large popover: the help and the history.
-pub fn panel_expanded(entries: &[Entry]) -> El {
-    let mut root = ui::column()
-        .child(ui::heading(&t("help.title")))
-        .child(ui::caption(&t("help.notation")))
-        .child(ui::caption(&t("help.advantage")))
-        .child(ui::caption(&t("help.drop")))
-        .child(ui::caption(&t("help.limits")))
-        .child(ui::caption(&t("help.buttons")))
-        .child(ui::heading(&t("help.marks")));
-    for (status, key) in [
-        (Status::Verified { witnesses: 2 }, "help.verified"),
-        (Status::Alone, "help.alone"),
-        (Status::NotRevealed, "help.not_revealed"),
-    ] {
+/// Action ids of the two section headers in the large popover.
+pub const TOGGLE_HELP_ACTION: &str = "toggle:help";
+pub const TOGGLE_MARKS_ACTION: &str = "toggle:marks";
+
+/// A full-width header button; the arrow shows whether the section below is open.
+fn section_header(action: &str, title: &str, open: bool) -> El {
+    let arrow = if open { "\u{25be}" } else { "\u{25b8}" };
+    ui::button(action, &format!("{arrow} {title}")).kind(ButtonKind::Secondary)
+}
+
+/// Which help sections of the large popover are unfolded.
+#[derive(Clone, Copy, Default)]
+pub struct Sections {
+    pub help: bool,
+    pub marks: bool,
+}
+
+/// The panel in the large popover: the collapsible help and the history.
+pub fn panel_expanded(entries: &[Entry], open: Sections) -> El {
+    let mut root = ui::column().child(section_header(
+        TOGGLE_HELP_ACTION,
+        &t("help.title"),
+        open.help,
+    ));
+    if open.help {
         root = root
-            .child(ui::chip(&status.label()).color(status.color()))
-            .child(ui::caption(&t(key)));
+            .child(ui::caption(&t("help.notation")))
+            .child(ui::caption(&t("help.advantage")))
+            .child(ui::caption(&t("help.drop")))
+            .child(ui::caption(&t("help.limits")))
+            .child(ui::caption(&t("help.buttons")));
+    }
+    root = root.child(section_header(
+        TOGGLE_MARKS_ACTION,
+        &t("help.marks"),
+        open.marks,
+    ));
+    if open.marks {
+        for (status, key) in [
+            (Status::Verified { witnesses: 2 }, "help.verified"),
+            (Status::Alone, "help.alone"),
+            (Status::NotRevealed, "help.not_revealed"),
+        ] {
+            root = root
+                .child(ui::chip(&status.label()).color(status.color()))
+                .child(ui::caption(&t(key)));
+        }
     }
     root.child(ui::caption(&t("help.history")))
         .child(history_list(entries))
