@@ -30,5 +30,15 @@
   "web.error": "Koleso vybavenia nedokáže zobraziť tento fit. Pomocou Kopírovať fit ho otvoríte v EVE alebo Pyfa.",
   "web.licences": "Licencie",
   "web.wheel": "Koleso vybavenia",
-  "web.stats": "Štatistiky lode"
+  "web.stats": "Štatistiky lode",
+  "panel.last": "Posledný fit: {{fit}}",
+  "panel.none": "Zatiaľ žiadne fity. Fity vložené do chatu sa zobrazia tu.",
+  "panel.history": "História fitov",
+  "history.title": "História fitov ({{count}})",
+  "history.list": "Fity z chatu, od najnovšieho",
+  "history.empty": "Zatiaľ žiadne fity. Fity vložené do chatu sa zobrazia tu.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Novšie fity",
+  "history.older": "Staršie fity"
 }

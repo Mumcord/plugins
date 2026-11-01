@@ -28,5 +28,15 @@
   "web.error": "Ο τροχός εξοπλισμού δεν μπορεί να εμφανίσει αυτό το fit. Χρησιμοποιήστε την Αντιγραφή fit για να το ανοίξετε στο EVE ή στο Pyfa.",
   "web.licences": "Άδειες",
   "web.wheel": "Τροχός εξοπλισμού",
-  "web.stats": "Στατιστικά πλοίου"
+  "web.stats": "Στατιστικά πλοίου",
+  "panel.last": "Τελευταίο fit: {{fit}}",
+  "panel.none": "Δεν υπάρχουν ακόμη fits. Τα fits που επικολλώνται στη συνομιλία εμφανίζονται εδώ.",
+  "panel.history": "Ιστορικό fits",
+  "history.title": "Ιστορικό fits ({{count}})",
+  "history.list": "Fits από τη συνομιλία, τα νεότερα πρώτα",
+  "history.empty": "Δεν υπάρχουν ακόμη fits. Τα fits που επικολλώνται στη συνομιλία εμφανίζονται εδώ.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Νεότερα fits",
+  "history.older": "Παλαιότερα fits"
 }

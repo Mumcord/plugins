@@ -29,5 +29,15 @@
   "web.error": "Aprīkojuma rats nevar parādīt šo fitu. Izmantojiet “Kopēt fitu”, lai to atvērtu EVE vai Pyfa.",
   "web.licences": "Licences",
   "web.wheel": "Aprīkojuma rats",
-  "web.stats": "Kuģa statistika"
+  "web.stats": "Kuģa statistika",
+  "panel.last": "Pēdējais fits: {{fit}}",
+  "panel.none": "Vēl nav neviena fita. Tērzēšanā ielīmētie fiti parādās šeit.",
+  "panel.history": "Fitu vēsture",
+  "history.title": "Fitu vēsture ({{count}})",
+  "history.list": "Tērzēšanā redzētie fiti, jaunākie vispirms",
+  "history.empty": "Vēl nav neviena fita. Tērzēšanā ielīmētie fiti parādās šeit.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Jaunāki fiti",
+  "history.older": "Vecāki fiti"
 }

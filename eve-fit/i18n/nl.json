@@ -28,5 +28,15 @@
   "web.error": "Het fittingwiel kan deze fit niet tonen. Gebruik Fit kopiëren om hem in EVE of Pyfa te openen.",
   "web.licences": "Licenties",
   "web.wheel": "Fittingwiel",
-  "web.stats": "Scheepsstatistieken"
+  "web.stats": "Scheepsstatistieken",
+  "panel.last": "Laatste fit: {{fit}}",
+  "panel.none": "Nog geen fits. Fits die in de chat worden geplakt, verschijnen hier.",
+  "panel.history": "Fitgeschiedenis",
+  "history.title": "Fitgeschiedenis ({{count}})",
+  "history.list": "Fits uit de chat, nieuwste eerst",
+  "history.empty": "Nog geen fits. Fits die in de chat worden geplakt, verschijnen hier.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Nieuwere fits",
+  "history.older": "Oudere fits"
 }

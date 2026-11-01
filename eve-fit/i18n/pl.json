@@ -30,5 +30,15 @@
   "web.error": "Koło wyposażenia nie może wyświetlić tego fitu. Użyj Kopiuj fit, aby otworzyć go w EVE lub Pyfie.",
   "web.licences": "Licencje",
   "web.wheel": "Koło wyposażenia",
-  "web.stats": "Statystyki statku"
+  "web.stats": "Statystyki statku",
+  "panel.last": "Ostatni fit: {{fit}}",
+  "panel.none": "Brak fitów. Fity wklejone na czacie pojawią się tutaj.",
+  "panel.history": "Historia fitów",
+  "history.title": "Historia fitów ({{count}})",
+  "history.list": "Fity z czatu, od najnowszego",
+  "history.empty": "Brak fitów. Fity wklejone na czacie pojawią się tutaj.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Nowsze fity",
+  "history.older": "Starsze fity"
 }

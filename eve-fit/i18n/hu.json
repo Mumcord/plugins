@@ -28,5 +28,15 @@
   "web.error": "A felszereléskerék nem tudja megjeleníteni ezt a fitet. A Fit másolása gombbal megnyithatod EVE-ben vagy Pyfában.",
   "web.licences": "Licencek",
   "web.wheel": "Felszereléskerék",
-  "web.stats": "Hajóstatisztika"
+  "web.stats": "Hajóstatisztika",
+  "panel.last": "Utolsó fit: {{fit}}",
+  "panel.none": "Még nincs fit. A csevegésbe beillesztett fitek itt jelennek meg.",
+  "panel.history": "Fitelőzmények",
+  "history.title": "Fitelőzmények ({{count}})",
+  "history.list": "A csevegésben látott fitek, a legújabb elöl",
+  "history.empty": "Még nincs fit. A csevegésbe beillesztett fitek itt jelennek meg.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Újabb fitek",
+  "history.older": "Régebbi fitek"
 }

@@ -31,5 +31,15 @@
   "web.error": "Ir-rota tal-armar ma tistax turi dan il-fit. Uża Ikkopja l-fit biex tiftħu f’EVE jew Pyfa.",
   "web.licences": "Liċenzji",
   "web.wheel": "Rota tal-armar",
-  "web.stats": "Statistika tal-vapur"
+  "web.stats": "Statistika tal-vapur",
+  "panel.last": "L-aħħar fit: {{fit}}",
+  "panel.none": "Għad m'hemm l-ebda fit. Il-fits imwaħħla fiċ-chat jidhru hawn.",
+  "panel.history": "Storja tal-fits",
+  "history.title": "Storja tal-fits ({{count}})",
+  "history.list": "Fits li dehru fiċ-chat, l-aktar ġodda l-ewwel",
+  "history.empty": "Għad m'hemm l-ebda fit. Il-fits imwaħħla fiċ-chat jidhru hawn.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Fits aktar ġodda",
+  "history.older": "Fits eqdem"
 }

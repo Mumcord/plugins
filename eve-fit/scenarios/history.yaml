@@ -1,0 +1,52 @@
+# Every fit seen in the chat lands in the fit history in the panel: collapsed at first, newest
+# first, one entry per fit, each with Copy fitting, and a click opens the fit again.
+name: The fit history lists seen fits and opens them again
+grant: [ui.chat-card, ui.dialog, chat.patterns, ui.panel]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - expect: {tree: {slot: panel, text: "▸ Fit history (0)"}}
+
+  - event:
+      chat-match:
+        sender: 2
+        text: &rifter |
+          [Rifter, Tackle]
+          Damage Control II
+          Warp Scrambler II
+  - expect: {tree: {slot: panel, text: "▸ Fit history (1)"}}
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Tackle · pasted by Bob"}}
+
+  - event:
+      chat-match:
+        sender: 3
+        text: |
+          [Merlin, Brawler]
+          Medium Shield Extender II
+  - expect: {tree: {slot: panel, text: "▸ Fit history (2)"}}
+  - expect: {tree: {slot: {chat-card: fit-2}, text: "Brawler · pasted by Carol"}}
+
+  # The same fit again only moves up.
+  - event:
+      chat-match:
+        sender: 3
+        text: *rifter
+  - expect: {tree: {slot: panel, text: "▸ Fit history (2)"}}
+  - expect: {tree: {slot: {chat-card: fit-3}, text: "Tackle · pasted by Carol"}}
+
+  - event: {ui-action: {action: "history:toggle", slot: panel}}
+  - expect: {tree: {slot: panel, text: "Rifter · Tackle"}}
+  - copy: {label: Copy fitting, slot: panel}
+  - expect: {copied: {text: *rifter}}
+
+  # A click on the entry opens the fit again (as a list here: no web view is granted).
+  - event: {ui-action: {action: "history:open:0ca63aa990ee64ba", slot: panel}}
+  - expect: {dialog: {title: "Tackle"}}
+  - expect: {tree: {slot: dialog, text: "1× Warp Scrambler II"}}
+
+  - event: {ui-action: {action: "history:toggle", slot: panel}}
+  - expect: {tree: {slot: panel, text: "▸ Fit history (2)"}}

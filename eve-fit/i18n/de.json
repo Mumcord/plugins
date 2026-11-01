@@ -28,5 +28,15 @@
   "web.error": "Das Fitting-Rad kann diesen Fit nicht anzeigen. Mit „Fitting kopieren“ kannst du ihn in EVE oder Pyfa öffnen.",
   "web.licences": "Lizenzen",
   "web.wheel": "Fitting-Rad",
-  "web.stats": "Schiffswerte"
+  "web.stats": "Schiffswerte",
+  "panel.last": "Letztes Fitting: {{fit}}",
+  "panel.none": "Noch keine Fittings. Im Chat gepostete Fittings erscheinen hier.",
+  "panel.history": "Fitting-Verlauf",
+  "history.title": "Fitting-Verlauf ({{count}})",
+  "history.list": "Im Chat gesehene Fittings, neueste zuerst",
+  "history.empty": "Noch keine Fittings. Im Chat gepostete Fittings erscheinen hier.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Neuere Fittings",
+  "history.older": "Ältere Fittings"
 }

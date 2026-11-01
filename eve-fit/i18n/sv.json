@@ -28,5 +28,15 @@
   "web.error": "Utrustningshjulet kan inte visa den här fitten. Använd Kopiera fit för att öppna den i EVE eller Pyfa.",
   "web.licences": "Licenser",
   "web.wheel": "Utrustningshjul",
-  "web.stats": "Skeppsstatistik"
+  "web.stats": "Skeppsstatistik",
+  "panel.last": "Senaste fit: {{fit}}",
+  "panel.none": "Inga fits ännu. Fits som klistras in i chatten visas här.",
+  "panel.history": "Fit-historik",
+  "history.title": "Fit-historik ({{count}})",
+  "history.list": "Fits från chatten, nyast först",
+  "history.empty": "Inga fits ännu. Fits som klistras in i chatten visas här.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Nyare fits",
+  "history.older": "Äldre fits"
 }

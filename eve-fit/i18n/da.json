@@ -28,5 +28,15 @@
   "web.error": "Fitting-hjulet kan ikke vise dette fit. Brug Kopiér fit for at åbne det i EVE eller Pyfa.",
   "web.licences": "Licenser",
   "web.wheel": "Fitting-hjul",
-  "web.stats": "Skibsstatistik"
+  "web.stats": "Skibsstatistik",
+  "panel.last": "Seneste fit: {{fit}}",
+  "panel.none": "Ingen fits endnu. Fits, der indsættes i chatten, vises her.",
+  "panel.history": "Fit-historik",
+  "history.title": "Fit-historik ({{count}})",
+  "history.list": "Fits set i chatten, nyeste først",
+  "history.empty": "Ingen fits endnu. Fits, der indsættes i chatten, vises her.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Nyere fits",
+  "history.older": "Ældre fits"
 }

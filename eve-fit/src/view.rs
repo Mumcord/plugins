@@ -9,8 +9,16 @@ use mumcord_plugin_sdk::{
 
 use crate::app::Pasted;
 use crate::eft::{Fit, Group, Item, Section};
+use crate::history::{self, Entry};
 
 pub const ACTION_OPEN: &str = "open";
+/// Panel action ids: the inline History button, the section header, paging and one entry
+/// (the prefix plus the fit's hash in hex).
+pub const ACTION_SHOW_HISTORY: &str = "history:show";
+pub const ACTION_TOGGLE_HISTORY: &str = "history:toggle";
+pub const ACTION_OLDER: &str = "history:older";
+pub const ACTION_NEWER: &str = "history:newer";
+pub const HISTORY_OPEN_PREFIX: &str = "history:open:";
 
 /// Host limit for any text string in a tree (FR-6.42).
 const MAX_TEXT_CHARS: usize = 200;
@@ -233,4 +241,99 @@ fn cut(text: &str, max: usize) -> String {
     let mut out: String = text.chars().take(max.saturating_sub(1)).collect();
     out.push('…');
     out
+}
+
+/// "Rifter · Tackle", or just the ship for a fit without a name.
+fn entry_label(s: &Strings, fit: &Fit) -> String {
+    if fit.name.is_empty() {
+        fit.ship.clone()
+    } else {
+        s.t_with("history.entry", &[("ship", &fit.ship), ("name", &fit.name)])
+    }
+}
+
+/// The panel in the Plugins strip (260×160, no scrolling): the newest fit and a button that
+/// opens the history in the large popover.
+pub fn panel_inline(s: &Strings, entries: &[Entry]) -> El {
+    let last = match entries.first() {
+        Some(entry) => s.t_with(
+            "panel.last",
+            &[("fit", &cut(&entry_label(s, &entry.fit), CARD_LINE_CHARS))],
+        ),
+        None => s.t("panel.none"),
+    };
+    ui::column()
+        .child(ui::caption(&last))
+        .child(ui::button(ACTION_SHOW_HISTORY, &s.t("panel.history")).kind(ButtonKind::Secondary))
+}
+
+/// Which slice of the history the popover shows.
+#[derive(Debug, Clone, Copy)]
+pub struct Page {
+    pub start: usize,
+    pub end: usize,
+    /// Whether a newer page exists.
+    pub newer: bool,
+}
+
+/// The panel in the large popover: the fit history as a collapsible section. `now` is the
+/// current time and UTC offset, for the times shown.
+pub fn panel_expanded(
+    s: &Strings,
+    entries: &[Entry],
+    open: bool,
+    page: Page,
+    now: (u64, i32),
+) -> El {
+    let count = entries.len().to_string();
+    let arrow = if open { "\u{25be}" } else { "\u{25b8}" };
+    let title = s.t_with("history.title", &[("count", &count)]);
+    let mut root = ui::column().child(
+        ui::button(ACTION_TOGGLE_HISTORY, &format!("{arrow} {title}"))
+            .kind(ButtonKind::Secondary)
+            .expanded(open),
+    );
+    if !open {
+        return root;
+    }
+    if entries.is_empty() {
+        return root.child(ui::caption(&s.t("history.empty")));
+    }
+    let mut list = ui::list(&s.t("history.list"));
+    for entry in entries.iter().take(page.end).skip(page.start) {
+        let when = history::format_time(entry.time, now.0, now.1);
+        let detail = s.t_with(
+            "history.detail",
+            &[("sender", &entry.sender), ("time", &when)],
+        );
+        let open_button = ui::button(
+            &format!("{HISTORY_OPEN_PREFIX}{:016x}", entry.hash),
+            &cut(&entry_label(s, &entry.fit), MAX_TITLE_CHARS),
+        )
+        .kind(ButtonKind::Secondary);
+        list = list.child(
+            ui::row()
+                .justify(Justify::SpaceBetween)
+                .child(
+                    ui::stack(Direction::Column, 2, Align::Start)
+                        .child(open_button)
+                        .child(ui::caption(&cut(&detail, CARD_LINE_CHARS))),
+                )
+                .child(ui::copy_button(&s.t("button.copy"), &entry.text)),
+        );
+    }
+    root = root.child(list);
+    if page.newer || page.end < entries.len() {
+        let mut paging = ui::row();
+        if page.newer {
+            paging = paging
+                .child(ui::button(ACTION_NEWER, &s.t("history.newer")).kind(ButtonKind::Secondary));
+        }
+        if page.end < entries.len() {
+            paging = paging
+                .child(ui::button(ACTION_OLDER, &s.t("history.older")).kind(ButtonKind::Secondary));
+        }
+        root = root.child(paging);
+    }
+    root
 }

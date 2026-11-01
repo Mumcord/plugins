@@ -29,5 +29,15 @@
   "web.error": "A roda de equipamento não consegue mostrar este fit. Use Copiar fit para o abrir no EVE ou no Pyfa.",
   "web.licences": "Licenças",
   "web.wheel": "Roda de equipamento",
-  "web.stats": "Estatísticas da nave"
+  "web.stats": "Estatísticas da nave",
+  "panel.last": "Último fit: {{fit}}",
+  "panel.none": "Ainda não há fits. Os fits colados no chat aparecem aqui.",
+  "panel.history": "Histórico de fits",
+  "history.title": "Histórico de fits ({{count}})",
+  "history.list": "Fits vistos no chat, do mais recente ao mais antigo",
+  "history.empty": "Ainda não há fits. Os fits colados no chat aparecem aqui.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Fits mais recentes",
+  "history.older": "Fits mais antigos"
 }

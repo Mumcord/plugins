@@ -9,6 +9,7 @@ use mumcord_plugin_sdk::{
 
 use crate::app::{App, Host, KEPT_FITS, WEBVIEW_READY, card_id};
 use crate::eft::{self, Item, MAX_LINES, MAX_TEXT_BYTES, Section};
+use crate::history::{self, INDEX_KEY, MAX_ENTRIES, Store};
 use crate::view;
 
 /// The game's own "Copy to clipboard" export: empty slots, charges, drones and cargo.
@@ -268,6 +269,25 @@ struct Fake {
     webview: bool,
     webview_shown: usize,
     posted: Vec<String>,
+    store: std::collections::BTreeMap<String, Vec<u8>>,
+    panel: Option<El>,
+    popovers: usize,
+    /// Seconds since 1970 and the UTC offset in minutes.
+    now: (u64, i32),
+}
+
+impl Store for Fake {
+    fn load(&mut self, key: &str) -> Option<Vec<u8>> {
+        self.store.get(key).cloned()
+    }
+
+    fn save(&mut self, key: &str, value: &[u8]) {
+        self.store.insert(key.to_owned(), value.to_owned());
+    }
+
+    fn remove(&mut self, key: &str) {
+        self.store.remove(key);
+    }
 }
 
 impl Host for Fake {
@@ -299,6 +319,18 @@ impl Host for Fake {
     fn post_webview(&mut self, message: &str) -> Result<(), Error> {
         self.posted.push(message.to_owned());
         Ok(())
+    }
+
+    fn show_panel(&mut self, tree: El) {
+        self.panel = Some(tree);
+    }
+
+    fn open_popover(&mut self) {
+        self.popovers += 1;
+    }
+
+    fn now(&mut self) -> (u64, i32) {
+        self.now
     }
 
     fn warn(&mut self, message: &str) {
@@ -596,4 +628,296 @@ fn the_page_message_escapes_the_pasted_text_and_fits_the_bridge() {
     // A fit is at most 4 KiB; even all newlines stay well within the 16 KiB bridge limit.
     let long = "\n".repeat(4096);
     assert!(view::webview_message(&strings, "en", &long).len() < 16 * 1024);
+}
+
+// --- Fit history --------------------------------------------------------------------------------
+
+/// 2026-11-01 14:32 UTC.
+const NOW: u64 = 1_793_543_520;
+
+fn panel_host() -> Fake {
+    Fake {
+        now: (NOW, 0),
+        ..Fake::default()
+    }
+}
+
+/// An app with the panel granted and shown as the large popover.
+fn panel_app(host: &mut Fake) -> App {
+    let mut app = App::default();
+    app.start(host);
+    app.set_granted(host, &["ui.panel".to_owned()]);
+    app.on_panel_visibility(host, true);
+    app
+}
+
+fn panel_texts(host: &Fake) -> Vec<String> {
+    texts(host.panel.as_ref().expect("a panel"))
+}
+
+/// A small fit whose name is `name`.
+fn small_fit(name: &str) -> String {
+    format!("[Rifter, {name}]\nDamage Control II\n")
+}
+
+#[test]
+fn the_history_is_collapsed_until_unfolded() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    assert_eq!(panel_texts(&host), ["[\u{25b8} Fit history (1)]"]);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(
+        panel_texts(&host),
+        [
+            "[\u{25be} Fit history (1)]".to_owned(),
+            "[Rifter · Tackle]".to_owned(),
+            "Bob · 14:32".to_owned(),
+            format!("[Copy fitting: {} bytes]", RIFTER.len()),
+        ]
+    );
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(panel_texts(&host).len(), 1);
+}
+
+#[test]
+fn the_header_announces_whether_the_history_is_open() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    let expanded = |host: &Fake| match &host.panel.as_ref().expect("a panel").children[0].component
+    {
+        Component::Button(b) => b.expanded,
+        _ => panic!("no header button"),
+    };
+    assert_eq!(expanded(&host), Some(false));
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(expanded(&host), Some(true));
+}
+
+#[test]
+fn the_newest_fit_comes_first_and_duplicates_move_up() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    app.on_chat_match(&mut host, "Alice", &small_fit("One"));
+    app.on_chat_match(&mut host, "Bob", &small_fit("Two"));
+    // The same fit again, with other line endings and trailing spaces.
+    app.on_chat_match(
+        &mut host,
+        "Carol",
+        "[Rifter, One]  \r\nDamage Control II \r\n",
+    );
+    let shown: Vec<String> = panel_texts(&host)
+        .into_iter()
+        .filter(|t| !t.starts_with("[Copy"))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            "[\u{25be} Fit history (2)]",
+            "[Rifter · One]",
+            "Carol · 14:32",
+            "[Rifter · Two]",
+            "Bob · 14:32",
+        ]
+    );
+}
+
+#[test]
+fn opened_fits_join_the_history() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Alice", &small_fit("One"));
+    app.on_chat_match(&mut host, "Bob", &small_fit("Two"));
+    host.now.0 += 60;
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(
+        panel_texts(&host)[1..3],
+        ["[Rifter · One]", "Alice · 14:33"]
+    );
+}
+
+#[test]
+fn clicking_an_entry_opens_the_fit() {
+    let mut host = Fake {
+        webview: true,
+        ..panel_host()
+    };
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    let action = format!(
+        "{}{:016x}",
+        view::HISTORY_OPEN_PREFIX,
+        history::hash(RIFTER)
+    );
+    app.on_panel_action(&mut host, &action);
+    assert_eq!(
+        host.dialog_titles,
+        [(
+            "Tackle".to_owned(),
+            Some("Rifter · pasted by Bob".to_owned())
+        )]
+    );
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    assert_eq!(posted(&host)["fit"], RIFTER);
+}
+
+#[test]
+fn unknown_entries_and_actions_open_nothing() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    for action in [
+        "history:open:ffff",
+        "history:open:zz",
+        "history:open:",
+        "nope",
+    ] {
+        app.on_panel_action(&mut host, action);
+    }
+    assert!(host.dialog_titles.is_empty());
+}
+
+#[test]
+fn the_history_survives_a_restart() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Alice", &small_fit("One"));
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    let mut host = Fake {
+        store: host.store,
+        ..panel_host()
+    };
+    let mut app = panel_app(&mut host);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    let shown = panel_texts(&host);
+    assert_eq!(shown[1..3], ["[Rifter · Tackle]", "Bob · 14:32"]);
+    assert_eq!(shown[4..6], ["[Rifter · One]", "Alice · 14:32"]);
+}
+
+#[test]
+fn the_history_keeps_the_newest_fifty_and_their_texts_only() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    for i in 0..MAX_ENTRIES + 5 {
+        app.on_chat_match(&mut host, "Alice", &small_fit(&i.to_string()));
+    }
+    // One key per fit plus the index.
+    assert_eq!(host.store.len(), MAX_ENTRIES + 1);
+    let mut host = Fake {
+        store: host.store,
+        ..panel_host()
+    };
+    let mut app = panel_app(&mut host);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(panel_texts(&host)[0], "[\u{25be} Fit history (50)]");
+    assert_eq!(panel_texts(&host)[1], "[Rifter · 54]");
+}
+
+#[test]
+fn a_broken_store_is_skipped() {
+    let mut host = panel_host();
+    host.save(INDEX_KEY, b"[{\"hash\":\"zz\",\"sender\":\"x\",\"time\":1},{\"hash\":\"00000000000000ff\",\"sender\":\"x\",\"time\":1}]");
+    host.save("fit/00000000000000ff", b"not a fit");
+    let mut app = panel_app(&mut host);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert_eq!(panel_texts(&host)[0], "[\u{25be} Fit history (0)]");
+    host.save(INDEX_KEY, b"{garbage");
+    let mut app = panel_app(&mut host);
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    assert!(
+        panel_texts(&host)
+            .contains(&"No fits yet. Fits pasted in the chat appear here.".to_owned())
+    );
+}
+
+#[test]
+fn large_histories_are_paged_to_fit_the_slot() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    for i in 0..MAX_ENTRIES {
+        // About 1.5 KiB each, like a real fit.
+        let fit = format!("[Rifter, {i}]\n{}", "Damage Control II\n".repeat(80));
+        app.on_chat_match(&mut host, "Alice", &fit);
+    }
+    app.on_panel_action(&mut host, view::ACTION_TOGGLE_HISTORY);
+    let mut seen = 0;
+    let mut pages = 0;
+    loop {
+        let shown = panel_texts(&host);
+        let copies: usize = shown.iter().filter(|t| t.starts_with("[Copy")).count();
+        let bytes: usize = copy_bytes(host.panel.as_ref().expect("a panel"));
+        assert!(
+            copies >= 1 && bytes <= 10 * 1024,
+            "{copies} fits, {bytes} bytes"
+        );
+        seen += copies;
+        pages += 1;
+        if !shown.contains(&"[Older fits]".to_owned()) {
+            break;
+        }
+        app.on_panel_action(&mut host, view::ACTION_OLDER);
+        assert!(panel_texts(&host).contains(&"[Newer fits]".to_owned()));
+    }
+    assert_eq!(seen, MAX_ENTRIES);
+    for _ in 1..pages {
+        app.on_panel_action(&mut host, view::ACTION_NEWER);
+    }
+    assert!(!panel_texts(&host).contains(&"[Newer fits]".to_owned()));
+    assert_eq!(panel_texts(&host)[1], "[Rifter · 49]");
+}
+
+fn copy_bytes(el: &El) -> usize {
+    let own = match &el.component {
+        Component::CopyButton(b) => b.text.len(),
+        _ => 0,
+    };
+    own + el.children.iter().map(copy_bytes).sum::<usize>()
+}
+
+#[test]
+fn the_inline_panel_shows_the_last_fit_and_opens_the_history() {
+    let mut host = panel_host();
+    let mut app = App::default();
+    app.start(&mut host);
+    app.set_granted(&mut host, &["ui.panel".to_owned()]);
+    assert_eq!(
+        panel_texts(&host),
+        [
+            "No fits yet. Fits pasted in the chat appear here.",
+            "[Fit history]"
+        ]
+    );
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    assert_eq!(panel_texts(&host)[0], "Last fit: Rifter · Tackle");
+    app.on_panel_action(&mut host, view::ACTION_SHOW_HISTORY);
+    assert_eq!(host.popovers, 1);
+    app.on_panel_visibility(&mut host, true);
+    assert_eq!(panel_texts(&host)[0], "[\u{25be} Fit history (1)]");
+}
+
+#[test]
+fn without_the_panel_permission_nothing_is_shown_but_fits_are_kept() {
+    let mut host = panel_host();
+    let mut app = App::default();
+    app.start(&mut host);
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    assert!(host.panel.is_none());
+    assert!(host.store.contains_key(INDEX_KEY));
+}
+
+#[test]
+fn times_from_earlier_days_show_the_date_in_local_time() {
+    assert_eq!(history::format_time(NOW, NOW, 0), "14:32");
+    assert_eq!(history::format_time(NOW, NOW, 60), "15:32");
+    assert_eq!(
+        history::format_time(NOW - 86_400, NOW, 0),
+        "2026-10-31 14:32"
+    );
+    assert_eq!(history::format_time(0, NOW, 0), "1970-01-01 00:00");
+    assert_eq!(
+        history::format_time(951_782_400, NOW, 0),
+        "2000-02-29 00:00"
+    );
 }

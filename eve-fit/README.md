@@ -34,6 +34,7 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
 - **Copy fitting**, on the card and in the list, copies the fit exactly as it was pasted, ready to import into EVE (Fittings → Import from clipboard) or Pyfa. Mumcord does the copying when you click; the plugin never touches your clipboard.
 - The pasted text stays in the chat as it is, so people on the official Mumble client, or on Mumcord without the plugin, see the plain fit.
 - The plugin keeps the last 30 fits. An older card stays in the chat but loses its Open button; paste the fit again to open it.
+- **Fit history.** The plugin's panel in the Plugins strip shows the newest fit; **Fit history** opens the full list: every fit seen in the chat or opened, newest first, with ship, fit name, who pasted it and when. The list starts collapsed. Click an entry to open the fit again, or use its own **Copy fitting** button. The same fit pasted again is listed once and moves to the top. The last 50 fits are kept on your device for your identity, so the history survives a restart; long lists are shown in pages (Older fits / Newer fits).
 
 ## Good to know
 
@@ -51,6 +52,7 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
 | `ui.chat-card` | Show the fit card in the chat. |
 | `ui.dialog` | Show the full fit when you choose Open. |
 | `ui.webview` | Show the fitting wheel in the dialog, in a sealed web view without internet access. |
+| `ui.panel` (optional) | Show the newest fit and the fit history in the Plugins strip. |
 
 ## Build and test
 

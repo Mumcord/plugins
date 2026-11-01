@@ -29,5 +29,15 @@
   "web.error": "La roue d’équipement ne peut pas afficher ce fit. Utilisez Copier le fit pour l’ouvrir dans EVE ou Pyfa.",
   "web.licences": "Licences",
   "web.wheel": "Roue d’équipement",
-  "web.stats": "Statistiques du vaisseau"
+  "web.stats": "Statistiques du vaisseau",
+  "panel.last": "Dernier fit : {{fit}}",
+  "panel.none": "Aucun fit pour l'instant. Les fits collés dans le chat apparaissent ici.",
+  "panel.history": "Historique des fits",
+  "history.title": "Historique des fits ({{count}})",
+  "history.list": "Fits vus dans le chat, du plus récent au plus ancien",
+  "history.empty": "Aucun fit pour l'instant. Les fits collés dans le chat apparaissent ici.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Fits plus récents",
+  "history.older": "Fits plus anciens"
 }

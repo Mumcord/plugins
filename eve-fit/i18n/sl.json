@@ -30,5 +30,15 @@
   "web.error": "Kolo opreme ne more prikazati tega fita. Uporabite Kopiraj fit, da ga odprete v EVE ali Pyfi.",
   "web.licences": "Licence",
   "web.wheel": "Kolo opreme",
-  "web.stats": "Statistika ladje"
+  "web.stats": "Statistika ladje",
+  "panel.last": "Zadnji fit: {{fit}}",
+  "panel.none": "Ni še fitov. Fiti, prilepljeni v klepet, se prikažejo tukaj.",
+  "panel.history": "Zgodovina fitov",
+  "history.title": "Zgodovina fitov ({{count}})",
+  "history.list": "Fiti iz klepeta, najnovejši najprej",
+  "history.empty": "Ni še fitov. Fiti, prilepljeni v klepet, se prikažejo tukaj.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Novejši fiti",
+  "history.older": "Starejši fiti"
 }

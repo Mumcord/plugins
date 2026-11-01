@@ -29,5 +29,15 @@
   "web.error": "Kotač opreme ne može prikazati ovaj fit. Upotrijebite Kopiraj fit da ga otvorite u EVE-u ili Pyfi.",
   "web.licences": "Licence",
   "web.wheel": "Kotač opreme",
-  "web.stats": "Statistika broda"
+  "web.stats": "Statistika broda",
+  "panel.last": "Zadnji fit: {{fit}}",
+  "panel.none": "Još nema fitova. Fitovi zalijepljeni u chat pojavljuju se ovdje.",
+  "panel.history": "Povijest fitova",
+  "history.title": "Povijest fitova ({{count}})",
+  "history.list": "Fitovi iz chata, najnoviji prvi",
+  "history.empty": "Još nema fitova. Fitovi zalijepljeni u chat pojavljuju se ovdje.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Noviji fitovi",
+  "history.older": "Stariji fitovi"
 }

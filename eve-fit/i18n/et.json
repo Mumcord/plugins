@@ -28,5 +28,15 @@
   "web.error": "Varustusratas ei saa seda fitti näidata. Kasuta nuppu Kopeeri fit, et avada see EVE-s või Pyfas.",
   "web.licences": "Litsentsid",
   "web.wheel": "Varustusratas",
-  "web.stats": "Laeva statistika"
+  "web.stats": "Laeva statistika",
+  "panel.last": "Viimane fit: {{fit}}",
+  "panel.none": "Fitte veel pole. Vestlusse kleebitud fitid ilmuvad siia.",
+  "panel.history": "Fittide ajalugu",
+  "history.title": "Fittide ajalugu ({{count}})",
+  "history.list": "Vestluses nähtud fitid, uusimad eespool",
+  "history.empty": "Fitte veel pole. Vestlusse kleebitud fitid ilmuvad siia.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Uuemad fitid",
+  "history.older": "Vanemad fitid"
 }

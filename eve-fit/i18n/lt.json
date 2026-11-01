@@ -30,5 +30,15 @@
   "web.error": "Įrangos ratas negali parodyti šio fito. Naudokite „Kopijuoti fitą“, kad atidarytumėte jį EVE arba Pyfa.",
   "web.licences": "Licencijos",
   "web.wheel": "Įrangos ratas",
-  "web.stats": "Laivo statistika"
+  "web.stats": "Laivo statistika",
+  "panel.last": "Paskutinis fitas: {{fit}}",
+  "panel.none": "Fitų dar nėra. Į pokalbį įklijuoti fitai rodomi čia.",
+  "panel.history": "Fitų istorija",
+  "history.title": "Fitų istorija ({{count}})",
+  "history.list": "Pokalbyje matyti fitai, naujausi pirmi",
+  "history.empty": "Fitų dar nėra. Į pokalbį įklijuoti fitai rodomi čia.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Naujesni fitai",
+  "history.older": "Senesni fitai"
 }

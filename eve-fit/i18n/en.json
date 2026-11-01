@@ -28,5 +28,15 @@
   "web.error": "The fitting wheel cannot show this fit. Use Copy fitting to open it in EVE or Pyfa.",
   "web.licences": "Licences",
   "web.wheel": "Fitting wheel",
-  "web.stats": "Ship statistics"
+  "web.stats": "Ship statistics",
+  "panel.last": "Last fit: {{fit}}",
+  "panel.none": "No fits yet. Fits pasted in the chat appear here.",
+  "panel.history": "Fit history",
+  "history.title": "Fit history ({{count}})",
+  "history.list": "Fits seen in the chat, newest first",
+  "history.empty": "No fits yet. Fits pasted in the chat appear here.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Newer fits",
+  "history.older": "Older fits"
 }

@@ -28,5 +28,15 @@
   "web.error": "Varusteympyrä ei voi näyttää tätä fittiä. Avaa se EVEssä tai Pyfassa Kopioi fitti -painikkeella.",
   "web.licences": "Lisenssit",
   "web.wheel": "Varusteympyrä",
-  "web.stats": "Aluksen tilastot"
+  "web.stats": "Aluksen tilastot",
+  "panel.last": "Viimeisin fitti: {{fit}}",
+  "panel.none": "Ei vielä fittejä. Chattiin liitetyt fitit näkyvät tässä.",
+  "panel.history": "Fittihistoria",
+  "history.title": "Fittihistoria ({{count}})",
+  "history.list": "Chatissa nähdyt fitit, uusin ensin",
+  "history.empty": "Ei vielä fittejä. Chattiin liitetyt fitit näkyvät tässä.",
+  "history.entry": "{{ship}} · {{name}}",
+  "history.detail": "{{sender}} · {{time}}",
+  "history.newer": "Uudemmat fitit",
+  "history.older": "Vanhemmat fitit"
 }
