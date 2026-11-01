@@ -1,5 +1,5 @@
 // Builds eve-fit's web/ folder: the eveship.fit fitting wheel, EVE's data and images, and the
-// ship renders, all for the sealed, offline web view.
+// ship renders, all for the sealed, offline web view. Also writes ../src/items.txt (items.mjs).
 //
 //   node scripts/build.mjs                    build into ../web
 //   node scripts/build.mjs --check            build into a temporary folder and fail if ../web differs
@@ -17,6 +17,8 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { build } from "vite";
 import { loadSde } from "@eveshipfit/sde-loader";
+
+import { writeItems } from "./items.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const WEB = join(ROOT, "..", "web");
@@ -45,6 +47,7 @@ async function main() {
     await writeData(out);
     await writeLicences(out);
     await writeRenders(out);
+    await writeItems(check);
     if (check) await compare(out, WEB);
   } finally {
     if (check) await rm(out, { recursive: true, force: true });

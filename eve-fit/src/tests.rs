@@ -146,11 +146,94 @@ fn parses_subsystems_offline_modules_implants_and_crlf() {
 }
 
 #[test]
-fn a_single_bay_is_drones_or_cargo() {
-    let fit = eft::parse("[Vexor, Ratting]\nDrone Damage Amplifier II\n\n\nHammerhead II x5\n")
+fn a_single_bay_is_split_by_the_data_or_stays_drones_or_cargo() {
+    let fit = eft::parse(
+        "[Vexor, Ratting]\nDrone Damage Amplifier II\n\n\nHammerhead II x5\nNanite Repair Paste x50\n",
+    )
+    .expect("a fit");
+    assert_eq!(
+        group(&fit, Section::Drones).items,
+        [item("Hammerhead II", None, 5)]
+    );
+    assert_eq!(
+        group(&fit, Section::Cargo).items,
+        [item("Nanite Repair Paste", None, 50)]
+    );
+    assert!(fit.group(Section::DronesOrCargo).is_none());
+
+    // Names the data does not know (here a made-up one) leave it open.
+    let fit = eft::parse("[Vexor, Ratting]\nDrone Damage Amplifier II\n\n\nMystery Crate x5\n")
         .expect("a fit");
     assert_eq!(group(&fit, Section::DronesOrCargo).filled(), 5);
     assert!(fit.group(Section::Drones).is_none());
+}
+
+/// A real paste whose blank lines got lost in the chat composer.
+const MAMBA_WITHOUT_BLANK_LINES: &str = "[Mamba, *Mamba Class 2/3]
+Drone Damage Amplifier II
+Drone Damage Amplifier II
+Pithum C-Type Medium Shield Booster
+Pithum C-Type EM Shield Amplifier
+Small Capacitor Booster II
+Pith X-Type Explosive Shield Hardener
+Rocket Launcher II
+Rocket Launcher II
+Rocket Launcher II
+Rocket Launcher II
+Rocket Launcher II
+Small EM Shield Reinforcer II
+Small Explosive Shield Reinforcer II
+Small Thermal Shield Reinforcer II
+Federation Navy Hobgoblin x2
+'Augmented' Hobgoblin x2
+Inferno Rage Rocket x5000
+Navy Cap Booster 400 x16
+Inferno Javelin Rocket x5000
+Pith X-Type Explosive Shield Hardener x1
+Mobile Depot x1";
+
+#[test]
+fn sorts_a_fit_without_blank_lines_by_the_data() {
+    let fit = eft::parse(MAMBA_WITHOUT_BLANK_LINES).expect("a fit");
+    let sections: Vec<Section> = fit.groups.iter().map(|g| g.section).collect();
+    assert_eq!(
+        sections,
+        [
+            Section::Low,
+            Section::Mid,
+            Section::High,
+            Section::Rig,
+            Section::Drones,
+            Section::Cargo
+        ]
+    );
+    assert_eq!(
+        group(&fit, Section::Low).items,
+        [item("Drone Damage Amplifier II", None, 2)]
+    );
+    assert_eq!(group(&fit, Section::Mid).filled(), 4);
+    assert_eq!(
+        group(&fit, Section::High).items,
+        [item("Rocket Launcher II", None, 5)]
+    );
+    assert_eq!(group(&fit, Section::Rig).filled(), 3);
+    assert_eq!(
+        group(&fit, Section::Drones).items,
+        [
+            item("Federation Navy Hobgoblin", None, 2),
+            item("'Augmented' Hobgoblin", None, 2)
+        ]
+    );
+    assert_eq!(
+        group(&fit, Section::Cargo).items,
+        [
+            item("Inferno Rage Rocket", None, 5000),
+            item("Navy Cap Booster 400", None, 16),
+            item("Inferno Javelin Rocket", None, 5000),
+            item("Pith X-Type Explosive Shield Hardener", None, 1),
+            item("Mobile Depot", None, 1)
+        ]
+    );
 }
 
 #[test]

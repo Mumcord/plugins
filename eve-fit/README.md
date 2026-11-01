@@ -38,10 +38,9 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
 
 ## Good to know
 
-- **Offline.** The plugin never goes online. The card comes from the pasted text alone. The fitting wheel runs in Mumcord's sealed web view, which has no internet access: EVE's data, icons and ship renders are bundled in the plugin (`web/`), so a new EVE release needs a plugin update before new ships and modules show up.
+- **Offline.** The plugin never goes online. The card comes from the pasted text and a list of EVE's item names bundled in the plugin. The fitting wheel runs in Mumcord's sealed web view, which has no internet access: EVE's data, icons and ship renders are bundled in the plugin (`web/`), so a new EVE release needs a plugin update before new ships and modules show up.
 - **English item names.** The fitting wheel reads fits with English item names, as Pyfa and EVE in English export them. A fit it cannot read shows a short message; the card and Copy fitting still work.
-- **Drones or cargo?** On the card, drones and cargo look the same (both are "name x count"). When a fit has two such blocks, the first is shown as drones and the second as cargo; a single block is shown as "Drones / cargo".
-- **Sections** follow the EFT order: low, mid, high, rigs, subsystems. An `[Empty Mid slot]` style line places a section when the fit skips one.
+- **Sections.** Each item goes where EVE's data says it goes (low, mid, high, rigs, subsystems, drones, cargo, implants), so a fit still comes out right when its blank lines got lost on the way through the chat. Items the data does not know follow the EFT layout: blank-line separated sections in the order low, mid, high, rigs, subsystems, with an `[Empty Mid slot]` style line placing a section when the fit skips one. Of two "name x count" blocks the first is drones and the second cargo; a single block of unknown items is shown as "Drones / cargo".
 - **Only what you paste.** The plugin only receives chat messages that start with a fit header such as `[Rifter, Tackle]` (the "read chat messages that look like an EVE fit" permission). It never sees any other chat.
 
 ## Permissions
