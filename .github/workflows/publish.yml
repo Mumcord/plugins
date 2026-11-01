@@ -1,0 +1,129 @@
+# Publishes the official registry (FR-6.55, FR-6.80): rebuilds and releases new plugin versions,
+# signs index.json and revoked.json in the protected `publish` environment, deploys GitHub Pages
+# and tells the website with a `plugins-published` repository_dispatch event.
+name: Publish
+on:
+  push:
+    branches: [main]
+    paths:
+      - plugins/**
+      - revoked.toml
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: publish
+  cancel-in-progress: false
+env:
+  INDEX_URL: https://mumcord.github.io/plugins/v1/index.json
+jobs:
+  # Builds run plugin source code (build scripts), so this job only has a read-only token.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      # Every version without a release `<id>-v<ver>` is rebuilt and checked again.
+      - name: Build new versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/registry.py build-missing packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: packages
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      - name: Attach packages to releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/registry.py release-built packages
+
+  sign:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: publish
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - name: Generate site data
+        run: |
+          # Above the published sequence, so clients never see a rollback.
+          sequence=$(python3 .github/scripts/registry.py sequence "$INDEX_URL")
+          mumcord-plugin site-data --repo . --out site --sequence "$sequence"
+      - name: Sign index.json and revoked.json
+        env:
+          PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
+          MUMCORD_PLUGIN_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
+        run: |
+          test -n "$PLUGIN_SIGNING_KEY" || { echo "::error::PLUGIN_SIGNING_KEY is not set"; exit 1; }
+          key="$RUNNER_TEMP/registry.key"
+          (umask 077 && printf '%s\n' "$PLUGIN_SIGNING_KEY" > "$key")
+          status=0
+          mumcord-plugin sign site/v1/index.json --key "$key" && \
+            mumcord-plugin sign site/v1/revoked.json --key "$key" || status=$?
+          rm -f "$key"
+          exit "$status"
+      - name: Verify signatures with the published public key
+        run: |
+          sudo apt-get install -y -qq minisign > /dev/null
+          for file in site/v1/index.json site/v1/revoked.json; do
+            minisign -V -q -p .github/registry-key.pub -m "$file"
+          done
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: sign
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify:
+    needs: deploy
+    if: vars.SITE_DISPATCH_REPO != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send plugins-published
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          TARGET: ${{ vars.SITE_DISPATCH_REPO }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "SITE_DISPATCH_TOKEN is not set; skipping."
+            exit 0
+          fi
+          gh api -X POST "repos/$TARGET/dispatches" -f event_type=plugins-published > /dev/null

@@ -1,0 +1,33 @@
+name: Set up mumcord-plugin
+description: Installs the Rust toolchain with the plugin target and the mumcord-plugin CLI (cached per CLI commit).
+inputs:
+  branch:
+    description: Branch of Mumcord/mumcord the CLI is installed from.
+    # Switches to main when the plugin system is merged there.
+    default: epic/plugins
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Resolve CLI commit
+      id: cli
+      shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+      run: |
+        commit=$(git ls-remote https://github.com/Mumcord/mumcord.git "refs/heads/$BRANCH" | cut -f1)
+        test -n "$commit" || { echo "::error::branch $BRANCH not found in Mumcord/mumcord"; exit 1; }
+        echo "commit=$commit" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      id: cache
+      with:
+        path: ~/.cargo/bin/mumcord-plugin
+        key: mumcord-plugin-${{ runner.os }}-${{ steps.cli.outputs.commit }}
+    - name: Install mumcord-plugin
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        COMMIT: ${{ steps.cli.outputs.commit }}
+      run: cargo install --locked --quiet --git https://github.com/Mumcord/mumcord.git --rev "$COMMIT" mumcord-plugin

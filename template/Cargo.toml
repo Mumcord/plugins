@@ -1,0 +1,20 @@
+[package]
+name = "my-plugin"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord", branch = "epic/plugins" }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+# A plugin is its own workspace, also when it sits inside another project.
+[workspace]
