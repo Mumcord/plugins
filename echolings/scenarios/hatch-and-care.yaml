@@ -1,6 +1,5 @@
 # Hatching: choose a species, colour and name; then the care actions Pat, Treat and Nap.
 # Run: mumcord-plugin build . && mumcord-plugin test dist/echolings-1.0.0.mcplugin scenarios/*.yaml
-# Do Not Disturb → sleeping has no scenario event in the mock host yet; it is covered by the native tests in src/ui/tests.rs.
 name: Hatching and caring for an Echoling
 me: {session: 1, name: Alice}
 
