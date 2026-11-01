@@ -44,5 +44,18 @@
   "history.empty": "Gan aon chaitheamh go fóill. Clóscríobh /roll d20 sa chomhrá.",
   "history.list": "Caithimh an tseisiúin seo",
   "history.void": "neamhbhailí",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Is déanaí: {{row}}",
+  "panel.none": "Gan caitheamh fós",
+  "help.title": "Conas a chaitheann tú",
+  "help.notation": "Clóscríobh /roll agus caitheamh ar nós 2d6+3 (dhá dhísle le 6 aghaidh móide 3) nó 3d8-1 (trí dhísle le 8 n-aghaidh lúide 1).",
+  "help.advantage": "Caitheann d20 adv faoi dhó agus coinníonn sé an toradh is airde, coinníonn d20 dis an toradh is ísle.",
+  "help.drop": "Fágann 4d6 dl an dísle is ísle ar lár, 4d6 dh an ceann is airde.",
+  "help.limits": "Suas le 20 dísle le 2 go 1000 aghaidh, agus modhnóir amháin.",
+  "help.buttons": "Caitheann na cnaipí thuas díreach mar a dhéanann /roll.",
+  "help.marks": "Cad is brí leis na marcanna",
+  "help.verified": "Rinne imreoirí eile leis an bpluigin seiceáil ar an gcaitheamh, mar sin ní raibh aon duine in ann an toradh a roghnú.",
+  "help.alone": "Ní raibh aon duine eile in ann finné a thabhairt ar an gcaitheamh, mar sin níor seiceáladh é.",
+  "help.not_revealed": "Níor nocht an caitheoir an toradh riamh, mar sin ní chuirtear an caitheamh san áireamh.",
+  "help.history": "Taispeánann an liosta thíos caithimh na seisiúin seo ar an ngléas seo."
 }

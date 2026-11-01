@@ -43,5 +43,18 @@
   "history.empty": "Aún no hay tiradas. Escribe /roll d20 en el chat.",
   "history.list": "Tiradas de esta sesión",
   "history.void": "nula",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Última: {{row}}",
+  "panel.none": "Aún no hay tiradas",
+  "help.title": "Cómo tirar",
+  "help.notation": "Escribe /roll y una tirada como 2d6+3 (dos dados de 6 caras más 3) o 3d8-1 (tres dados de 8 caras menos 1).",
+  "help.advantage": "d20 adv tira dos veces y se queda con el resultado más alto, d20 dis con el más bajo.",
+  "help.drop": "4d6 dl descarta el dado más bajo, 4d6 dh el más alto.",
+  "help.limits": "Hasta 20 dados de 2 a 1000 caras y un modificador.",
+  "help.buttons": "Los botones de arriba tiran igual que /roll.",
+  "help.marks": "Qué significan las marcas",
+  "help.verified": "Otros jugadores con el plugin comprobaron la tirada, así que nadie pudo elegir el resultado.",
+  "help.alone": "Nadie más pudo presenciar la tirada, así que no se comprobó.",
+  "help.not_revealed": "Quien tiró nunca reveló el resultado, así que la tirada no cuenta.",
+  "help.history": "La lista de abajo muestra las tiradas de esta sesión en este dispositivo."
 }

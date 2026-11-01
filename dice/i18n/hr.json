@@ -43,5 +43,18 @@
   "history.empty": "Još nema bacanja. Upišite /roll d20 u chat.",
   "history.list": "Bacanja u ovoj sesiji",
   "history.void": "nevažeće",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Zadnje: {{row}}",
+  "panel.none": "Još nema bacanja",
+  "help.title": "Kako baciti",
+  "help.notation": "Upišite /roll i bacanje poput 2d6+3 (dvije kocke sa 6 strana plus 3) ili 3d8-1 (tri kocke s 8 strana minus 1).",
+  "help.advantage": "d20 adv baca dvaput i zadržava viši rezultat, d20 dis zadržava niži.",
+  "help.drop": "4d6 dl odbacuje najnižu kocku, 4d6 dh najvišu.",
+  "help.limits": "Do 20 kocaka s 2 do 1000 strana i jedan modifikator.",
+  "help.buttons": "Gumbi iznad bacaju točno kao /roll.",
+  "help.marks": "Što znače oznake",
+  "help.verified": "Drugi igrači s dodatkom provjerili su bacanje pa nitko nije mogao odabrati rezultat.",
+  "help.alone": "Nitko drugi nije mogao posvjedočiti bacanju pa nije provjereno.",
+  "help.not_revealed": "Bacač nikada nije otkrio rezultat pa se bacanje ne računa.",
+  "help.history": "Popis ispod prikazuje bacanja ove sesije na ovom uređaju."
 }

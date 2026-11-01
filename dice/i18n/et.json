@@ -43,5 +43,18 @@
   "history.empty": "Viskeid veel pole. Kirjuta chatti /roll d20.",
   "history.list": "Selle seansi viskeid",
   "history.void": "kehtetu",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Viimane: {{row}}",
+  "panel.none": "Veel pole veeretatud",
+  "help.title": "Kuidas veeretada",
+  "help.notation": "Kirjuta /roll ja veeretus, näiteks 2d6+3 (kaks 6-tahulist täringut pluss 3) või 3d8-1 (kolm 8-tahulist täringut miinus 1).",
+  "help.advantage": "d20 adv veeretab kaks korda ja jätab suurema tulemuse, d20 dis väiksema.",
+  "help.drop": "4d6 dl jätab madalaima täringu välja, 4d6 dh kõrgeima.",
+  "help.limits": "Kuni 20 täringut 2 kuni 1000 tahuga ja üks modifikaator.",
+  "help.buttons": "Ülaltoodud nupud veeretavad täpselt nagu /roll.",
+  "help.marks": "Mida märgid tähendavad",
+  "help.verified": "Teised pluginaga mängijad kontrollisid veeretust, nii et keegi ei saanud tulemust valida.",
+  "help.alone": "Keegi teine ei saanud veeretust tunnistada, seega seda ei kontrollitud.",
+  "help.not_revealed": "Veeretaja ei avaldanud tulemust kunagi, seega veeretus ei lähe arvesse.",
+  "help.history": "Allolev loend näitab selle seansi veeretusi sellel seadmel."
 }

@@ -16,7 +16,7 @@ use std::cell::RefCell;
 
 use mumcord_plugin_sdk::{
     Plugin, chat,
-    events::{ActionSource, ActionValue, Event},
+    events::{ActionSource, ActionValue, Event, PanelVisibility},
     log, peers, random, timers,
     types::{Error, StartInfo},
     ui::{self, El, Slot},
@@ -81,6 +81,12 @@ impl Host for Mumcord {
         }
     }
 
+    fn open_popover(&mut self) {
+        if let Err(e) = ui::open_panel_popover() {
+            log::debug(&format!("could not open the help popover: {e:?}"));
+        }
+    }
+
     fn warn(&mut self, message: &str) {
         log::warn(message);
     }
@@ -107,7 +113,11 @@ fn handle(app: &mut App, event: Event) {
     }
     match event {
         Event::UiAction(action) => {
-            if matches!(action.source, ActionSource::Command) && action.action == ROLL_COMMAND {
+            if matches!(action.source, ActionSource::Slot(Slot::Panel)) {
+                app.on_panel_action(host, &action.action);
+            } else if matches!(action.source, ActionSource::Command)
+                && action.action == ROLL_COMMAND
+            {
                 let args = match &action.value {
                     ActionValue::Text(text) => text.as_str(),
                     _ => "",
@@ -123,6 +133,9 @@ fn handle(app: &mut App, event: Event) {
             &message.payload,
             message.direct,
         ),
+        Event::PanelVisibilityChanged(v) => {
+            app.on_panel_visibility(host, matches!(v, PanelVisibility::Expanded));
+        }
         Event::Timer(id) => app.on_timer(host, id),
         Event::SettingsChanged(settings) => app.set_granted(host, &settings.granted),
         _ => {}

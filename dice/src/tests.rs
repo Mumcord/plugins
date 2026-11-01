@@ -370,6 +370,7 @@ struct MockHost {
     next_timer: u32,
     supersedes: Vec<(String, u32, u32)>,
     random_fails: bool,
+    popovers: u32,
 }
 
 impl MockHost {
@@ -448,6 +449,10 @@ impl Host for MockHost {
             Slot::Panel => self.panel = Some(tree),
             other => panic!("unexpected slot {other:?}"),
         }
+    }
+
+    fn open_popover(&mut self) {
+        self.popovers += 1;
     }
 
     fn warn(&mut self, _message: &str) {}
@@ -861,6 +866,7 @@ fn a_roll_that_is_never_revealed_is_void() {
     let (deadline, ms) = host.new_timers[1];
     assert_eq!(ms, app::REVEAL_TIMEOUT_MS + app::NOT_REVEALED_AFTER_MS);
     app.on_timer(&mut host, deadline);
+    app.on_panel_visibility(&mut host, true);
     assert!(has_text(host.card_with("roll-7-"), "Not revealed"));
     let panel = host.panel.as_ref().unwrap_or_else(|| panic!("no panel"));
     assert!(has_text(panel, "Mallory: d20 void"));
@@ -931,6 +937,7 @@ fn history_needs_the_optional_panel_permission() {
     app.on_command(&mut host, "d20");
     assert!(host.panel.is_none());
     app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_panel_visibility(&mut host, true);
     let panel = host.panel.as_ref().unwrap_or_else(|| panic!("no panel"));
     assert!(has_text(panel, "Unverified (rolled alone)"));
 }
@@ -1036,6 +1043,7 @@ fn a_language_change_draws_the_cards_and_history_again() {
     // A second roll while the first runs shows the "busy" error card.
     app.on_command(&mut host, "d6");
     crate::text::set_language("de");
+    app.on_panel_visibility(&mut host, true);
     app.on_language_changed(&mut host);
     let own = host.card_with("roll-me-");
     assert!(has_text(own, "Du würfelst d20"), "{:?}", texts(own));
@@ -1050,4 +1058,108 @@ fn a_language_change_draws_the_cards_and_history_again() {
     // The text line for other people stays English.
     assert!(host.chat.iter().all(|line| line.starts_with("🎲 rolled")));
     crate::text::set_language("en");
+}
+
+// ---------------------------------------------------------------- quick rolls and help
+
+fn buttons(el: &El) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    if let Component::Button(b) = &el.component {
+        out.push((b.action.clone(), b.label.clone()));
+    }
+    for child in &el.children {
+        out.extend(buttons(child));
+    }
+    out
+}
+
+fn panel_of(host: &MockHost) -> &El {
+    host.panel.as_ref().unwrap_or_else(|| panic!("no panel"))
+}
+
+#[test]
+fn the_inline_panel_has_quick_rolls_the_last_roll_and_a_help_button() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    let labels: Vec<String> = buttons(panel_of(&host)).into_iter().map(|b| b.1).collect();
+    assert_eq!(
+        labels,
+        [
+            "d4", "d6", "d8", "d10", "d12", "d20", "d100", "2d6", "d20 adv", "d20 dis", "?"
+        ]
+    );
+    assert!(has_text(panel_of(&host), "No roll yet"));
+    assert!(!has_text(panel_of(&host), "How to roll"));
+}
+
+#[test]
+fn a_quick_roll_button_rolls_like_the_command() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.on_panel_action(&mut host, "quick:d20 adv");
+    let Some(Message::Commit { notation, .. }) = host.sent.first() else {
+        panic!("no commit");
+    };
+    assert_eq!(notation, "d20 adv");
+    let card = host.card_with("roll-me-");
+    assert!(has_text(card, "Rolling"));
+}
+
+#[test]
+fn a_bad_quick_roll_action_does_nothing() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.on_panel_action(&mut host, "quick:nonsense");
+    app.on_panel_action(&mut host, "other");
+    assert!(host.sent.is_empty());
+    assert_eq!(host.popovers, 0);
+}
+
+#[test]
+fn the_last_roll_shows_in_the_inline_panel() {
+    let mut host = MockHost::seeded(1);
+    host.send_error = Some(Error::NoRecipients);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_panel_action(&mut host, "quick:d6");
+    let last = texts(panel_of(&host))
+        .into_iter()
+        .find(|t| t.starts_with("Last: You: d6 = "));
+    assert!(last.is_some());
+}
+
+#[test]
+fn the_help_button_opens_the_popover_and_the_popover_shows_help_and_history() {
+    let mut host = MockHost::seeded(1);
+    host.send_error = Some(Error::NoRecipients);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_command(&mut host, "d20");
+    app.on_panel_action(&mut host, "help");
+    assert_eq!(host.popovers, 1);
+    app.on_panel_visibility(&mut host, true);
+    let panel = panel_of(&host);
+    for text in [
+        "How to roll",
+        "Up to 20 dice with 2 to 1000 sides, and one modifier.",
+        "Verified",
+        "Unverified (rolled alone)",
+        "Not revealed",
+        "Roll history",
+    ] {
+        assert!(has_text(panel, text), "missing {text}");
+    }
+    assert!(buttons(panel).is_empty());
+    app.on_panel_visibility(&mut host, false);
+    assert!(!has_text(panel_of(&host), "How to roll"));
+}
+
+#[test]
+fn every_language_translates_the_panel_texts() {
+    let en: serde_json::Value =
+        serde_json::from_str(include_str!("../i18n/en.json")).expect("en.json");
+    for key in ["panel.last", "panel.none", "help.title", "help.history"] {
+        assert!(en.get(key).is_some(), "en lacks {key}");
+    }
 }

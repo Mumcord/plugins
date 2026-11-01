@@ -43,5 +43,18 @@
   "history.empty": "Aucun lancer pour l'instant. Tapez /roll d20 dans le chat.",
   "history.list": "Lancers de cette session",
   "history.void": "nul",
-  "history.row": "{{who}} : {{roll}} {{result}}"
+  "history.row": "{{who}} : {{roll}} {{result}}",
+  "panel.last": "Dernier : {{row}}",
+  "panel.none": "Aucun lancer pour l'instant",
+  "help.title": "Comment lancer",
+  "help.notation": "Tapez /roll et un lancer comme 2d6+3 (deux dés à 6 faces plus 3) ou 3d8-1 (trois dés à 8 faces moins 1).",
+  "help.advantage": "d20 adv lance deux fois et garde le meilleur résultat, d20 dis garde le plus faible.",
+  "help.drop": "4d6 dl écarte le dé le plus faible, 4d6 dh le plus fort.",
+  "help.limits": "Jusqu'à 20 dés de 2 à 1000 faces et un modificateur.",
+  "help.buttons": "Les boutons ci-dessus lancent exactement comme /roll.",
+  "help.marks": "Ce que signifient les marques",
+  "help.verified": "D'autres joueurs avec le plugin ont vérifié le lancer, donc personne n'a pu choisir le résultat.",
+  "help.alone": "Personne d'autre n'a pu témoigner du lancer, il n'a donc pas été vérifié.",
+  "help.not_revealed": "Le lanceur n'a jamais révélé le résultat, le lancer ne compte donc pas.",
+  "help.history": "La liste ci-dessous montre les lancers de cette session sur cet appareil."
 }

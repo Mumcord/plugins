@@ -43,5 +43,18 @@
   "history.empty": "Metimų dar nėra. Pokalbyje įrašyk /roll d20.",
   "history.list": "Šios sesijos metimai",
   "history.void": "negalioja",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Paskutinis: {{row}}",
+  "panel.none": "Dar nėra metimų",
+  "help.title": "Kaip mesti",
+  "help.notation": "Įveskite /roll ir metimą, pvz., 2d6+3 (du 6 sienų kauliukai plius 3) arba 3d8-1 (trys 8 sienų kauliukai minus 1).",
+  "help.advantage": "d20 adv meta du kartus ir palieka didesnį rezultatą, d20 dis palieka mažesnį.",
+  "help.drop": "4d6 dl atmeta mažiausią kauliuką, 4d6 dh didžiausią.",
+  "help.limits": "Iki 20 kauliukų su 2–1000 sienų ir vienas modifikatorius.",
+  "help.buttons": "Aukščiau esantys mygtukai meta lygiai taip pat kaip /roll.",
+  "help.marks": "Ką reiškia ženklai",
+  "help.verified": "Kiti žaidėjai su šiuo papildiniu patikrino metimą, todėl niekas negalėjo pasirinkti rezultato.",
+  "help.alone": "Niekas kitas negalėjo paliudyti metimo, todėl jis nebuvo patikrintas.",
+  "help.not_revealed": "Metęs žaidėjas niekada neatskleidė rezultato, todėl metimas neskaičiuojamas.",
+  "help.history": "Žemiau esančiame sąraše rodomi šios sesijos metimai šiame įrenginyje."
 }

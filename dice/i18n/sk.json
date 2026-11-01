@@ -43,5 +43,18 @@
   "history.empty": "Zatiaľ žiadne hody. Napíšte do chatu /roll d20.",
   "history.list": "Hody v tejto relácii",
   "history.void": "neplatný",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Naposledy: {{row}}",
+  "panel.none": "Zatiaľ žiadny hod",
+  "help.title": "Ako hádzať",
+  "help.notation": "Napíšte /roll a hod, napríklad 2d6+3 (dve šesťstenné kocky plus 3) alebo 3d8-1 (tri osemstenné kocky mínus 1).",
+  "help.advantage": "d20 adv hodí dvakrát a ponechá vyšší výsledok, d20 dis ponechá nižší.",
+  "help.drop": "4d6 dl vyradí najnižšiu kocku, 4d6 dh najvyššiu.",
+  "help.limits": "Najviac 20 kociek s 2 až 1000 stenami a jeden modifikátor.",
+  "help.buttons": "Tlačidlá vyššie hádžu presne ako /roll.",
+  "help.marks": "Čo znamenajú značky",
+  "help.verified": "Ostatní hráči s týmto pluginom hod overili, takže nikto nemohol výsledok vybrať.",
+  "help.alone": "Nikto iný hod nemohol dosvedčiť, preto nebol overený.",
+  "help.not_revealed": "Hráč výsledok nikdy neodhalil, takže hod sa nepočíta.",
+  "help.history": "Zoznam nižšie ukazuje hody z tejto relácie na tomto zariadení."
 }

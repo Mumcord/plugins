@@ -43,5 +43,18 @@
   "history.empty": "Ainda sem lançamentos. Escreva /roll d20 no chat.",
   "history.list": "Lançamentos desta sessão",
   "history.void": "nulo",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Último: {{row}}",
+  "panel.none": "Ainda sem lançamentos",
+  "help.title": "Como lançar",
+  "help.notation": "Escreva /roll e um lançamento como 2d6+3 (dois dados de 6 faces mais 3) ou 3d8-1 (três dados de 8 faces menos 1).",
+  "help.advantage": "d20 adv lança duas vezes e fica com o resultado mais alto, d20 dis com o mais baixo.",
+  "help.drop": "4d6 dl descarta o dado mais baixo, 4d6 dh o mais alto.",
+  "help.limits": "Até 20 dados com 2 a 1000 faces e um modificador.",
+  "help.buttons": "Os botões acima lançam exatamente como /roll.",
+  "help.marks": "O que as marcas significam",
+  "help.verified": "Outros jogadores com o plugin verificaram o lançamento, por isso ninguém pôde escolher o resultado.",
+  "help.alone": "Mais ninguém pôde testemunhar o lançamento, por isso não foi verificado.",
+  "help.not_revealed": "Quem lançou nunca revelou o resultado, por isso o lançamento não conta.",
+  "help.history": "A lista abaixo mostra os lançamentos desta sessão neste dispositivo."
 }

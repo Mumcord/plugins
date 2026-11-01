@@ -44,5 +44,18 @@
   "history.empty": "Metienu vēl nav. Ieraksti tērzēšanā /roll d20.",
   "history.list": "Šīs sesijas metieni",
   "history.void": "nederīgs",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Pēdējais: {{row}}",
+  "panel.none": "Vēl nav metienu",
+  "help.title": "Kā mest",
+  "help.notation": "Ierakstiet /roll un metienu, piemēram, 2d6+3 (divi 6 skaldņu kauliņi plus 3) vai 3d8-1 (trīs 8 skaldņu kauliņi mīnus 1).",
+  "help.advantage": "d20 adv met divreiz un patur augstāko rezultātu, d20 dis patur zemāko.",
+  "help.drop": "4d6 dl izmet zemāko kauliņu, 4d6 dh augstāko.",
+  "help.limits": "Līdz 20 kauliņiem ar 2 līdz 1000 skaldnēm un viens modifikators.",
+  "help.buttons": "Pogas iepriekš met tieši tāpat kā /roll.",
+  "help.marks": "Ko nozīmē atzīmes",
+  "help.verified": "Citi spēlētāji ar šo spraudni pārbaudīja metienu, tāpēc neviens nevarēja izvēlēties rezultātu.",
+  "help.alone": "Neviens cits nevarēja apliecināt metienu, tāpēc tas netika pārbaudīts.",
+  "help.not_revealed": "Metējs nekad neatklāja rezultātu, tāpēc metiens netiek ieskaitīts.",
+  "help.history": "Zemāk redzamajā sarakstā ir šīs sesijas metieni šajā ierīcē."
 }

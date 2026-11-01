@@ -43,5 +43,18 @@
   "history.empty": "Brak rzutów. Wpisz /roll d20 na czacie.",
   "history.list": "Rzuty z tej sesji",
   "history.void": "nieważny",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Ostatni: {{row}}",
+  "panel.none": "Jeszcze nie rzucano",
+  "help.title": "Jak rzucać",
+  "help.notation": "Wpisz /roll i rzut, np. 2d6+3 (dwie kości 6-ścienne plus 3) lub 3d8-1 (trzy kości 8-ścienne minus 1).",
+  "help.advantage": "d20 adv rzuca dwa razy i zachowuje wyższy wynik, d20 dis zachowuje niższy.",
+  "help.drop": "4d6 dl odrzuca najniższą kość, 4d6 dh najwyższą.",
+  "help.limits": "Do 20 kości o 2–1000 ścianach i jeden modyfikator.",
+  "help.buttons": "Przyciski powyżej rzucają dokładnie tak jak /roll.",
+  "help.marks": "Co oznaczają znaczniki",
+  "help.verified": "Inni gracze z wtyczką sprawdzili rzut, więc nikt nie mógł wybrać wyniku.",
+  "help.alone": "Nikt inny nie mógł poświadczyć rzutu, więc nie został sprawdzony.",
+  "help.not_revealed": "Rzucający nigdy nie ujawnił wyniku, więc rzut się nie liczy.",
+  "help.history": "Poniższa lista pokazuje rzuty z tej sesji na tym urządzeniu."
 }

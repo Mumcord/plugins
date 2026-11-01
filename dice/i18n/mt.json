@@ -44,5 +44,18 @@
   "history.empty": "Għad m'hemm l-ebda tefgħa. Ikteb /roll d20 fiċ-chat.",
   "history.list": "Tefgħat ta' din is-sessjoni",
   "history.void": "nulla",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "L-aħħar: {{row}}",
+  "panel.none": "Għad m'hemmx tlugħ",
+  "help.title": "Kif tarmi",
+  "help.notation": "Ikteb /roll u tlugħ bħal 2d6+3 (żewġ dadi b'6 uċuħ flimkien ma' 3) jew 3d8-1 (tliet dadi b'8 uċuħ nieqes 1).",
+  "help.advantage": "d20 adv jarmi darbtejn u jżomm l-ogħla riżultat, d20 dis iżomm l-aktar baxx.",
+  "help.drop": "4d6 dl jiskarta l-iżgħar die, 4d6 dh l-akbar wieħed.",
+  "help.limits": "Sa 20 die b'2 sa 1000 wiċċ u modifikatur wieħed.",
+  "help.buttons": "L-buttuni ta' hawn fuq jarmu eżattament bħal /roll.",
+  "help.marks": "X'jfissru s-sinjali",
+  "help.verified": "Plejers oħra bil-plagin iċċekkjaw it-tlugħ, għalhekk ħadd ma seta' jagħżel ir-riżultat.",
+  "help.alone": "Ħadd ieħor ma seta' jixhed it-tlugħ, għalhekk ma ġiex iċċekkjat.",
+  "help.not_revealed": "Min armah qatt ma żvela r-riżultat, għalhekk it-tlugħ ma jgħoddx.",
+  "help.history": "Il-lista hawn taħt turi t-tluġħ ta' din is-sessjoni fuq dan l-apparat."
 }

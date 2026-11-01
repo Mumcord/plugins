@@ -78,6 +78,8 @@ pub trait Host {
     fn supersede(&mut self, card: &str, sender: u32, hash: u32);
     fn start_timer(&mut self, ms: u32) -> Option<u32>;
     fn show(&mut self, slot: Slot, tree: El);
+    /// Opens the large panel popover; needs a fresh click, which the caller just received.
+    fn open_popover(&mut self);
     fn warn(&mut self, message: &str);
 }
 
@@ -121,6 +123,7 @@ pub struct App {
     history: Vec<Entry>,
     shown: Vec<Shown>,
     panel: bool,
+    expanded: bool,
     error_cards: u32,
 }
 
@@ -499,7 +502,31 @@ impl App {
     }
 
     fn show_history(&self, host: &mut impl Host) {
-        host.show(Slot::Panel, view::history(&self.history));
+        let tree = if self.expanded {
+            view::panel_expanded(&self.history)
+        } else {
+            view::panel_inline(&self.history)
+        };
+        host.show(Slot::Panel, tree);
+    }
+
+    /// The panel moved between the strip and the large popover; each has its own layout.
+    pub fn on_panel_visibility(&mut self, host: &mut impl Host, expanded: bool) {
+        if self.expanded != expanded {
+            self.expanded = expanded;
+            if self.panel {
+                self.show_history(host);
+            }
+        }
+    }
+
+    /// A click in the panel: a quick roll behaves exactly like the typed `/roll`.
+    pub fn on_panel_action(&mut self, host: &mut impl Host, action: &str) {
+        if action == view::HELP_ACTION {
+            host.open_popover();
+        } else if let Some(notation) = action.strip_prefix(view::QUICK_PREFIX) {
+            self.on_command(host, notation);
+        }
     }
 
     fn error(&mut self, host: &mut impl Host, problem: Problem) {

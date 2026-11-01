@@ -43,5 +43,18 @@
   "history.empty": "Nog geen worpen. Typ /roll d20 in de chat.",
   "history.list": "Worpen van deze sessie",
   "history.void": "ongeldig",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Laatst: {{row}}",
+  "panel.none": "Nog geen worp",
+  "help.title": "Zo gooi je",
+  "help.notation": "Typ /roll en een worp zoals 2d6+3 (twee dobbelstenen met 6 zijden plus 3) of 3d8-1 (drie dobbelstenen met 8 zijden min 1).",
+  "help.advantage": "d20 adv gooit twee keer en houdt de hoogste uitkomst, d20 dis houdt de laagste.",
+  "help.drop": "4d6 dl laat de laagste dobbelsteen vallen, 4d6 dh de hoogste.",
+  "help.limits": "Maximaal 20 dobbelstenen met 2 tot 1000 zijden en één modificator.",
+  "help.buttons": "De knoppen hierboven gooien precies zoals /roll.",
+  "help.marks": "Wat de labels betekenen",
+  "help.verified": "Andere spelers met de plug-in hebben de worp gecontroleerd, dus niemand kon de uitkomst kiezen.",
+  "help.alone": "Niemand anders kon de worp bevestigen, dus hij is niet gecontroleerd.",
+  "help.not_revealed": "De werper heeft de uitkomst nooit onthuld, dus de worp telt niet.",
+  "help.history": "De lijst hieronder toont de worpen van deze sessie op dit apparaat."
 }

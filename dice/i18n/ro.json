@@ -43,5 +43,18 @@
   "history.empty": "Nicio aruncare încă. Scrie /roll d20 în chat.",
   "history.list": "Aruncările din această sesiune",
   "history.void": "nulă",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Ultima: {{row}}",
+  "panel.none": "Încă nicio aruncare",
+  "help.title": "Cum arunci",
+  "help.notation": "Scrie /roll și o aruncare precum 2d6+3 (două zaruri cu 6 fețe plus 3) sau 3d8-1 (trei zaruri cu 8 fețe minus 1).",
+  "help.advantage": "d20 adv aruncă de două ori și păstrează rezultatul mai mare, d20 dis îl păstrează pe cel mai mic.",
+  "help.drop": "4d6 dl elimină zarul cel mai mic, 4d6 dh pe cel mai mare.",
+  "help.limits": "Până la 20 de zaruri cu 2 până la 1000 de fețe și un modificator.",
+  "help.buttons": "Butoanele de mai sus aruncă exact ca /roll.",
+  "help.marks": "Ce înseamnă marcajele",
+  "help.verified": "Alți jucători cu pluginul au verificat aruncarea, deci nimeni nu a putut alege rezultatul.",
+  "help.alone": "Nimeni altcineva nu a putut martoriza aruncarea, deci nu a fost verificată.",
+  "help.not_revealed": "Cel care a aruncat nu a dezvăluit niciodată rezultatul, deci aruncarea nu contează.",
+  "help.history": "Lista de mai jos arată aruncările din această sesiune pe acest dispozitiv."
 }

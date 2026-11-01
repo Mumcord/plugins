@@ -43,5 +43,18 @@
   "history.empty": "No rolls yet. Type /roll d20 in the chat.",
   "history.list": "Rolls of this session",
   "history.void": "void",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Last: {{row}}",
+  "panel.none": "No roll yet",
+  "help.title": "How to roll",
+  "help.notation": "Type /roll and a roll like 2d6+3 (two 6-sided dice plus 3) or 3d8-1 (three 8-sided dice minus 1).",
+  "help.advantage": "d20 adv rolls twice and keeps the higher result, d20 dis keeps the lower.",
+  "help.drop": "4d6 dl drops the lowest die, 4d6 dh drops the highest.",
+  "help.limits": "Up to 20 dice with 2 to 1000 sides, and one modifier.",
+  "help.buttons": "The buttons above roll exactly like /roll.",
+  "help.marks": "What the marks mean",
+  "help.verified": "Other players with Dice roller checked the roll, so nobody could pick the result.",
+  "help.alone": "Nobody else could witness the roll, so it was not checked.",
+  "help.not_revealed": "The roller never revealed the result, so the roll does not count.",
+  "help.history": "The list below shows the rolls of this session on this device."
 }

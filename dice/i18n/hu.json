@@ -43,5 +43,18 @@
   "history.empty": "Még nincs dobás. Írd be a csevegésbe: /roll d20",
   "history.list": "Ennek a munkamenetnek a dobásai",
   "history.void": "érvénytelen",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Utolsó: {{row}}",
+  "panel.none": "Még nincs dobás",
+  "help.title": "Hogyan dobj",
+  "help.notation": "Írd be: /roll, majd egy dobást, például 2d6+3 (két 6 oldalú kocka plusz 3) vagy 3d8-1 (három 8 oldalú kocka mínusz 1).",
+  "help.advantage": "A d20 adv kétszer dob, és a magasabb eredményt tartja meg, a d20 dis az alacsonyabbat.",
+  "help.drop": "A 4d6 dl eldobja a legalacsonyabb kockát, a 4d6 dh a legmagasabbat.",
+  "help.limits": "Legfeljebb 20 kocka 2–1000 oldallal és egy módosító.",
+  "help.buttons": "A fenti gombok pontosan úgy dobnak, mint a /roll.",
+  "help.marks": "Mit jelentenek a jelzések",
+  "help.verified": "A bővítménnyel rendelkező többi játékos ellenőrizte a dobást, így senki sem választhatta meg az eredményt.",
+  "help.alone": "Senki más nem tudta tanúsítani a dobást, ezért nem ellenőrizték.",
+  "help.not_revealed": "A dobó sosem fedte fel az eredményt, ezért a dobás nem számít.",
+  "help.history": "Az alábbi lista az ezen az eszközön, ebben a munkamenetben történt dobásokat mutatja."
 }

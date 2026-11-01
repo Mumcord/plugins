@@ -1,7 +1,7 @@
 //! The dice card, the error card and the history panel. Pure functions, so tests can inspect
 //! the trees without a host.
 
-use mumcord_plugin_sdk::ui::{self, El, Sprite};
+use mumcord_plugin_sdk::ui::{self, ButtonKind, El, Sprite};
 
 use crate::fair::Outcome;
 use crate::notation::{Mode, Notation, NotationError};
@@ -262,32 +262,102 @@ pub struct Entry {
     pub status: Status,
 }
 
-/// The optional history popover (`ui.panel`): rolls of this session on this device, newest
-/// first. Void rolls are listed but never show a total.
-pub fn history(entries: &[Entry]) -> El {
+/// "Mallory: d20 = 14" or "You: d20 void"; void rolls never show a total.
+fn entry_text(entry: &Entry) -> String {
+    let result = match (entry.total, &entry.status) {
+        (Some(total), Status::Verified { .. } | Status::Alone) => format!("= {total}"),
+        _ => t("history.void"),
+    };
+    t_with(
+        "history.row",
+        &[
+            ("who", &entry.who.subject()),
+            ("roll", &describe(&entry.notation)),
+            ("result", &result),
+        ],
+    )
+}
+
+/// The history list: rolls of this session on this device, newest first.
+fn history_list(entries: &[Entry]) -> El {
     let mut root = ui::column().child(ui::heading(&t("history.title")));
     if entries.is_empty() {
         return root.child(ui::caption(&t("history.empty")));
     }
     let mut list = ui::list(&t("history.list"));
     for entry in entries.iter().rev().take(HISTORY_ROWS) {
-        let result = match (entry.total, &entry.status) {
-            (Some(total), Status::Verified { .. } | Status::Alone) => format!("= {total}"),
-            _ => t("history.void"),
-        };
         list = list.child(
             ui::row()
-                .child(ui::text(&t_with(
-                    "history.row",
-                    &[
-                        ("who", &entry.who.subject()),
-                        ("roll", &describe(&entry.notation)),
-                        ("result", &result),
-                    ],
-                )))
+                .child(ui::text(&entry_text(entry)))
                 .child(ui::chip(&entry.status.label()).color(entry.status.color())),
         );
     }
     root = root.child(list);
     root
+}
+
+/// Action id of the "?" button.
+pub const HELP_ACTION: &str = "help";
+/// Prefix of the quick-roll buttons' action ids; the rest is the notation to roll.
+pub const QUICK_PREFIX: &str = "quick:";
+/// The quick-roll buttons, in rows of four so the inline panel (260 x 160, no scrolling) fits.
+const QUICK_ROWS: [&[&str]; 3] = [
+    &["d4", "d6", "d8", "d10"],
+    &["d12", "d20", "d100", "2d6"],
+    &["d20 adv", "d20 dis"],
+];
+
+fn quick_rolls() -> El {
+    let mut root = ui::column();
+    for row in QUICK_ROWS {
+        let mut buttons = ui::row();
+        for notation in row {
+            buttons = buttons.child(
+                ui::button(&format!("{QUICK_PREFIX}{notation}"), notation)
+                    .kind(ButtonKind::Secondary),
+            );
+        }
+        root = root.child(buttons);
+    }
+    root
+}
+
+/// The newest roll in one small line, or a hint when nothing was rolled yet.
+fn last_roll(entries: &[Entry]) -> El {
+    ui::caption(&match entries.last() {
+        Some(entry) => t_with("panel.last", &[("row", &entry_text(entry))]),
+        None => t("panel.none"),
+    })
+}
+
+/// The panel shown inline in the Plugins strip: quick rolls, the last roll and the help button.
+pub fn panel_inline(entries: &[Entry]) -> El {
+    quick_rolls().child(
+        ui::row()
+            .child(last_roll(entries))
+            .child(ui::button(HELP_ACTION, "?").kind(ButtonKind::Secondary)),
+    )
+}
+
+/// The panel in the large popover: the help and the history.
+pub fn panel_expanded(entries: &[Entry]) -> El {
+    let mut root = ui::column()
+        .child(ui::heading(&t("help.title")))
+        .child(ui::caption(&t("help.notation")))
+        .child(ui::caption(&t("help.advantage")))
+        .child(ui::caption(&t("help.drop")))
+        .child(ui::caption(&t("help.limits")))
+        .child(ui::caption(&t("help.buttons")))
+        .child(ui::heading(&t("help.marks")));
+    for (status, key) in [
+        (Status::Verified { witnesses: 2 }, "help.verified"),
+        (Status::Alone, "help.alone"),
+        (Status::NotRevealed, "help.not_revealed"),
+    ] {
+        root = root
+            .child(ui::chip(&status.label()).color(status.color()))
+            .child(ui::caption(&t(key)));
+    }
+    root.child(ui::caption(&t("help.history")))
+        .child(history_list(entries))
 }

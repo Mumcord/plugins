@@ -43,5 +43,18 @@
   "history.empty": "Še ni metov. V klepet vpišite /roll d20.",
   "history.list": "Meti te seje",
   "history.void": "neveljaven",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Zadnji: {{row}}",
+  "panel.none": "Še ni metov",
+  "help.title": "Kako metati",
+  "help.notation": "Vnesite /roll in met, na primer 2d6+3 (dve 6-strani kocki plus 3) ali 3d8-1 (tri 8-strane kocke minus 1).",
+  "help.advantage": "d20 adv vrže dvakrat in obdrži višji rezultat, d20 dis obdrži nižjega.",
+  "help.drop": "4d6 dl zavrže najnižjo kocko, 4d6 dh najvišjo.",
+  "help.limits": "Do 20 kock z 2 do 1000 stranmi in en modifikator.",
+  "help.buttons": "Gumbi zgoraj mečejo povsem enako kot /roll.",
+  "help.marks": "Kaj pomenijo oznake",
+  "help.verified": "Drugi igralci z vtičnikom so met preverili, zato nihče ni mogel izbrati rezultata.",
+  "help.alone": "Nihče drug ni mogel pričati o metu, zato ni bil preverjen.",
+  "help.not_revealed": "Metalec nikoli ni razkril rezultata, zato met ne šteje.",
+  "help.history": "Spodnji seznam prikazuje mete te seje na tej napravi."
 }

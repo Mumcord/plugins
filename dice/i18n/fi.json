@@ -43,5 +43,18 @@
   "history.empty": "Ei vielä heittoja. Kirjoita /roll d20 chattiin.",
   "history.list": "Tämän istunnon heitot",
   "history.void": "mitätön",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Viimeisin: {{row}}",
+  "panel.none": "Ei vielä heittoja",
+  "help.title": "Näin heität",
+  "help.notation": "Kirjoita /roll ja heitto, esimerkiksi 2d6+3 (kaksi 6-sivuista noppaa plus 3) tai 3d8-1 (kolme 8-sivuista noppaa miinus 1).",
+  "help.advantage": "d20 adv heittää kahdesti ja pitää korkeamman tuloksen, d20 dis pitää matalamman.",
+  "help.drop": "4d6 dl pudottaa pienimmän nopan, 4d6 dh suurimman.",
+  "help.limits": "Enintään 20 noppaa, joissa on 2–1000 sivua, ja yksi muunnin.",
+  "help.buttons": "Yllä olevat painikkeet heittävät täsmälleen kuin /roll.",
+  "help.marks": "Mitä merkinnät tarkoittavat",
+  "help.verified": "Muut lisäosaa käyttävät pelaajat tarkistivat heiton, joten kukaan ei voinut valita tulosta.",
+  "help.alone": "Kukaan muu ei voinut todistaa heittoa, joten sitä ei tarkistettu.",
+  "help.not_revealed": "Heittäjä ei koskaan paljastanut tulosta, joten heitto ei lasketa.",
+  "help.history": "Alla oleva luettelo näyttää tämän istunnon heitot tällä laitteella."
 }

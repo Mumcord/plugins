@@ -43,5 +43,18 @@
   "history.empty": "Noch keine Würfe. Tippe /roll d20 in den Chat.",
   "history.list": "Würfe dieser Sitzung",
   "history.void": "ungültig",
-  "history.row": "{{who}}: {{roll}} {{result}}"
+  "history.row": "{{who}}: {{roll}} {{result}}",
+  "panel.last": "Zuletzt: {{row}}",
+  "panel.none": "Noch kein Wurf",
+  "help.title": "So würfelst du",
+  "help.notation": "Tippe /roll und einen Wurf wie 2d6+3 (zwei 6-seitige Würfel plus 3) oder 3d8-1 (drei 8-seitige Würfel minus 1).",
+  "help.advantage": "d20 adv würfelt zweimal und behält das höhere Ergebnis, d20 dis das niedrigere.",
+  "help.drop": "4d6 dl lässt den niedrigsten Würfel weg, 4d6 dh den höchsten.",
+  "help.limits": "Bis zu 20 Würfel mit 2 bis 1000 Seiten und ein Modifikator.",
+  "help.buttons": "Die Knöpfe oben würfeln genau wie /roll.",
+  "help.marks": "Was die Markierungen bedeuten",
+  "help.verified": "Andere Spieler mit dem Würfel-Plugin haben den Wurf geprüft, also konnte niemand das Ergebnis wählen.",
+  "help.alone": "Niemand sonst konnte den Wurf bezeugen, er wurde also nicht geprüft.",
+  "help.not_revealed": "Der Würfelnde hat das Ergebnis nie aufgedeckt, der Wurf zählt also nicht.",
+  "help.history": "Die Liste unten zeigt die Würfe dieser Sitzung auf diesem Gerät."
 }
