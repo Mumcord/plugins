@@ -1,0 +1,28 @@
+# A replayed "!poll N" was counted when it was live: it is hidden again but never counted twice.
+name: A replayed chat vote is hidden and not counted
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  - event: {ui-action: {action: new-poll}}
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {message: {to: channel, kind: 1}}
+
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "2", message: 20, replay: true}}
+  - expect: {hidden: {message: 20}}
+  - expect: nothing
+
+  # A replayed vote for no known poll (no option 9) stays as it is.
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "9", message: 21, replay: true}}
+  - expect: nothing
+
+  # Only the live vote counts: had the replay counted, this would be two votes.
+  - event: {chat-trigger: {sender: 2, trigger: "!poll", args: "1", message: 22}}
+  - expect: {hidden: {message: 22}}
+  - expect: {tree: {slot: panel, text: "Your poll · 1 vote"}}
