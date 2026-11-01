@@ -49,6 +49,17 @@ cargo build --release --target wasm32-unknown-unknown
 
 `mumcord-plugin build` turns `mumbot_music.wasm` into the plugin component.
 
+## Scenario tests
+
+`scenarios/*.yaml` run the built package in the `mumcord-plugin` mock host:
+
+```
+mumcord-plugin build
+mumcord-plugin test dist/mumbot-music-1.0.0.mcplugin scenarios/*.yaml
+```
+
+They cover the "Configure bot" menu entry, the empty settings list, the setup form, a bot leaving and returning, a user without certificate, and the refusal without `net.http`. The mock host cannot answer HTTP requests yet, so the connection test, polling and player controls are covered by the native tests only.
+
 ## Licence
 
 AGPL-3.0-or-later, see [LICENSE](LICENSE).

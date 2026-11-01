@@ -1,0 +1,14 @@
+# Without net.http the connection test cannot run; the form shows a failure instead of hanging.
+name: Missing net.http is refused
+grant: [ui.user-menu, ui.dialog, events.presence, events.self, secrets]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Mumbot}
+
+steps:
+  - event: {user-menu-requested: 2}
+  - expect: {tree: {slot: dialog, text: "Set up this bot"}}
+  - event: {ui-action: {slot: dialog, action: address, value: "http://192.168.1.5:8080"}}
+  - event: {ui-action: {slot: dialog, action: key, value: "secret-key"}}
+  - event: {ui-action: {slot: dialog, action: test}}
+  - expect: {tree: {slot: dialog, text: "Mumcord refused the request"}}

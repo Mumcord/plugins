@@ -1,0 +1,10 @@
+# Right-clicking a bot that is not configured yet opens the dialog with the setup form.
+name: Configure bot opens the setup form
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Mumbot}
+
+steps:
+  - event: {user-menu-requested: 2}
+  - expect: {dialog: {title: Configure bot}}
+  - expect: {tree: {slot: dialog, text: "Set up this bot"}}

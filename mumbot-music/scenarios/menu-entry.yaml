@@ -1,0 +1,10 @@
+# The plugin adds "Configure bot" to the user menu as soon as it starts, and shows the
+# empty settings list.
+name: Menu entry and empty settings list
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Mumbot}
+
+steps:
+  - expect: {menu-entry: {label: Configure bot}}
+  - expect: {tree: {slot: settings, text: "No bots yet"}}
