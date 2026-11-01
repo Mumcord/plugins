@@ -12,7 +12,7 @@ mod tests;
 use std::cell::RefCell;
 
 use mumcord_plugin_sdk::{
-    Plugin, chat,
+    Plugin, chat, chat_card,
     events::{ActionSource, ActionValue, Event, PanelVisibility},
     log, notify, peers, timers,
     types::{Error, StartInfo},
@@ -53,6 +53,22 @@ impl Host for Mumcord {
     fn supersede(&mut self, card: &str, sender: u32, hash: u32) {
         if let Err(e) = chat::supersede(card, sender, hash) {
             log::debug(&format!("could not supersede the text line: {e:?}"));
+        }
+    }
+
+    fn is_replay(&mut self) -> bool {
+        chat_card::is_replay()
+    }
+
+    fn replace_message(&mut self, card: &str) {
+        if let Err(e) = chat_card::replace_message(card) {
+            log::debug(&format!("could not replace the chat message: {e:?}"));
+        }
+    }
+
+    fn hide_message(&mut self) {
+        if let Err(e) = chat_card::hide_message() {
+            log::debug(&format!("could not hide the chat message: {e:?}"));
         }
     }
 
@@ -150,6 +166,9 @@ fn handle(app: &mut App, event: Event) {
         }
         Event::ChatTrigger(trigger) if trigger.trigger == "!poll" => {
             app.on_chat_trigger(host, &trigger.sender, &trigger.args);
+        }
+        Event::ChatMatch(line) if line.pattern_index == chat_card::OWN_LINE => {
+            app.on_own_line(host, &line.text);
         }
         _ => {}
     }

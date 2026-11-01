@@ -34,6 +34,12 @@ struct Fake {
     popover: Option<bool>,
     /// The host refuses to open the popover (no fresh gesture).
     popover_refused: bool,
+    /// The current event is a replay from chat history.
+    replay: bool,
+    /// Cards put in place of the current message, in order.
+    replaced: Vec<String>,
+    /// How many current messages were hidden.
+    hidden: usize,
 }
 
 impl Host for Fake {
@@ -67,6 +73,18 @@ impl Host for Fake {
 
     fn supersede(&mut self, card: &str, sender: u32, hash: u32) {
         self.superseded.push((card.to_owned(), sender, hash));
+    }
+
+    fn is_replay(&mut self) -> bool {
+        self.replay
+    }
+
+    fn replace_message(&mut self, card: &str) {
+        self.replaced.push(card.to_owned());
+    }
+
+    fn hide_message(&mut self) {
+        self.hidden += 1;
     }
 
     fn notify(&mut self, title: &str, body: &str) {
@@ -1036,4 +1054,113 @@ fn my_vote_is_marked_on_the_card() {
         card.iter()
             .any(|t| t.starts_with("[vote-1]") || t.starts_with("✓ Pasta"))
     );
+}
+
+#[test]
+fn the_creators_own_lines_give_way_to_the_card() {
+    let (mut app, mut host) = creator();
+    // Without `events.presence` the own session is unknown: nothing to supersede.
+    assert!(host.superseded.is_empty());
+    app.on_action(&mut host, None, "close", None);
+    assert!(host.superseded.is_empty());
+
+    let mut app = App::default();
+    let mut host = Fake {
+        now: 1000,
+        session: Some(9),
+        ..Fake::default()
+    };
+    app.on_action(&mut host, None, "question", text("Pizza or pasta?"));
+    app.on_action(&mut host, None, "option-0", text("Pizza"));
+    app.on_action(&mut host, None, "option-1", text("Pasta"));
+    app.on_action(&mut host, None, "create", None);
+    app.on_action(&mut host, None, "close", None);
+    let card = own_card_id(1000);
+    assert_eq!(
+        host.superseded,
+        vec![
+            (card.clone(), 9, host.chat[0].len() as u32 + 1000),
+            (card, 9, host.chat[1].len() as u32 + 1000),
+        ]
+    );
+}
+
+#[test]
+fn counted_chat_votes_are_hidden() {
+    let (mut app, mut host) = creator();
+    let ben = peer(2, "Ben", Some("kb"));
+    trigger(&mut app, &mut host, &ben, "1");
+    assert_eq!(host.hidden, 1);
+    // Not a vote for this poll: the line stays.
+    trigger(&mut app, &mut host, &ben, "3");
+    trigger(&mut app, &mut host, &ben, "pizza");
+    assert_eq!(host.hidden, 1);
+}
+
+#[test]
+fn voters_hide_chat_votes_for_a_known_poll_without_counting() {
+    let (mut app, mut host) = voter();
+    trigger(&mut app, &mut host, &peer(2, "Ben", None), "2");
+    assert_eq!(host.hidden, 1);
+    assert!(host.sent.is_empty());
+
+    // Without any poll the line stays.
+    let mut app = App::default();
+    let mut host = Fake::default();
+    trigger(&mut app, &mut host, &peer(2, "Ben", None), "2");
+    assert_eq!(host.hidden, 0);
+}
+
+#[test]
+fn replayed_chat_votes_are_hidden_but_not_counted() {
+    let (mut app, mut host) = creator();
+    host.replay = true;
+    trigger(&mut app, &mut host, &peer(2, "Ben", Some("kb")), "1");
+    assert_eq!(host.hidden, 1);
+    assert!(host.timers.iter().all(|&(_, ms)| ms != TALLY_DELAY_MS));
+    assert!(host.texts("panel").iter().any(|t| t.contains("0 votes")));
+}
+
+#[test]
+fn replayed_own_lines_of_a_known_poll_give_way_to_its_card() {
+    let (mut app, mut host) = creator();
+    app.on_action(&mut host, None, "close", None);
+    let create_line = format!("[Poll] {}", host.chat[0]);
+    let close_line = format!("[Poll] {}", host.chat[1]);
+    // Live own lines are left to supersede.
+    app.on_own_line(&mut host, &create_line);
+    assert!(host.replaced.is_empty());
+
+    host.replay = true;
+    app.on_own_line(&mut host, &create_line);
+    assert_eq!(host.replaced, vec![own_card_id(1000)]);
+    app.on_own_line(&mut host, &close_line);
+    assert_eq!(host.hidden, 1);
+    // A line of a poll this client does not know stays as it is.
+    app.on_own_line(&mut host, "[Poll] 📊 Tea?");
+    app.on_own_line(&mut host, "no prefix");
+    assert_eq!(host.replaced.len(), 1);
+    assert_eq!(host.hidden, 1);
+}
+
+#[test]
+fn replayed_lines_of_another_creators_poll_give_way_to_its_card() {
+    let (mut app, mut host) = voter();
+    host.replay = true;
+    // The fake hash is the text length plus 1000; the voter's poll has line hash 77.
+    app.on_own_line(&mut host, "[Poll] x");
+    assert!(host.replaced.is_empty());
+    let mut app = App::default();
+    let mut host = Fake::default();
+    let line = "📊 Pizza or pasta? · 1) Pizza · 2) Pasta";
+    app.on_peer_message(
+        &mut host,
+        &peer(1, "Anna", Some("ka")),
+        KIND_CREATE,
+        &create_payload(1000, line.len() as u32 + 1000),
+        false,
+    );
+    host.replay = true;
+    app.on_own_line(&mut host, &format!("[Poll] {line}"));
+    assert_eq!(host.replaced, vec![other_card_id(1, 1000)]);
 }

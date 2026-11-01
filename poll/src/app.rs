@@ -46,6 +46,12 @@ pub trait Host {
     fn chat_send(&mut self, text: &str) -> Result<(), Error>;
     fn line_hash(&mut self, text: &str) -> u32;
     fn supersede(&mut self, card: &str, sender: u32, hash: u32);
+    /// The event being handled was replayed from stored chat history: render only.
+    fn is_replay(&mut self) -> bool;
+    /// Puts chat card `card` in place of the message behind the current event.
+    fn replace_message(&mut self, card: &str);
+    /// Hides the message behind the current event behind "Hidden by Poll".
+    fn hide_message(&mut self);
     fn notify(&mut self, title: &str, body: &str);
     /// A one-shot timer; `None` if the host refused it.
     fn start_timer(&mut self, ms: u32) -> Option<u32>;
@@ -74,6 +80,10 @@ pub struct Poll {
     pub my_vote: Option<usize>,
     pub voters: Vec<VoterEntry>,
     pub creator: String,
+    /// `chat.line-hash` of the creator's text line about the new poll (0 = none).
+    pub line_hash: u32,
+    /// `chat.line-hash` of the creator's closing text line (0 = none).
+    pub close_hash: u32,
 }
 
 impl Poll {
@@ -89,6 +99,8 @@ impl Poll {
             my_vote: None,
             voters: Vec::new(),
             creator,
+            line_hash: 0,
+            close_hash: 0,
         }
     }
 
@@ -437,8 +449,10 @@ impl App {
         let creator = host
             .my_name()
             .unwrap_or_else(|| self.strings.0.t("creator_fallback"));
+        let mut poll = Poll::new(id, question, options, creator);
+        poll.line_hash = line_hash;
         self.own = Some(Own {
-            poll: Poll::new(id, question, options, creator),
+            poll,
             ballots: Vec::new(),
             tally_due: false,
         });
@@ -450,6 +464,17 @@ impl App {
             self.expanded = false;
         }
         self.render_own(host);
+        self.supersede_own(host, id, line_hash);
+    }
+
+    /// The card also takes the place of the creator's own copy of a text line.
+    fn supersede_own(&self, host: &mut impl Host, poll_id: u32, hash: u32) {
+        if hash == 0 {
+            return;
+        }
+        if let Some(session) = host.my_session() {
+            host.supersede(&own_card_id(poll_id), session, hash);
+        }
     }
 
     fn close(&mut self, host: &mut impl Host) {
@@ -466,6 +491,7 @@ impl App {
                 0
             }
         };
+        own.poll.close_hash = close_hash;
         let tally = own.tally(close_hash).encode();
         let parts: Vec<Vec<u8>> = own.voter_parts().iter().map(Voters::encode).collect();
         let poll_id = own.poll.id;
@@ -479,6 +505,7 @@ impl App {
         }
         self.flush(host);
         self.render_own(host);
+        self.supersede_own(host, poll_id, close_hash);
     }
 
     fn vote(&mut self, host: &mut impl Host, target: Target, option: usize) {
@@ -578,12 +605,13 @@ impl App {
             self.others.remove(0);
         }
         let card = other_card_id(sender.session, create.poll_id);
-        let poll = Poll::new(
+        let mut poll = Poll::new(
             create.poll_id,
             create.question,
             create.options,
             sender.name.clone(),
         );
+        poll.line_hash = create.line_hash;
         self.others.push(Other {
             session: sender.session,
             poll,
@@ -626,10 +654,21 @@ impl App {
         self.render_own(host);
     }
 
-    /// `chat.triggers`: someone in the channel wrote "!poll <n>". Only the creator counts it,
-    /// like a vote from the plugin: one per person, and a later one replaces it. The arguments
-    /// are untrusted text.
+    /// `chat.triggers`: someone in the channel wrote "!poll <n>". A vote for a poll this client
+    /// knows is hidden behind "Hidden by Poll", as the card shows it. Only the creator counts it,
+    /// like a vote from the plugin: one per person, and a later one replaces it; a replay from
+    /// chat history was counted back then. The arguments are untrusted text.
     pub fn on_chat_trigger(&mut self, host: &mut impl Host, sender: &Peer, args: &str) {
+        let is_vote = |poll: &Poll| parse_choice(args, poll.options.len()).is_some();
+        let known = self.own.as_ref().is_some_and(|o| is_vote(&o.poll))
+            || self.others.iter().any(|o| is_vote(&o.poll));
+        if !known {
+            return;
+        }
+        host.hide_message();
+        if host.is_replay() {
+            return;
+        }
         let Some(own) = self.own.as_ref().filter(|o| !o.poll.closed) else {
             return;
         };
@@ -655,6 +694,50 @@ impl App {
         self.render_own(host);
     }
 
+    /// A replayed "[Poll] …" line from chat history. The line about a poll this client knows
+    /// gives way to its card; that poll's closing line is hidden, as the card shows the result.
+    /// Lines of unknown polls stay as they are.
+    pub fn on_own_line(&mut self, host: &mut impl Host, text: &str) {
+        if !host.is_replay() {
+            return;
+        }
+        // The host hashes the text behind the "[Poll] " prefix it adds itself.
+        let Some((_, line)) = text.split_once("] ") else {
+            return;
+        };
+        let hash = host.line_hash(line);
+        if hash == 0 {
+            return;
+        }
+        let own = self.own.iter().map(|o| (&o.poll, None));
+        let others = self.others.iter().map(|o| (&o.poll, Some(o.session)));
+        let Some((poll, session, closing)) = own.chain(others).find_map(|(poll, session)| {
+            if poll.line_hash == hash {
+                Some((poll.id, session, false))
+            } else if poll.close_hash == hash {
+                Some((poll.id, session, true))
+            } else {
+                None
+            }
+        }) else {
+            return;
+        };
+        if closing {
+            host.hide_message();
+            return;
+        }
+        match session {
+            None => {
+                host.replace_message(&own_card_id(poll));
+                self.render_own(host);
+            }
+            Some(session) => {
+                host.replace_message(&other_card_id(session, poll));
+                self.render_other(host, session);
+            }
+        }
+    }
+
     fn received_tally(&mut self, host: &mut impl Host, sender: u32, tally: Tally) {
         let Some(other) = self
             .others
@@ -669,6 +752,7 @@ impl App {
         other.poll.counts = tally.counts;
         if tally.closed {
             other.poll.closed = true;
+            other.poll.close_hash = tally.close_hash;
             if tally.close_hash != 0 {
                 host.supersede(
                     &other_card_id(sender, other.poll.id),
