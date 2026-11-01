@@ -1,0 +1,14 @@
+name: /roll 2d6+3 commits, reveals alone after 5 s and is marked Unverified
+grant: [ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  # The slash command arrives as a ui-action with source Command.
+  - event: {ui-action: {action: roll, command: true, value: "2d6+3"}}
+  - expect: {message: {to: channel, kind: 1}}
+  # Nobody witnesses, so the reveal carries no witness values (count 0).
+  - wait: 5000
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: {chat: {text: "unverified, rolled alone"}}

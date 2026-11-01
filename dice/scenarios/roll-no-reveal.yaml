@@ -1,0 +1,12 @@
+name: A roll that is never revealed ends as Not revealed
+grant: [ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {peer-message: {from: 2, kind: 1, hex: "0a0b0c0d8fbf5a04aa72895e6ffdc1376e22719c9ae00c74cfa24a231c0e64c05d459235643230"}}
+  - expect: {tree: {slot: {chat-card: roll-2-0a0b0c0d}, text: Rolling}}
+  # No reveal follows: Alice gives up 10 s after the commit.
+  - wait: 10500
+  - expect: {tree: {slot: {chat-card: roll-2-0a0b0c0d}, text: Not revealed}}
