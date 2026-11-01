@@ -1,0 +1,31 @@
+{
+  "manifest": 1,
+  "id": "echolings",
+  "name": "Echolings",
+  "description": "A little creature made of sound that grows while you hang out with friends. It never dies and never nags.",
+  "version": "1.0.0",
+  "api": "^1.0",
+  "authors": ["Mumcord"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["fun", "games"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": [
+      "ui.panel",
+      "ui.member-badge",
+      "ui.profile-card",
+      "events.voice",
+      "events.presence",
+      "events.self"
+    ],
+    "optional": [
+      "peers.messages",
+      "ui.chat-card",
+      "notify",
+      "events.chat-activity",
+      { "id": "ui.webview", "suggested": true }
+    ]
+  },
+  "limits": { "memory_mib": 16 },
+  "messaging": { "default_visibility": "friends" }
+}
