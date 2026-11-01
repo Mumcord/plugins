@@ -55,6 +55,8 @@ Because SVGs are sanitised on install, the installed bytes can differ from the p
 | `permissions.required` | yes | Permissions the user must accept to install. |
 | `permissions.optional` | no | Permissions the user can switch off. `suggested: true` starts them switched on in the install prompt. The plugin must work without them. |
 | `commands` | no | Slash commands: `{ "name", "description", "usage" }`. Needs the `commands` permission. |
+| `triggers` | no | Chat trigger words such as `["!poll"]`. A channel message that starts with one arrives as a `ChatTrigger` event. Needs `chat.triggers`. |
+| `chat_patterns` | no | At most 2 entries `{ "pattern", "description" }`. A pattern is at most 256 characters and must start with `^` or `\A`. A channel message whose plain text matches arrives as a `ChatMatch` event. Needs `chat.patterns`. Translate the description with the key `chat_patterns.<n>.description`. |
 | `messaging.max_payload` | no | Largest peer message the plugin sends, at most 997 bytes (default 997). |
 | `messaging.default_visibility` | no | `everyone`, `friends` or `nobody`: preselected in the install prompt. |
 | `memory_mib` | no | Memory limit, at most 32 MiB. |
