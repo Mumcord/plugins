@@ -5,6 +5,7 @@
 mod app;
 mod fair;
 mod notation;
+mod text;
 mod view;
 mod wire;
 
@@ -101,6 +102,9 @@ impl Plugin for DicePlugin {
 
 fn handle(app: &mut App, event: Event) {
     let host = &mut Mumcord;
+    if text::on_event(&event) {
+        return app.on_language_changed(host);
+    }
     match event {
         Event::UiAction(action) => {
             if matches!(action.source, ActionSource::Command) && action.action == ROLL_COMMAND {

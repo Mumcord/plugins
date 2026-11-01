@@ -3,8 +3,6 @@
 //! The canonical form ([`Notation::canonical`]) is what goes into the commitment, so every
 //! client must produce exactly the same text for the same roll.
 
-use std::fmt;
-
 pub const MAX_DICE: u8 = 20;
 pub const MIN_SIDES: u16 = 2;
 pub const MAX_SIDES: u16 = 1000;
@@ -12,8 +10,6 @@ pub const MAX_MODIFIER: i16 = 1000;
 /// The longest canonical form ("20d1000+1000 adv" is 16 bytes); anything longer on the wire is
 /// rejected before parsing.
 pub const MAX_CANONICAL_BYTES: usize = 32;
-
-pub const HINT: &str = "Try d20, 2d6+3, d20 adv or 4d6 dl.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -81,18 +77,15 @@ impl Notation {
     }
 }
 
-/// Why a `/roll` was refused. The text is shown to the user as is.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NotationError(pub String);
-
-impl fmt::Display for NotationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-fn error(text: &str) -> NotationError {
-    NotationError(text.to_string())
+/// Why a `/roll` was refused. The view turns it into text in the user's language.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotationError {
+    Unknown,
+    Modifier,
+    DiceCount,
+    Sides,
+    AdvantageNeedsOneDie,
+    DropNeedsTwoDice,
 }
 
 /// Parses what the user typed after `/roll`. Case and spaces do not matter; an empty roll is a
@@ -111,7 +104,7 @@ pub fn parse(input: &str) -> Result<Notation, NotationError> {
             mode: Mode::Plain,
         });
     }
-    let unknown = || NotationError(format!("Unknown roll. {HINT}"));
+    let unknown = || NotationError::Unknown;
 
     let (body, mode) = split_mode(&compact);
     let (count_text, rest) = body.split_once('d').ok_or_else(unknown)?;
@@ -129,7 +122,7 @@ pub fn parse(input: &str) -> Result<Notation, NotationError> {
         Some((sign, digits)) => {
             let value = number(digits).ok_or_else(unknown)?;
             if value > u64::from(MAX_MODIFIER.unsigned_abs()) {
-                return Err(error("The modifier must be between -1000 and +1000."));
+                return Err(NotationError::Modifier);
             }
             // In range: checked above.
             let value = i16::try_from(value).unwrap_or(MAX_MODIFIER);
@@ -138,22 +131,20 @@ pub fn parse(input: &str) -> Result<Notation, NotationError> {
     };
 
     if count == 0 || count > u64::from(MAX_DICE) {
-        return Err(error("Roll 1 to 20 dice."));
+        return Err(NotationError::DiceCount);
     }
     if sides < u64::from(MIN_SIDES) || sides > u64::from(MAX_SIDES) {
-        return Err(error("Dice need 2 to 1000 sides."));
+        return Err(NotationError::Sides);
     }
     // Both in range: checked above.
     let count = u8::try_from(count).unwrap_or(MAX_DICE);
     let sides = u16::try_from(sides).unwrap_or(MAX_SIDES);
     match mode {
         Mode::Advantage | Mode::Disadvantage if count != 1 => {
-            return Err(error(
-                "Advantage and disadvantage roll one die twice, e.g. d20 adv.",
-            ));
+            return Err(NotationError::AdvantageNeedsOneDie);
         }
         Mode::DropLowest | Mode::DropHighest if count < 2 => {
-            return Err(error("Dropping a die needs at least 2 dice, e.g. 4d6 dl."));
+            return Err(NotationError::DropNeedsTwoDice);
         }
         _ => {}
     }

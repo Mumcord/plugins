@@ -11,13 +11,13 @@ use sha2::{Digest, Sha256};
 use crate::app::{self, App, Host};
 use crate::fair::{self, Secret};
 use crate::notation::{self, Mode, Notation};
-use crate::view::{self, Status};
+use crate::view::{self, Problem, Status};
 use crate::wire::{KIND_COMMIT, KIND_REVEAL, KIND_WITNESS, Message};
 
 // ---------------------------------------------------------------- notation
 
 fn parsed(text: &str) -> Notation {
-    notation::parse(text).unwrap_or_else(|e| panic!("{text}: {e}"))
+    notation::parse(text).unwrap_or_else(|e| panic!("{text}: {e:?}"))
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn refuses_invalid_rolls_with_a_clear_message() {
         ),
     ] {
         assert_eq!(
-            notation::parse(input).map_err(|e| e.0),
+            notation::parse(input).map_err(|e| Problem::Notation(e).text()),
             Err(message.to_string()),
             "{input}"
         );
@@ -92,8 +92,8 @@ fn refuses_invalid_rolls_with_a_clear_message() {
         "d20 sometimes",
         "9999999d6",
     ] {
-        let error = notation::parse(input).expect_err(input).0;
-        assert!(error.starts_with("Unknown roll."), "{input}: {error}");
+        let error = notation::parse(input).expect_err(input);
+        assert_eq!(error, notation::NotationError::Unknown, "{input}");
     }
 }
 
@@ -893,10 +893,9 @@ fn invalid_input_shows_an_error_and_sends_nothing() {
     }
     assert!(host.sent.is_empty() && host.chat.is_empty());
     assert_eq!(host.cards.len(), 4);
-    assert!(has_text(
-        host.card_with("error-4"),
-        "Unknown roll. Try d20, 2d6+3, d20 adv or 4d6 dl."
-    ));
+    let card = host.card_with("error-4");
+    assert!(has_text(card, "Unknown roll."));
+    assert!(has_text(card, "Try d20, 2d6+3, d20 adv or 4d6 dl."));
 }
 
 #[test]
@@ -954,4 +953,101 @@ fn rolling_cards_have_a_still_frame_and_labels() {
     assert_eq!(sprite.asset, view::DIE_SPRITE);
     assert!(sprite.fps <= 12 && sprite.still_frame < sprite.frames && !sprite.alt.is_empty());
     assert!(has_text(card, "Rolling"));
+}
+
+// ---------------------------------------------------------------- languages
+
+const FILES: &[(&str, &str)] = mumcord_plugin_sdk::i18n_all!();
+const PLURAL_SUFFIXES: [&str; 6] = ["_zero", "_one", "_two", "_few", "_many", "_other"];
+
+fn load(json: &str) -> BTreeMap<String, String> {
+    serde_json::from_str(json).unwrap_or_else(|e| panic!("invalid i18n file: {e}"))
+}
+
+/// The key without its plural category: `explain.verified_one` is `explain.verified`.
+fn base_key(key: &str) -> &str {
+    PLURAL_SUFFIXES
+        .iter()
+        .find_map(|suffix| key.strip_suffix(suffix))
+        .unwrap_or(key)
+}
+
+fn placeholders(text: &str) -> Vec<String> {
+    let mut found: Vec<String> = text
+        .split("{{")
+        .skip(1)
+        .filter_map(|rest| rest.split_once("}}"))
+        .map(|(name, _)| name.trim().to_string())
+        .collect();
+    found.sort();
+    found.dedup();
+    found
+}
+
+#[test]
+fn every_language_has_the_keys_of_english() {
+    assert_eq!(FILES.len(), 24);
+    let english = load(
+        FILES
+            .iter()
+            .find(|(tag, _)| *tag == "en")
+            .map_or("{}", |(_, json)| json),
+    );
+    let bases = |map: &BTreeMap<String, String>| -> Vec<String> {
+        let mut keys: Vec<String> = map.keys().map(|k| base_key(k).to_string()).collect();
+        keys.dedup();
+        keys
+    };
+    for (tag, json) in FILES {
+        let file = load(json);
+        assert_eq!(
+            bases(&file),
+            bases(&english),
+            "{tag}: keys differ from en.json"
+        );
+        for (key, text) in &file {
+            assert!(!text.trim().is_empty(), "{tag}: {key} is empty");
+            let reference = english
+                .get(key)
+                .or_else(|| english.get(&format!("{}_other", base_key(key))))
+                .unwrap_or_else(|| panic!("{tag}: {key} has no English counterpart"));
+            let wanted = placeholders(reference);
+            let got = placeholders(text);
+            // A plural form may leave out {{count}} when it spells the number in words.
+            assert!(
+                got == wanted || wanted.iter().filter(|p| *p != "count").eq(got.iter()),
+                "{tag}: {key} placeholders {got:?}, expected {wanted:?}"
+            );
+        }
+        // Every plural key set needs the catch-all form.
+        for key in file.keys().filter(|k| base_key(k) != k.as_str()) {
+            let other = format!("{}_other", base_key(key));
+            assert!(file.contains_key(&other), "{tag}: {key} without {other}");
+        }
+    }
+}
+
+#[test]
+fn a_language_change_draws_the_cards_and_history_again() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_command(&mut host, "d20");
+    // A second roll while the first runs shows the "busy" error card.
+    app.on_command(&mut host, "d6");
+    crate::text::set_language("de");
+    app.on_language_changed(&mut host);
+    let own = host.card_with("roll-me-");
+    assert!(has_text(own, "Du würfelst d20"), "{:?}", texts(own));
+    assert!(has_text(
+        host.card_with("error-"),
+        "Es wird noch gewürfelt, versuche es gleich noch einmal."
+    ));
+    assert!(has_text(
+        host.panel.as_ref().unwrap_or_else(|| unreachable!()),
+        "Wurfverlauf"
+    ));
+    // The text line for other people stays English.
+    assert!(host.chat.iter().all(|line| line.starts_with("🎲 rolled")));
+    crate::text::set_language("en");
 }

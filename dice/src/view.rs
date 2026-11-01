@@ -4,7 +4,8 @@
 use mumcord_plugin_sdk::ui::{self, El, Sprite};
 
 use crate::fair::Outcome;
-use crate::notation::{HINT, Mode, Notation};
+use crate::notation::{Mode, Notation, NotationError};
+use crate::text::{t, t_with, tn};
 
 /// Six die faces side by side, played as a tumbling die while the roll waits for witnesses.
 pub const DIE_SPRITE: &str = "assets/die-faces.svg";
@@ -13,24 +14,42 @@ const HISTORY_ROWS: usize = 20;
 /// Names are untrusted server text; long ones are cut so the card stays readable.
 const MAX_NAME_CHARS: usize = 32;
 
+/// Why a roll failed its check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reason {
+    Commitment,
+    Witness,
+    LeftOut,
+}
+
+impl Reason {
+    fn text(self) -> String {
+        t(match self {
+            Reason::Commitment => "reason.commitment",
+            Reason::Witness => "reason.witness",
+            Reason::LeftOut => "reason.left_out",
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
     Rolling,
     Verified { witnesses: usize },
     Alone,
     NotRevealed,
-    Failed { reason: String },
+    Failed { reason: Reason },
 }
 
 impl Status {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Status::Rolling => "Rolling",
-            Status::Verified { .. } => "Verified",
-            Status::Alone => "Unverified (rolled alone)",
-            Status::NotRevealed => "Not revealed",
-            Status::Failed { .. } => "Verification failed",
-        }
+    pub fn label(&self) -> String {
+        t(match self {
+            Status::Rolling => "status.rolling",
+            Status::Verified { .. } => "status.verified",
+            Status::Alone => "status.alone",
+            Status::NotRevealed => "status.not_revealed",
+            Status::Failed { .. } => "status.failed",
+        })
     }
 
     fn color(&self) -> &'static str {
@@ -44,26 +63,55 @@ impl Status {
 
     fn explanation(&self) -> String {
         match self {
-            Status::Rolling => "Waiting for other players to add their part.".to_string(),
-            Status::Verified { witnesses } => format!(
-                "Checked with {witnesses} {}: the roller locked in a secret before anyone added \
-                 theirs, so nobody could pick the result.",
-                if *witnesses == 1 {
-                    "witness"
-                } else {
-                    "witnesses"
-                }
-            ),
-            Status::Alone => {
-                "Nobody else with Dice roller could witness this roll, so it was not checked."
-                    .to_string()
-            }
-            Status::NotRevealed => {
-                "The roller never revealed this roll, so it is void and does not count.".to_string()
-            }
-            Status::Failed { reason } => format!("{reason} This roll does not count."),
+            Status::Rolling => t("explain.rolling"),
+            Status::Verified { witnesses } => tn("explain.verified", *witnesses as u64),
+            Status::Alone => t("explain.alone"),
+            Status::NotRevealed => t("explain.not_revealed"),
+            Status::Failed { reason } => t_with("explain.failed", &[("reason", &reason.text())]),
         }
     }
+}
+
+/// Why `/roll` showed an error card instead of a roll.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Problem {
+    Notation(NotationError),
+    Busy,
+    NoRandom,
+    RateLimited,
+    NotSent,
+}
+
+impl Problem {
+    pub fn text(self) -> String {
+        t(match self {
+            Problem::Notation(NotationError::Unknown) => "error.unknown",
+            Problem::Notation(NotationError::Modifier) => "error.modifier",
+            Problem::Notation(NotationError::DiceCount) => "error.dice_count",
+            Problem::Notation(NotationError::Sides) => "error.sides",
+            Problem::Notation(NotationError::AdvantageNeedsOneDie) => "error.advantage",
+            Problem::Notation(NotationError::DropNeedsTwoDice) => "error.drop",
+            Problem::Busy => "error.busy",
+            Problem::NoRandom => "error.no_random",
+            Problem::RateLimited => "error.rate_limited",
+            Problem::NotSent => "error.not_sent",
+        })
+    }
+}
+
+/// The roll as the card names it, e.g. "d20 with advantage" in the user's language.
+fn describe(notation: &Notation) -> String {
+    let mut plain = *notation;
+    plain.mode = Mode::Plain;
+    let base = plain.canonical();
+    let key = match notation.mode {
+        Mode::Plain => return base,
+        Mode::Advantage => "roll.advantage",
+        Mode::Disadvantage => "roll.disadvantage",
+        Mode::DropLowest => "roll.drop_lowest",
+        Mode::DropHighest => "roll.drop_highest",
+    };
+    t_with(key, &[("roll", &base)])
 }
 
 /// Who rolled, as the card shows it.
@@ -76,7 +124,7 @@ pub enum Who {
 impl Who {
     fn subject(&self) -> String {
         match self {
-            Who::Me => "You".to_string(),
+            Who::Me => t("you"),
             Who::Peer(name) => name.chars().take(MAX_NAME_CHARS).collect(),
         }
     }
@@ -90,32 +138,38 @@ pub struct Card<'a> {
 }
 
 pub fn card(card: &Card<'_>) -> El {
-    let mut root = ui::column().child(ui::heading(&format!(
-        "{} rolled {}",
-        card.who.subject(),
-        card.notation.described()
-    )));
+    let title = match card.who {
+        Who::Me => t_with("card.title_me", &[("roll", &describe(card.notation))]),
+        Who::Peer(_) => t_with(
+            "card.title",
+            &[
+                ("who", &card.who.subject()),
+                ("roll", &describe(card.notation)),
+            ],
+        ),
+    };
+    let mut root = ui::column().child(ui::heading(&title));
     match (card.status, card.outcome) {
         (Status::Rolling, _) => {
             root = root.child(
                 ui::row()
                     .child(ui::sprite(Sprite {
                         asset: DIE_SPRITE.to_string(),
-                        alt: "Dice tumbling".to_string(),
+                        alt: t("card.tumbling"),
                         frame_width: DIE_SIZE,
                         frame_height: DIE_SIZE,
                         frames: 6,
                         fps: 10,
                         still_frame: 4,
                     }))
-                    .child(ui::progress("Waiting for witnesses", None)),
+                    .child(ui::progress(&t("card.waiting"), None)),
             );
         }
         (_, Some(outcome)) => {
             let mut dice = ui::row();
             for (i, value) in outcome.dice.iter().enumerate() {
                 dice = if outcome.dropped == Some(i) {
-                    dice.child(ui::chip(&format!("{value} dropped")).color("text-muted"))
+                    dice.child(ui::chip(&dropped(*value)).color("text-muted"))
                 } else {
                     dice.child(ui::chip(&value.to_string()))
                 };
@@ -126,8 +180,12 @@ pub fn card(card: &Card<'_>) -> El {
         }
         _ => {}
     }
-    root.child(ui::chip(card.status.label()).color(card.status.color()))
+    root.child(ui::chip(&card.status.label()).color(card.status.color()))
         .child(ui::caption(&card.status.explanation()))
+}
+
+fn dropped(value: u16) -> String {
+    t_with("dice.dropped", &[("value", &value.to_string())])
 }
 
 /// Text alternative for the dice: "4, 4, plus 3, total 11, verified".
@@ -135,22 +193,28 @@ pub fn spoken(notation: &Notation, outcome: &Outcome, status: &Status) -> String
     let mut parts: Vec<String> = Vec::new();
     for (i, value) in outcome.dice.iter().enumerate() {
         if outcome.dropped == Some(i) {
-            parts.push(format!("{value} dropped"));
+            parts.push(dropped(*value));
         } else {
             parts.push(value.to_string());
         }
     }
     if notation.modifier > 0 {
-        parts.push(format!("plus {}", notation.modifier));
+        parts.push(t_with(
+            "spoken.plus",
+            &[("n", &notation.modifier.to_string())],
+        ));
     } else if notation.modifier < 0 {
-        parts.push(format!("minus {}", notation.modifier.unsigned_abs()));
+        parts.push(t_with(
+            "spoken.minus",
+            &[("n", &notation.modifier.unsigned_abs().to_string())],
+        ));
     }
-    parts.push(format!("total {}", outcome.total));
+    parts.push(t_with("spoken.total", &[("n", &outcome.total.to_string())]));
     parts.push(status.label().to_lowercase());
     parts.join(", ")
 }
 
-/// The plain-text line for people without the plugin, sent once after the reveal. Mumcord adds
+/// The plain-text line for people without the plugin (always English: other people read it), sent once after the reveal. Mumcord adds
 /// the "[Dice roller] " prefix and Mumble shows who sent it:
 /// `🎲 rolled 2d6+3 = 11 (4, 4)`, `🎲 rolled 4d6 drop lowest = 14 (6, 5, 3, dropped 2)`.
 pub fn fallback_line(notation: &Notation, outcome: &Outcome, status: &Status) -> String {
@@ -183,10 +247,10 @@ pub fn fallback_line(notation: &Notation, outcome: &Outcome, status: &Status) ->
 }
 
 /// Shown instead of a roll when `/roll` cannot start; only the user sees it.
-pub fn error_card(message: &str) -> El {
+pub fn error_card(problem: Problem) -> El {
     ui::column()
-        .child(ui::text(message).color("danger"))
-        .child(ui::caption(HINT))
+        .child(ui::text(&problem.text()).color("danger"))
+        .child(ui::caption(&t("error.hint")))
 }
 
 /// One finished roll in the history panel.
@@ -201,24 +265,27 @@ pub struct Entry {
 /// The optional history popover (`ui.panel`): rolls of this session on this device, newest
 /// first. Void rolls are listed but never show a total.
 pub fn history(entries: &[Entry]) -> El {
-    let mut root = ui::column().child(ui::heading("Roll history"));
+    let mut root = ui::column().child(ui::heading(&t("history.title")));
     if entries.is_empty() {
-        return root.child(ui::caption("No rolls yet. Type /roll d20 in the chat."));
+        return root.child(ui::caption(&t("history.empty")));
     }
-    let mut list = ui::list("Rolls of this session");
+    let mut list = ui::list(&t("history.list"));
     for entry in entries.iter().rev().take(HISTORY_ROWS) {
         let result = match (entry.total, &entry.status) {
             (Some(total), Status::Verified { .. } | Status::Alone) => format!("= {total}"),
-            _ => "void".to_string(),
+            _ => t("history.void"),
         };
         list = list.child(
             ui::row()
-                .child(ui::text(&format!(
-                    "{}: {} {result}",
-                    entry.who.subject(),
-                    entry.notation.described()
+                .child(ui::text(&t_with(
+                    "history.row",
+                    &[
+                        ("who", &entry.who.subject()),
+                        ("roll", &describe(&entry.notation)),
+                        ("result", &result),
+                    ],
                 )))
-                .child(ui::chip(entry.status.label()).color(entry.status.color())),
+                .child(ui::chip(&entry.status.label()).color(entry.status.color())),
         );
     }
     root = root.child(list);

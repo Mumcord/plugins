@@ -60,6 +60,13 @@ All integers are big-endian.
 The known-answer vectors in `src/tests.rs` were computed independently with Python's
 `hashlib` and `hmac`, so other implementations of the same pattern can test against them.
 
+## Languages
+
+All texts the plugin shows (cards, states, errors, history) live in `i18n/<tag>.json` for the 24
+Mumcord languages and switch with the app language. The plain-text line posted to Mumble chat for
+people without the plugin is always English. A native test checks that every file has the keys of
+`en.json`.
+
 ## Build and test
 
 ```sh

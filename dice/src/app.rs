@@ -10,7 +10,7 @@ use mumcord_plugin_sdk::ui::{El, Slot};
 
 use crate::fair::{self, Hash, Outcome, SECRET_BYTES, Secret};
 use crate::notation::{self, Notation};
-use crate::view::{self, Card, Entry, Status, Who};
+use crate::view::{self, Card, Entry, Problem, Reason, Status, Who};
 use crate::wire::{MAX_WITNESSES, Message};
 
 /// Witnesses wait a random 0 … 1.5 s so they do not all answer at once.
@@ -24,13 +24,49 @@ pub const NOT_REVEALED_AFTER_MS: u32 = 5000;
 pub const MAX_TRACKED_ROLLS: usize = 16;
 pub const HISTORY_LIMIT: usize = 50;
 
-const BUSY_TEXT: &str = "Still rolling, try again in a moment.";
-const NO_RANDOM_TEXT: &str = "Could not get random numbers for the roll.";
-const RATE_LIMITED_TEXT: &str = "Too many rolls right now, try again in a moment.";
-const NOT_SENT_TEXT: &str = "Could not send the roll to the channel.";
-const COMMITMENT_TEXT: &str = "The revealed roll does not match what was announced.";
-const WITNESS_TEXT: &str = "The witness values do not match the ones sent in the channel.";
-const LEFT_OUT_TEXT: &str = "Your contribution was left out.";
+/// Cards kept for drawing again after a language change.
+const MAX_SHOWN_CARDS: usize = 32;
+
+/// What a chat card shows.
+enum Shown {
+    Roll {
+        card: String,
+        who: Who,
+        notation: Notation,
+        status: Status,
+        outcome: Option<Outcome>,
+    },
+    Error {
+        card: String,
+        problem: Problem,
+    },
+}
+
+impl Shown {
+    fn card(&self) -> &str {
+        match self {
+            Shown::Roll { card, .. } | Shown::Error { card, .. } => card,
+        }
+    }
+
+    fn render(&self) -> El {
+        match self {
+            Shown::Roll {
+                who,
+                notation,
+                status,
+                outcome,
+                ..
+            } => view::card(&Card {
+                who,
+                notation,
+                status,
+                outcome: outcome.as_ref(),
+            }),
+            Shown::Error { problem, .. } => view::error_card(*problem),
+        }
+    }
+}
 
 /// Calls into Mumcord. The plugin talks only to the user's current channel.
 pub trait Host {
@@ -83,6 +119,7 @@ pub struct App {
     others: Vec<OtherRoll>,
     timers: Vec<(u32, Purpose)>,
     history: Vec<Entry>,
+    shown: Vec<Shown>,
     panel: bool,
     error_cards: u32,
 }
@@ -101,17 +138,17 @@ impl App {
     /// `/roll <args>` from the chat box.
     pub fn on_command(&mut self, host: &mut impl Host, args: &str) {
         if self.own.is_some() {
-            return self.error(host, BUSY_TEXT);
+            return self.error(host, Problem::Busy);
         }
         let notation = match notation::parse(args) {
             Ok(notation) => notation,
-            Err(e) => return self.error(host, &e.0),
+            Err(e) => return self.error(host, Problem::Notation(e)),
         };
         let Some(bytes) = host.random(4 + SECRET_BYTES as u32) else {
-            return self.error(host, NO_RANDOM_TEXT);
+            return self.error(host, Problem::NoRandom);
         };
         let Some((id, secret)) = split_id_secret(&bytes) else {
-            return self.error(host, NO_RANDOM_TEXT);
+            return self.error(host, Problem::NoRandom);
         };
         let canonical = notation.canonical();
         let roll = OwnRoll {
@@ -130,7 +167,7 @@ impl App {
         };
         match host.send(&commit) {
             Ok(()) => {
-                show_card(
+                self.show_card(
                     host,
                     &roll.card,
                     &Who::Me,
@@ -143,10 +180,10 @@ impl App {
             }
             // Nobody in the channel runs the plugin, or the user shares with nobody.
             Err(Error::NoRecipients | Error::Hidden) => self.settle_own(host, roll, false),
-            Err(Error::RateLimited) => self.error(host, RATE_LIMITED_TEXT),
+            Err(Error::RateLimited) => self.error(host, Problem::RateLimited),
             Err(e) => {
                 host.warn(&format!("could not send the commit: {e:?}"));
-                self.error(host, NOT_SENT_TEXT);
+                self.error(host, Problem::NotSent);
             }
         }
     }
@@ -254,7 +291,7 @@ impl App {
             REVEAL_TIMEOUT_MS + NOT_REVEALED_AFTER_MS,
             Purpose::Deadline { roller, id },
         );
-        show_card(
+        self.show_card(
             host,
             &roll.card,
             &Who::Peer(roll.name.clone()),
@@ -317,17 +354,16 @@ impl App {
         let roll = self.others.remove(index);
         let canonical = roll.notation.canonical();
         if fair::commitment(id, &canonical, &secret) != roll.commitment {
-            let reason = COMMITMENT_TEXT.to_string();
+            let reason = Reason::Commitment;
             return self.settle_other(host, &roll, Status::Failed { reason }, None);
         }
         if !witnesses_match(&witnesses, &roll.seen, roll.mine) {
             let left_out = roll.mine.is_some_and(|mine| !witnesses.contains(&mine));
             let reason = if left_out {
-                LEFT_OUT_TEXT
+                Reason::LeftOut
             } else {
-                WITNESS_TEXT
-            }
-            .to_string();
+                Reason::Witness
+            };
             return self.settle_other(host, &roll, Status::Failed { reason }, None);
         }
         let outcome = fair::roll(&roll.notation, fair::seed(id, &secret, &witnesses));
@@ -385,7 +421,7 @@ impl App {
             Err(e) => {
                 // The others will show "Not revealed"; the roller must not claim a result.
                 host.warn(&format!("could not send the reveal: {e:?}"));
-                show_card(
+                self.show_card(
                     host,
                     &roll.card,
                     &Who::Me,
@@ -414,7 +450,7 @@ impl App {
                 witnesses: witnesses.len(),
             }
         };
-        show_card(
+        self.show_card(
             host,
             &roll.card,
             &Who::Me,
@@ -436,7 +472,7 @@ impl App {
         outcome: Option<&Outcome>,
     ) {
         let who = Who::Peer(roll.name.clone());
-        show_card(host, &roll.card, &who, &roll.notation, &status, outcome);
+        self.show_card(host, &roll.card, &who, &roll.notation, &status, outcome);
         self.record(host, who, roll.notation, outcome.map(|o| o.total), status);
     }
 
@@ -466,10 +502,54 @@ impl App {
         host.show(Slot::Panel, view::history(&self.history));
     }
 
-    fn error(&mut self, host: &mut impl Host, message: &str) {
+    fn error(&mut self, host: &mut impl Host, problem: Problem) {
         self.error_cards = self.error_cards.wrapping_add(1);
         let card = format!("error-{}", self.error_cards);
-        host.show(Slot::ChatCard(card), view::error_card(message));
+        self.remember(Shown::Error {
+            card: card.clone(),
+            problem,
+        });
+        host.show(Slot::ChatCard(card), view::error_card(problem));
+    }
+
+    fn show_card(
+        &mut self,
+        host: &mut impl Host,
+        card: &str,
+        who: &Who,
+        notation: &Notation,
+        status: &Status,
+        outcome: Option<&Outcome>,
+    ) {
+        let shown = Shown::Roll {
+            card: card.to_string(),
+            who: who.clone(),
+            notation: *notation,
+            status: status.clone(),
+            outcome: outcome.cloned(),
+        };
+        host.show(Slot::ChatCard(card.to_string()), shown.render());
+        self.remember(shown);
+    }
+
+    /// Keeps what a card shows, so it can be drawn again in another language. A card shown
+    /// again (rolling, then final) replaces its older state.
+    fn remember(&mut self, shown: Shown) {
+        self.shown.retain(|old| old.card() != shown.card());
+        if self.shown.len() >= MAX_SHOWN_CARDS {
+            self.shown.remove(0);
+        }
+        self.shown.push(shown);
+    }
+
+    /// The language changed: draw every card and the history again.
+    pub fn on_language_changed(&mut self, host: &mut impl Host) {
+        for shown in &self.shown {
+            host.show(Slot::ChatCard(shown.card().to_string()), shown.render());
+        }
+        if self.panel {
+            self.show_history(host);
+        }
     }
 
     fn find(&self, roller: u32, id: u32) -> Option<usize> {
@@ -483,23 +563,6 @@ impl App {
         self.timers.push((id, purpose));
         Some(id)
     }
-}
-
-fn show_card(
-    host: &mut impl Host,
-    card: &str,
-    who: &Who,
-    notation: &Notation,
-    status: &Status,
-    outcome: Option<&Outcome>,
-) {
-    let tree = view::card(&Card {
-        who,
-        notation,
-        status,
-        outcome,
-    });
-    host.show(Slot::ChatCard(card.to_string()), tree);
 }
 
 fn split_id_secret(bytes: &[u8]) -> Option<(u32, Secret)> {

@@ -74,6 +74,7 @@ version = "1.0.0"
 dependencies = [
  "hmac",
  "mumcord-plugin-sdk",
+ "serde_json",
  "sha2",
 ]
 
@@ -195,8 +196,8 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "mumcord-plugin-sdk"
-version = "0.4.4"
-source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#6b2785e2c636645c6bab042168c7ee033c675f31"
+version = "0.5.0"
+source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#791e607742e01d77c924a4c971b0ce7d11e0e3ed"
 dependencies = [
  "serde",
  "serde_json",
