@@ -18,6 +18,14 @@ fn tune5() -> Vec<u8> {
 #[test]
 fn timing_constants_agree() {
     assert_eq!(u64::from(GAME_MS), GAME_SECS * 1000);
+    assert_eq!(u64::from(LOBBY_MS), LOBBY_SECS * 1000);
+}
+
+/// A game the user hosts whose lobby already closed.
+fn started(id: u32) -> Game {
+    let mut game = Game::open(id, tune5(), T0);
+    assert!(game.begin(T0));
+    game
 }
 
 #[test]
@@ -34,19 +42,29 @@ fn messages_round_trip_and_reject_garbage() {
     let invite = Invite {
         id: 0xdead_beef,
         tune: tune5(),
+        lobby: 30,
     };
     assert_eq!(Invite::decode(&invite.encode()), Some(invite.clone()));
+    // An invite from before the lobby has no lobby byte: the round already started.
+    let old = &invite.encode()[..11];
+    assert_eq!(Invite::decode(old).map(|i| i.lobby), Some(0));
+    // A peer cannot hold everyone in a longer lobby than ours.
+    let mut greedy = invite.encode();
+    greedy[11] = 255;
+    assert_eq!(Invite::decode(&greedy).map(|i| i.lobby), Some(30));
     let mut bad_note = invite.encode();
     bad_note[6] = PADS;
     assert_eq!(Invite::decode(&bad_note), None);
     let short = Invite {
         id: 1,
         tune: vec![0, 1],
+        lobby: 0,
     };
     assert_eq!(Invite::decode(&short.encode()), None);
     let long = Invite {
         id: 1,
         tune: vec![0; MAX_TUNE + 1],
+        lobby: 0,
     };
     assert_eq!(Invite::decode(&long.encode()), None);
     assert_eq!(Invite::decode(&invite.encode()[..7]), None, "truncated");
@@ -56,6 +74,11 @@ fn messages_round_trip_and_reject_garbage() {
         None,
         "version 0"
     );
+
+    let start = Start { id: 9 };
+    assert_eq!(Start::decode(&start.encode()), Some(start));
+    assert_eq!(Start::decode(&[1, 0, 0]), None);
+    assert_eq!(Start::decode(&[0, 0, 0, 0, 9]), None, "version 0");
 
     let score = Score { id: 9, correct: 4 };
     assert_eq!(Score::decode(&score.encode()), Some(score));
@@ -73,11 +96,12 @@ fn pad_actions_round_trip() {
 /// Two clients: A starts, B joins; both repeat; each sees the other's score.
 #[test]
 fn two_players_play_a_round() {
-    let mut a = Game::start(7, tune5(), T0);
+    let mut a = Game::open(7, tune5(), T0);
     let invite = Invite::decode(
         &Invite {
             id: a.id,
             tune: a.tune.clone(),
+            lobby: 30,
         }
         .encode(),
     )
@@ -87,6 +111,14 @@ fn two_players_play_a_round() {
     assert_eq!(b.press(0), None, "not joined");
     assert!(b.join());
     assert!(!b.join());
+    assert_eq!(b.phase, Phase::Waiting, "joined into the lobby");
+    assert_eq!(b.playing(), None);
+
+    // The host's lobby closes; B starts when the start message arrives.
+    assert!(a.begin(T0 + 30));
+    let start = Start::decode(&Start { id: 7 }.encode()).unwrap();
+    assert!(b.start_received(1, start, T0 + 30));
+    assert!(!b.start_received(1, start, T0 + 31), "only once");
 
     // The tune plays one note per step, then it is the player's turn.
     for game in [&mut a, &mut b] {
@@ -130,6 +162,68 @@ fn two_players_play_a_round() {
     assert_eq!(b.results(), vec![(Some("Ana"), 5), (None, 2)]);
 }
 
+/// The lobby: nobody but the host may start the round, late joiners play at once, and a round
+/// whose host never sent the start is given up.
+#[test]
+fn lobby_starts_on_the_hosts_message() {
+    let mut host = Game::open(3, tune5(), T0);
+    assert_eq!(host.phase, Phase::Waiting);
+    assert_eq!(host.starts_at, Some(T0 + LOBBY_SECS));
+    // Nobody joined: the host plays alone.
+    assert!(host.begin(T0 + LOBBY_SECS));
+    assert!(!host.begin(T0 + LOBBY_SECS), "only once");
+    assert_eq!(host.phase, Phase::Listen { step: 0 });
+    assert_eq!(host.ends_at, T0 + LOBBY_SECS + GAME_SECS);
+
+    let invite = |lobby| Invite {
+        id: 3,
+        tune: tune5(),
+        lobby,
+    };
+    let mut joined = Game::invited(invite(30), 1, "Ana".into(), T0);
+    assert_eq!(joined.ends_at, T0 + 30 + NO_START_GRACE_SECS);
+    joined.join();
+    assert!(
+        !joined.start_received(2, Start { id: 3 }, T0 + 5),
+        "not the host"
+    );
+    assert!(
+        !joined.start_received(1, Start { id: 4 }, T0 + 5),
+        "other game"
+    );
+    assert_eq!(joined.phase, Phase::Waiting);
+    assert!(
+        joined.start_received(1, Start { id: 3 }, T0 + 5),
+        "Start now"
+    );
+    assert_eq!(joined.phase, Phase::Listen { step: 0 });
+    assert_eq!(joined.ends_at, T0 + 5 + GAME_SECS);
+
+    // Someone who did not join in the lobby can still join the running round.
+    let mut late = Game::invited(invite(30), 1, "Ana".into(), T0);
+    assert!(late.start_received(1, Start { id: 3 }, T0 + 30));
+    assert_eq!(late.phase, Phase::Invited);
+    late.join();
+    assert_eq!(late.phase, Phase::Listen { step: 0 });
+
+    // An invite without a lobby has already started.
+    let mut old = Game::invited(invite(0), 1, "Ana".into(), T0);
+    assert_eq!((old.starts_at, old.ends_at), (None, T0 + GAME_SECS));
+    old.join();
+    assert_eq!(old.phase, Phase::Listen { step: 0 });
+
+    // The host left: no start arrives and the round is given up.
+    let mut orphan = Game::invited(invite(30), 1, "Ana".into(), T0);
+    orphan.join();
+    orphan.end();
+    assert!(orphan.never_started());
+    assert!(
+        !orphan.start_received(1, Start { id: 3 }, T0 + 50),
+        "too late"
+    );
+    assert!(!host.never_started());
+}
+
 fn texts(nodes: &[Node]) -> Vec<String> {
     nodes
         .iter()
@@ -169,19 +263,45 @@ fn card_shows_each_phase() {
         Invite {
             id: 1,
             tune: tune5(),
+            lobby: 30,
         },
         3,
         "Ana".into(),
         T0,
     );
+    let has = |nodes: &[Node], action: &str| {
+        nodes.iter().any(|n| {
+            matches!(&n.component,
+            Component::Button(b) if b.action == action)
+        })
+    };
+    let countdown = |nodes: &[Node]| {
+        nodes.iter().find_map(|n| match &n.component {
+            Component::Countdown(c) => Some((c.label.clone(), c.until)),
+            _ => None,
+        })
+    };
     let nodes = view(&game, FULL);
     assert!(texts(&nodes)[1].starts_with("Ana started Echo Echo"));
-    assert!(nodes.iter().any(|n| matches!(&n.component,
-        Component::Button(b) if b.action == action::JOIN)));
-    assert!(nodes.iter().any(|n| matches!(&n.component,
-        Component::Countdown(c) if c.until == T0 + GAME_SECS)));
+    assert!(has(&nodes, action::JOIN));
+    assert_eq!(countdown(&nodes), Some(("Starts in".into(), T0 + 30)));
 
     game.join();
+    let nodes = view(&game, FULL);
+    assert_eq!(texts(&nodes)[1], "You're in. The tune starts soon…");
+    assert!(!has(&nodes, action::START_NOW), "only the host starts");
+    assert_eq!(countdown(&nodes), Some(("Starts in".into(), T0 + 30)));
+
+    let host = Game::open(5, tune5(), T0);
+    let nodes = view(&host, FULL);
+    assert!(texts(&nodes)[1].starts_with("You started Echo Echo"));
+    assert!(has(&nodes, action::START_NOW));
+    assert_eq!(
+        countdown(&nodes),
+        Some(("Starts in".into(), T0 + LOBBY_SECS))
+    );
+
+    game.start_received(3, Start { id: 1 }, T0 + 30);
     let nodes = view(&game, FULL);
     assert_eq!(texts(&nodes)[1], "Listen… note 1 of 5");
     let p = pads(&nodes);
@@ -215,8 +335,12 @@ fn card_shows_each_phase() {
     assert!(nodes.iter().any(|n| matches!(&n.component,
         Component::Button(b) if b.action == action::CLOSE)));
 
-    let mut empty = Game::start(2, tune5(), T0);
+    let mut empty = started(2);
     empty.end();
     assert_eq!(texts(&view(&empty, FULL))[1], "Nobody finished this round.");
+
+    let mut orphan = Game::open(4, tune5(), T0);
+    orphan.end();
+    assert_eq!(texts(&view(&orphan, FULL))[1], "This round did not start.");
     assert!(t.missing().is_empty(), "{:?}", t.missing());
 }

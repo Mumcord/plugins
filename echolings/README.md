@@ -20,7 +20,7 @@ Licence: AGPL-3.0-or-later (see `LICENSE`).
 - **Other people's pets**: Mumcord users in your channel who run Echolings see your pet as a member badge (it bobs while you talk) and on your profile card, and you see theirs. Who receives your pet card follows the plugin's visibility (default Friends); with Nobody nothing is sent and others cannot tell you have a pet.
 - **Visits**: open someone's profile card and pat their pet, once per pet per day. Both pets earn Notes; the owner gets a quiet notification (never during Do Not Disturb).
 - **Reactions**, computed locally without traffic: the pet waves when someone joins your channel, sparkles when someone shares their screen and hops when you are mentioned. None while it sleeps.
-- **Echo Echo**: Play shows a chat card (or the panel without the chat-card permission) with a five-note tune on four pads. Everyone in the channel can join within 45 seconds, listens to the tune and repeats it; then every card shows the scores.
+- **Echo Echo**: Play shows a chat card (or the panel without the chat-card permission) with a five-note tune on four pads. Everyone in the channel can join for 30 seconds (a "Starts in" countdown shows on every card); then the round starts on its own with whoever joined, or earlier when the host presses Start now. The host's start message starts the tune on every joined client at once, so nobody's timer can drift. If nobody joined, the host plays alone. Players listen to the tune and repeat it; 45 seconds after the start every card shows the scores. Latecomers can still join a running round. If the host leaves before the start, the waiting players' cards say the round did not start.
 
 Snack Race (web view) is a separate task (B41c).
 
@@ -32,8 +32,9 @@ Binary, version byte first, all sent through the plugin messaging API (at most 9
 |---|---|---|
 | 1 | Pet card: species, colour, mood, Bond, days together, streak, name (at most 75 bytes) | to the channel when you join one, when someone joins and when it changes; at most once per minute |
 | 2 | Pat | directly to the pet's owner, once per pet per day |
-| 3 | Echo Echo invite: game id and tune | to the channel when you press Play |
+| 3 | Echo Echo invite: game id, tune and lobby seconds (older clients ignore the last byte) | to the channel when you press Play |
 | 4 | Echo Echo score: game id and correct notes | to the channel when you finish |
+| 5 | Echo Echo start: game id | to the channel when your lobby closes (after 30 seconds or Start now) |
 
 Visits are recorded per peer key (stable per person, different in every plugin) in plugin storage under `visits`, for both given and received pats, so a modified client cannot pat more than once a day either.
 

@@ -1,6 +1,6 @@
 # Echo Echo, hosting side: pressing Play sends the invite to the channel and shows the game.
 name: Echo Echo invite and score
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+grant: [ui.panel, ui.member-badge, ui.profile-card, events.voice, events.presence, events.self, peers.messages, notify]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}
@@ -12,3 +12,9 @@ steps:
 
   - event: {ui-action: {action: play}}
   - expect: {message: {to: channel, kind: 3}}
+  - expect: {tree: {slot: panel, text: "You started Echo Echo"}}
+
+  # The host does not wait for the lobby to close: Start now sends the start at once.
+  - event: {ui-action: {action: echo-start}}
+  - expect: {message: {to: channel, kind: 5}}
+  - expect: {tree: {slot: panel, text: "Listen… note 1 of 5"}}

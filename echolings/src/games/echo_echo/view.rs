@@ -27,6 +27,8 @@ impl GameView<'_> {
                     .map_or("", |(_, name)| name.as_str());
                 t.f("echo.invited", &[("name", host)])
             }
+            Phase::Waiting if self.game.is_host() => t.t("echo.hosting"),
+            Phase::Waiting => t.t("echo.waiting"),
             Phase::Listen { step } => t.f(
                 "echo.listen",
                 &[("n", &(step + 1).to_string()), ("len", &self.len())],
@@ -39,7 +41,16 @@ impl GameView<'_> {
                 "echo.finished",
                 &[("n", &correct.to_string()), ("len", &self.len())],
             ),
+            Phase::Over if self.game.never_started() => t.t("echo.notStarted"),
             Phase::Over => self.results(),
+        }
+    }
+
+    /// Time left in the lobby, or until the scores once the round started.
+    fn countdown(&self) -> El {
+        match self.game.starts_at {
+            Some(at) => ui::countdown(&self.t.t("echo.startsIn"), at),
+            None => ui::countdown(&self.t.t("echo.endsIn"), self.game.ends_at),
         }
     }
 
@@ -96,9 +107,19 @@ impl GameView<'_> {
             Phase::Invited => {
                 body = body.child(ui::row().children([
                     ui::button(action::JOIN, &self.t.t("echo.join")).kind(ButtonKind::Primary),
-                    ui::countdown(&self.t.t("echo.endsIn"), self.game.ends_at),
+                    self.countdown(),
                 ]));
             }
+            Phase::Waiting if self.game.is_host() => {
+                body = body.child(
+                    ui::row().children([
+                        ui::button(action::START_NOW, &self.t.t("echo.startNow"))
+                            .kind(ButtonKind::Primary),
+                        self.countdown(),
+                    ]),
+                );
+            }
+            Phase::Waiting => body = body.child(self.countdown()),
             Phase::Listen { .. } | Phase::Repeat { .. } => body = body.child(self.pads()),
             Phase::Finished { .. } => {
                 body = body.child(ui::countdown(&self.t.t("echo.endsIn"), self.game.ends_at));

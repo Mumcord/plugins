@@ -1,14 +1,20 @@
 //! Echo Echo: the pets hum a short tune and everyone repeats it. A memory game that works
 //! without voice, drawn with native components.
 //!
-//! The starter sends an invite with the tune to the channel; everyone who joins listens, repeats
-//! it on four pads and sends their score to the channel. After [`GAME_SECS`] every client shows
-//! the scores it received. Two messages per player per game, so no game burst is needed.
+//! The starter sends an invite with the tune to the channel and a lobby opens for
+//! [`LOBBY_SECS`]. Everyone who joins in that time waits; when the lobby closes (or the host
+//! presses Start now) the host sends a start message and the tune plays on every joined client
+//! as it arrives. Only the host's timer decides the start, so the clients cannot drift apart.
+//! Nobody joined: the host plays alone. Players repeat the tune on four pads and send their
+//! score to the channel; [`GAME_SECS`] after the start every client shows the scores it
+//! received. At most three messages per player per game, so no game burst is needed.
 //!
 //! Wire format, version 1 (integers big-endian), everything received is untrusted:
-//! - kind 3 invite: `version u8 · game id u32 · tune length u8 · notes u8…` (notes below
-//!   [`PADS`], length [`MIN_TUNE`]…[`MAX_TUNE`])
+//! - kind 3 invite: `version u8 · game id u32 · tune length u8 · notes u8… · lobby secs u8`
+//!   (notes below [`PADS`], length [`MIN_TUNE`]…[`MAX_TUNE`]). The lobby byte was added later:
+//!   older clients ignore it, and an invite without it (or with 0) has already started.
 //! - kind 4 score: `version u8 · game id u32 · correct notes u8`
+//! - kind 5 start: `version u8 · game id u32`, from the host when the lobby closes
 
 mod view;
 
@@ -21,6 +27,7 @@ pub use view::GameView;
 
 pub const INVITE: u8 = 3;
 pub const SCORE: u8 = 4;
+pub const START: u8 = 5;
 
 pub const PADS: u8 = 4;
 pub const TUNE_LEN: usize = 5;
@@ -28,9 +35,15 @@ pub const MIN_TUNE: usize = 3;
 pub const MAX_TUNE: usize = 8;
 /// How long each note of the tune is shown.
 pub const STEP_MS: u32 = 700;
-/// From the invite until the scores are shown.
+/// From the start until the scores are shown.
 pub const GAME_SECS: u64 = 45;
 pub const GAME_MS: u32 = 45_000;
+/// How long others can join before the round starts on its own.
+pub const LOBBY_SECS: u64 = 30;
+pub const LOBBY_MS: u32 = 30_000;
+/// How long a joined player waits past the lobby for a start that may never come (the host
+/// left) before the round is given up.
+pub const NO_START_GRACE_SECS: u64 = 15;
 
 const VERSION: u8 = 1;
 
@@ -38,6 +51,7 @@ const VERSION: u8 = 1;
 pub mod action {
     pub const JOIN: &str = "echo-join";
     pub const CLOSE: &str = "echo-close";
+    pub const START_NOW: &str = "echo-start";
     const PAD_PREFIX: &str = "echo-pad:";
 
     pub fn pad(pad: u8) -> String {
@@ -57,6 +71,8 @@ pub mod action {
 pub struct Invite {
     pub id: u32,
     pub tune: Vec<u8>,
+    /// Seconds until the round starts; 0 = it already started.
+    pub lobby: u8,
 }
 
 impl Invite {
@@ -65,6 +81,7 @@ impl Invite {
         out.extend_from_slice(&self.id.to_be_bytes());
         out.push(u8::try_from(self.tune.len()).unwrap_or(0));
         out.extend_from_slice(&self.tune);
+        out.push(self.lobby);
         out
     }
 
@@ -76,8 +93,12 @@ impl Invite {
         let id = u32::from_be_bytes(rest[..4].try_into().ok()?);
         let len = usize::from(rest[4]);
         let tune = rest.get(5..5 + len)?.to_vec();
+        // A peer cannot make others wait longer than our own lobby.
+        let lobby = rest
+            .get(5 + len)
+            .map_or(0, |l| (*l).min(u8::try_from(LOBBY_SECS).unwrap_or(u8::MAX)));
         let valid = (MIN_TUNE..=MAX_TUNE).contains(&len) && tune.iter().all(|n| *n < PADS);
-        valid.then_some(Invite { id, tune })
+        valid.then_some(Invite { id, tune, lobby })
     }
 }
 
@@ -107,6 +128,29 @@ impl Score {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Start {
+    pub id: u32,
+}
+
+impl Start {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = vec![VERSION];
+        out.extend_from_slice(&self.id.to_be_bytes());
+        out
+    }
+
+    pub fn decode(bytes: &[u8]) -> Option<Start> {
+        let (&version, rest) = bytes.split_first()?;
+        if version < VERSION {
+            return None;
+        }
+        Some(Start {
+            id: u32::from_be_bytes(rest.get(..4)?.try_into().ok()?),
+        })
+    }
+}
+
 /// A tune of [`TUNE_LEN`] notes from a seed. Not secret: anyone could read the invite anyway.
 pub fn tune(seed: u64) -> Vec<u8> {
     // splitmix64, so neighbouring seeds (e.g. consecutive seconds) give unrelated tunes.
@@ -127,6 +171,8 @@ pub fn tune(seed: u64) -> Vec<u8> {
 pub enum Phase {
     /// Someone else started it; the user has not joined.
     Invited,
+    /// In the lobby: the user hosts or joined and waits for the start.
+    Waiting,
     /// The tune plays; `step` is the note shown now.
     Listen { step: usize },
     /// The user repeats; `entered` notes are right so far.
@@ -149,7 +195,10 @@ pub struct Game {
     pub id: u32,
     pub tune: Vec<u8>,
     pub phase: Phase,
-    /// Unix seconds when the scores are shown.
+    /// Unix seconds when the lobby closes; None once the round started. Only for the display:
+    /// the start itself is the host's start message.
+    pub starts_at: Option<u64>,
+    /// Unix seconds when the scores are shown (or a round that never started is given up).
     pub ends_at: u64,
     /// Who started it: None = the user, else the session and display name.
     pub host: Option<(u32, String)>,
@@ -160,13 +209,14 @@ pub struct Game {
 }
 
 impl Game {
-    /// The user starts a game: the tune plays right away.
-    pub fn start(id: u32, tune: Vec<u8>, now: u64) -> Game {
+    /// The user starts a game: the lobby opens and the user waits with the others.
+    pub fn open(id: u32, tune: Vec<u8>, now: u64) -> Game {
         Game {
             id,
             tune,
-            phase: Phase::Listen { step: 0 },
-            ends_at: now + GAME_SECS,
+            phase: Phase::Waiting,
+            starts_at: Some(now + LOBBY_SECS),
+            ends_at: now + LOBBY_SECS + GAME_SECS,
             host: None,
             scores: BTreeMap::new(),
             mine: None,
@@ -174,11 +224,18 @@ impl Game {
     }
 
     pub fn invited(invite: Invite, host: u32, host_name: String, now: u64) -> Game {
+        let lobby = u64::from(invite.lobby);
+        let (starts_at, ends_at) = if lobby == 0 {
+            (None, now + GAME_SECS)
+        } else {
+            (Some(now + lobby), now + lobby + NO_START_GRACE_SECS)
+        };
         Game {
             id: invite.id,
             tune: invite.tune,
             phase: Phase::Invited,
-            ends_at: now + GAME_SECS,
+            starts_at,
+            ends_at,
             host: Some((host, host_name)),
             scores: BTreeMap::new(),
             mine: None,
@@ -193,13 +250,47 @@ impl Game {
         self.phase == Phase::Over
     }
 
-    /// True if the user joined now.
+    pub fn is_host(&self) -> bool {
+        self.host.is_none()
+    }
+
+    /// True if the user joined now: into the lobby, or straight into the tune once it started.
     pub fn join(&mut self) -> bool {
         if self.phase != Phase::Invited {
             return false;
         }
-        self.phase = Phase::Listen { step: 0 };
+        self.phase = if self.starts_at.is_some() {
+            Phase::Waiting
+        } else {
+            Phase::Listen { step: 0 }
+        };
         true
+    }
+
+    /// The lobby closes and the round starts: the tune plays for the host and whoever joined.
+    /// False if it already started or is over.
+    pub fn begin(&mut self, now: u64) -> bool {
+        if self.starts_at.is_none() || self.is_over() {
+            return false;
+        }
+        self.starts_at = None;
+        self.ends_at = now + GAME_SECS;
+        if self.phase == Phase::Waiting {
+            self.phase = Phase::Listen { step: 0 };
+        }
+        true
+    }
+
+    /// The host's start message arrived; one from anyone else or for another game is ignored.
+    /// True if the round started now.
+    pub fn start_received(&mut self, session: u32, start: Start, now: u64) -> bool {
+        let from_host = self.host.as_ref().is_some_and(|(host, _)| *host == session);
+        from_host && start.id == self.id && self.begin(now)
+    }
+
+    /// The round ended without a start: the host left before the lobby closed.
+    pub fn never_started(&self) -> bool {
+        self.is_over() && self.starts_at.is_some()
     }
 
     /// The note shown right now, while the tune plays.

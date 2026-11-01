@@ -24,7 +24,7 @@ use mumcord_plugin_sdk::{
     ui::{self as host_ui, El, Slot},
 };
 
-use games::echo_echo::{self, Game, GameView, Invite, Score};
+use games::echo_echo::{self, Game, GameView, Invite, Score, Start};
 use pet::{Now, Pet, Reaction, Refusal, Session, Species, clean_name};
 use social::{Happening, OtherView, PatNote, Social, card::Card, display_name, throttle::Decision};
 use storage::{AnimationLevel, Settings};
@@ -62,6 +62,8 @@ struct App {
     game: Option<Game>,
     step_timer: Option<u32>,
     end_timer: Option<u32>,
+    /// Closes the lobby of a game the user hosts.
+    lobby_timer: Option<u32>,
     /// One game message waiting for the rate limit.
     retry: Option<(Target, u8, Vec<u8>)>,
     retry_timer: Option<u32>,
@@ -252,6 +254,7 @@ impl App {
             (action::PLAY, Some(_)) => self.start_game(now),
             (echo_echo::action::JOIN, _) => self.join_game(now),
             (echo_echo::action::CLOSE, _) => self.drop_game(),
+            (echo_echo::action::START_NOW, _) => self.begin_game(now),
             (other, _) if social::action::parse_pat(other).is_some() => {
                 if let Some(session) = social::action::parse_pat(other) {
                     self.pat_other(session, now);
@@ -461,6 +464,7 @@ impl App {
             }
             social::PAT => self.pat_received(&message, now),
             echo_echo::INVITE => self.game_invited(&message, now),
+            echo_echo::START => self.start_received(&message, now),
             echo_echo::SCORE => {
                 let score = Score::decode(&message.payload);
                 if let (Some(game), Some(score)) = (&mut self.game, score)
@@ -493,16 +497,64 @@ impl App {
         let seed = now.secs ^ (me << 32);
         let id = u32::try_from(seed & 0xffff_ffff).unwrap_or(0);
         self.drop_game();
-        let game = Game::start(id, echo_echo::tune(seed), now.secs);
-        if self.can_message() && self.session.me.is_some() {
-            let invite = Invite {
-                id,
-                tune: game.tune.clone(),
-            };
-            self.send_game(Target::Channel, echo_echo::INVITE, invite.encode());
-        }
+        let game = Game::open(id, echo_echo::tune(seed), now.secs);
+        let invite = Invite {
+            id,
+            tune: game.tune.clone(),
+            lobby: u8::try_from(echo_echo::LOBBY_SECS).unwrap_or(u8::MAX),
+        };
         self.game = Some(game);
-        self.start_game_timers();
+        if self.can_message() && self.session.me.is_some() {
+            self.send_game(Target::Channel, echo_echo::INVITE, invite.encode());
+            self.lobby_timer = start_timer(echo_echo::LOBBY_MS, "game lobby");
+        } else {
+            // Nobody can join without messages, so there is no lobby to wait for.
+            self.begin_game(now);
+        }
+    }
+
+    /// The host closes the lobby (timer or Start now): the round starts for everyone who joined
+    /// when the start message arrives. Nobody joined = the host plays alone.
+    fn begin_game(&mut self, now: Now) {
+        if let Some(id) = self.lobby_timer.take() {
+            timers::cancel(id);
+        }
+        let Some(game) = &mut self.game else { return };
+        if !game.is_host() || !game.begin(now.secs) {
+            return;
+        }
+        let start = Start { id: game.id };
+        if self.can_message() && self.session.me.is_some() {
+            self.send_game(Target::Channel, echo_echo::START, start.encode());
+        }
+        self.round_started();
+    }
+
+    fn start_received(&mut self, message: &PeerMessage, now: Now) {
+        let Some(start) = Start::decode(&message.payload) else {
+            return;
+        };
+        if let Some(game) = &mut self.game
+            && game.start_received(message.sender.session, start, now.secs)
+        {
+            self.round_started();
+        }
+    }
+
+    /// Timers for a round that just started: the tune plays if the user is in, and the scores
+    /// show [`echo_echo::GAME_SECS`] later.
+    fn round_started(&mut self) {
+        for id in [self.step_timer.take(), self.end_timer.take()]
+            .into_iter()
+            .flatten()
+        {
+            timers::cancel(id);
+        }
+        if self.game.as_ref().is_some_and(|g| g.playing().is_some()) {
+            self.step_timer = start_timer_repeating(echo_echo::STEP_MS);
+        }
+        self.end_timer = start_timer(echo_echo::GAME_MS, "game end");
+        self.render_game();
     }
 
     fn game_invited(&mut self, message: &PeerMessage, now: Now) {
@@ -514,13 +566,10 @@ impl App {
         };
         self.drop_game();
         let host = display_name(&message.sender.name);
-        self.game = Some(Game::invited(
-            invite,
-            message.sender.session,
-            host,
-            now.secs,
-        ));
-        self.end_timer = start_timer(echo_echo::GAME_MS, "game end");
+        let game = Game::invited(invite, message.sender.session, host, now.secs);
+        let end_ms = game.ends_at.saturating_sub(now.secs).saturating_mul(1000);
+        self.game = Some(game);
+        self.end_timer = start_timer(u32::try_from(end_ms).unwrap_or(u32::MAX), "game end");
         if self.game_in_chat() {
             self.render_game();
         }
@@ -536,15 +585,14 @@ impl App {
         match pet.play(&self.session, now) {
             Ok(_) => {
                 game.join();
-                self.step_timer = start_timer_repeating(echo_echo::STEP_MS);
+                if game.playing().is_some() {
+                    self.step_timer = start_timer_repeating(echo_echo::STEP_MS);
+                }
+                // A chat card is not part of the panel render, so show the new phase here.
+                self.render_game();
             }
             Err(refusal) => self.refusal = Some(refusal),
         }
-    }
-
-    fn start_game_timers(&mut self) {
-        self.step_timer = start_timer_repeating(echo_echo::STEP_MS);
-        self.end_timer = start_timer(echo_echo::GAME_MS, "game end");
     }
 
     fn game_step(&mut self) {
@@ -590,6 +638,7 @@ impl App {
         for id in [
             self.step_timer.take(),
             self.end_timer.take(),
+            self.lobby_timer.take(),
             self.retry_timer.take(),
         ]
         .into_iter()
@@ -693,6 +742,10 @@ impl App {
             }
             Event::Timer(id) if Some(id) == self.step_timer => self.game_step(),
             Event::Timer(id) if Some(id) == self.end_timer => self.end_game(),
+            Event::Timer(id) if Some(id) == self.lobby_timer => {
+                self.lobby_timer = None;
+                self.begin_game(now);
+            }
             Event::Timer(id) if Some(id) == self.retry_timer => self.retry_send(),
             Event::Timer(id) if Some(id) == self.reaction_timer => {
                 self.reaction_timer = None;
@@ -774,6 +827,7 @@ impl Plugin for Echolings {
             game: None,
             step_timer: None,
             end_timer: None,
+            lobby_timer: None,
             retry: None,
             retry_timer: None,
         };
