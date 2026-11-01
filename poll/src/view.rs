@@ -3,7 +3,7 @@
 
 use mumcord_plugin_sdk::{
     i18n::Strings,
-    ui::{self, Align, ButtonKind, Direction, El},
+    ui::{self, Align, ButtonKind, Direction, El, Justify},
 };
 
 use crate::app::{Draft, DraftError, Poll};
@@ -185,14 +185,19 @@ pub enum Role {
 /// "Open" (the whole poll in the popover, where people vote) and the options with the most
 /// votes as slim result rows.
 pub fn card(s: &Strings, poll: &Poll, role: Role) -> El {
-    // "Open" shares the status line, so three options still fit the 160 px.
-    let mut card = ui::stack(Direction::Column, 4, Align::Stretch)
+    // The host fades anything below 144 px of content (the 160 px slot minus padding). "Open"
+    // sits beside the question and the status line instead of on a line of its own, and the
+    // lines go without a gap (their line height spaces them already): 40 px + 3 × 32 px rows
+    // leave room for taller emoji glyphs, so the third option stays fully visible.
+    let summary = ui::stack(Direction::Column, 0, Align::Stretch)
         .child(ui::heading(&cut_chars(&poll.question, CARD_QUESTION_CHARS)))
-        .child(
-            ui::row()
-                .child(ui::caption(&status_text(s, poll, role)))
-                .child(ui::button("open", &s.t("button.open")).kind(ButtonKind::Primary)),
-        );
+        .child(ui::caption(&status_text(s, poll, role)));
+    let mut card = ui::stack(Direction::Column, 0, Align::Stretch).child(
+        ui::row()
+            .justify(Justify::FillFirst)
+            .child(summary)
+            .child(ui::button("open", &s.t("button.open")).kind(ButtonKind::Primary)),
+    );
     for i in top_options(poll) {
         card = card.child(result_row(s, poll, i));
     }
@@ -368,6 +373,31 @@ mod tests {
         let line = creation_line(&s, &"ä".repeat(100), &options);
         assert!(line.chars().count() + "[Poll] ".len() <= 500);
         assert!(line.ends_with("Vote with !poll 1 to !poll 10"), "{line}");
+    }
+
+    #[test]
+    fn card_puts_open_beside_the_question_so_three_options_fit() {
+        // The host fades everything below 144 px of content; a line of its own for "Open" and
+        // gaps between the lines pushed the third option there.
+        let options = ["A", "B", "C", "D"].map(String::from).to_vec();
+        let poll = Poll::new(1, "Q?".into(), options, "Anna".into());
+        let card = card(&english(), &poll, Role::Voter);
+        assert_eq!(card.children.len(), 1 + CARD_OPTIONS);
+        let ui::Component::Stack(lines) = &card.component else {
+            panic!("the card is a stack");
+        };
+        assert_eq!(lines.gap, 0);
+        let head = &card.children[0];
+        let ui::Component::Stack(row) = &head.component else {
+            panic!("the heading row is a stack");
+        };
+        assert_eq!(row.direction, Direction::Row);
+        assert_eq!(row.justify, Some(ui::Justify::FillFirst));
+        assert_eq!(head.children.len(), 2, "question and status, then Open");
+        assert!(matches!(
+            head.children[1].component,
+            ui::Component::Button(_)
+        ));
     }
 
     #[test]
