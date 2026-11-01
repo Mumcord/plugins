@@ -659,6 +659,65 @@ fn three_players_reveal_as_soon_as_two_witnesses_answer() {
 }
 
 #[test]
+fn two_players_reveal_early_with_one_witness() {
+    let mut sim = Sim::new(2, 50);
+    sim.roll(0, "2d6+3");
+    // The single witness answers within 1.5 s; the roller still waits for a possible second
+    // one until 2.5 s, then reveals well before the 5 s timeout.
+    sim.run_until(2_400);
+    assert_eq!((sim.count(KIND_WITNESS), sim.count(KIND_REVEAL)), (1, 0));
+    sim.run_until(3_000);
+    assert_eq!(sim.count(KIND_REVEAL), 1);
+    for (index, prefix) in [(0, "roll-me-"), (1, "roll-100-")] {
+        let host = &sim.clients[index].host;
+        assert!(has_text(host.card_with(prefix), "Verified"));
+        assert!(
+            texts(host.card_with(prefix))
+                .iter()
+                .any(|t| t.starts_with("Checked with 1 witness"))
+        );
+    }
+}
+
+#[test]
+fn a_witness_after_the_early_reveal_time_reveals_at_once() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.on_command(&mut host, "d20");
+    let early_timer = host.new_timers[1];
+    assert_eq!(early_timer.1, app::EARLY_REVEAL_MS);
+    app.on_timer(&mut host, early_timer.0);
+    assert!(
+        !host
+            .sent
+            .iter()
+            .any(|m| matches!(m, Message::Reveal { .. }))
+    );
+    let Some(Message::Commit { roll_id, .. }) = host.sent.first().cloned() else {
+        panic!("no commit");
+    };
+    app.on_peer_message(
+        &mut host,
+        7,
+        "Bob",
+        KIND_WITNESS,
+        &Message::Witness {
+            roller: 1,
+            roll_id,
+            value: [3; 16],
+        }
+        .encode(),
+        false,
+    );
+    assert!(
+        host.sent
+            .iter()
+            .any(|m| matches!(m, Message::Reveal { witnesses, .. } if witnesses.len() == 1))
+    );
+    assert!(has_text(host.card_with("roll-me-"), "Verified"));
+}
+
+#[test]
 fn a_big_channel_uses_two_witnesses() {
     let mut sim = Sim::new(30, 20);
     sim.roll(0, "2d6");

@@ -17,6 +17,10 @@ use crate::wire::{MAX_WITNESSES, Message};
 pub const WITNESS_DELAY_MAX_MS: u16 = 1500;
 /// The roller reveals at the latest this long after the commit.
 pub const REVEAL_TIMEOUT_MS: u32 = 5000;
+/// With at least one witness, the roller reveals this long after the commit: every honest
+/// witness answers within [`WITNESS_DELAY_MAX_MS`], so waiting longer only waits for people
+/// who will not answer (with a single other player, the second witness never comes).
+pub const EARLY_REVEAL_MS: u32 = 2500;
 /// A receiver gives up this long after the roller should have revealed: after the second
 /// witness, or after the reveal timeout.
 pub const NOT_REVEALED_AFTER_MS: u32 = 5000;
@@ -90,6 +94,8 @@ struct OwnRoll {
     secret: Secret,
     witnesses: Vec<Secret>,
     card: String,
+    /// [`EARLY_REVEAL_MS`] has passed: the first witness value reveals at once.
+    early: bool,
 }
 
 /// Someone else's roll, from the commit until it is settled.
@@ -110,6 +116,7 @@ struct OtherRoll {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Purpose {
+    EarlyReveal { id: u32 },
     Reveal { id: u32 },
     Witness { roller: u32, id: u32 },
     Deadline { roller: u32, id: u32 },
@@ -164,6 +171,7 @@ impl App {
             secret,
             witnesses: Vec::new(),
             card: format!("roll-me-{id:08x}"),
+            early: false,
         };
         // Commit and reveal fit the normal budget too; the burst only makes the roll faster.
         host.start_game_burst();
@@ -183,6 +191,7 @@ impl App {
                     None,
                 );
                 self.start_timer(host, REVEAL_TIMEOUT_MS, Purpose::Reveal { id });
+                self.start_timer(host, EARLY_REVEAL_MS, Purpose::EarlyReveal { id });
                 self.own = Some(roll);
             }
             // Nobody in the channel runs the plugin, or the user shares with nobody.
@@ -237,6 +246,14 @@ impl App {
         };
         let (_, purpose) = self.timers.swap_remove(index);
         match purpose {
+            Purpose::EarlyReveal { id } => {
+                if let Some(roll) = self.own.as_mut().filter(|roll| roll.id == id) {
+                    roll.early = true;
+                    if !roll.witnesses.is_empty() {
+                        self.reveal(host);
+                    }
+                }
+            }
             Purpose::Reveal { id } => {
                 if self.own.as_ref().is_some_and(|roll| roll.id == id) {
                     self.reveal(host);
@@ -322,7 +339,7 @@ impl App {
         if let Some(own) = self.own.as_mut().filter(|roll| roll.id == id) {
             if own.witnesses.len() < MAX_WITNESSES && !own.witnesses.contains(&value) {
                 own.witnesses.push(value);
-                if own.witnesses.len() == MAX_WITNESSES {
+                if own.early || own.witnesses.len() == MAX_WITNESSES {
                     self.reveal(host);
                 }
             }

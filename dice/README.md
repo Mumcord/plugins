@@ -29,10 +29,18 @@ There is no server that rolls for us, so the roll uses commit, witness, reveal:
    the roll or the secret.
 2. **Witness (kind 2):** every other client with the plugin waits a random 0–1.5 s and sends a
    random 16-byte value `W`, unless it has already seen two witness values for this roll.
-3. **Reveal (kind 3):** after two witness values, or after 5 s, the roller sends `R` and the
-   witness values it used. Everyone computes the seed
+3. **Reveal (kind 3):** after two witness values, 2.5 s after the commit if at least one
+   witness value has arrived by then (or as soon as the first one arrives after that), or
+   after 5 s, the roller sends `R` and the witness values it used. Everyone computes the seed
    `S = SHA-256("mcdice1" ‖ id ‖ R ‖ W1 ‖ W2)` and the dice from the stream
    `HMAC-SHA256(S, counter)`, four bytes per die with rejection sampling (no modulo bias).
+
+Why the early reveal at 2.5 s is still fair: the roller has fixed `R` in the commitment, so
+choosing when to reveal cannot change the dice; it only decides which witness values count, and
+those are the first ones sent in the channel, which everyone checks. Honest witnesses answer
+within 1.5 s of seeing the commit, so by 2.5 s every witness that is coming has answered. With
+only one other player the second witness never comes, and without the early reveal every such
+roll would wait the full 5 s.
 
 Each client checks that `R` matches the commitment and that the witness values are exactly the
 first two sent in the channel, then computes the dice itself. The card shows:
