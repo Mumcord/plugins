@@ -97,7 +97,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 [[package]]
 name = "mumcord-plugin-sdk"
 version = "0.5.0"
-source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#c813684b139937313216dceaa05cc6f87c6eae00"
+source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#63d47fce9d7c9c82d1a9e77171fe43604f42f35d"
 dependencies = [
  "serde",
  "serde_json",
@@ -109,6 +109,7 @@ name = "poll"
 version = "1.0.0"
 dependencies = [
  "mumcord-plugin-sdk",
+ "serde",
  "serde_json",
 ]
 

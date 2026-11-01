@@ -14,12 +14,15 @@ use std::cell::RefCell;
 use mumcord_plugin_sdk::{
     Plugin, chat, chat_card,
     events::{ActionSource, ActionValue, Event, PanelVisibility},
-    log, notify, peers, timers,
+    log, notify, peers, storage, timers,
     types::{Error, StartInfo},
     ui::{self, El, Slot},
 };
 
-use app::{App, Host, To};
+use app::{App, Host, Saved, To};
+
+/// Plugin storage key of the polls kept across restarts.
+const SAVED_KEY: &str = "polls";
 
 thread_local! {
     // A plugin instance is single-threaded; the host calls it one event at a time.
@@ -118,6 +121,18 @@ impl Host for Mumcord {
 
     fn warn(&mut self, message: &str) {
         log::warn(message);
+    }
+
+    fn load_polls(&mut self) -> Result<Vec<Saved>, String> {
+        storage::get_json(storage::Scope::Identity, SAVED_KEY)
+            .map(Option::unwrap_or_default)
+            .map_err(|e| format!("{e:?}"))
+    }
+
+    fn save_polls(&mut self, polls: &[Saved]) {
+        if let Err(e) = storage::set_json(storage::Scope::Identity, SAVED_KEY, polls) {
+            log::warn(&format!("could not save the polls: {e:?}"));
+        }
     }
 }
 

@@ -10,6 +10,7 @@ use mumcord_plugin_sdk::{
     types::{Error, Peer},
     ui::{El, Slot},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::view::{self, Role};
 use crate::wire::{
@@ -28,6 +29,8 @@ pub const RESEND_DELAY_MS: u32 = 3_000;
 const MAX_TRACKED: usize = 16;
 /// Ballots counted per poll, so a flood of fake sessions cannot grow memory without bound.
 const MAX_BALLOTS: usize = 1_000;
+/// Polls kept in plugin storage, so their chat lines still give way to cards after a restart.
+pub const MAX_SAVED: usize = 20;
 /// Messages waiting for send budget; the oldest are dropped beyond this.
 const MAX_OUTBOX: usize = 32;
 /// Who a message goes to.
@@ -66,6 +69,57 @@ pub trait Host {
     /// Opens this plugin's details and permissions in Mumcord; only right after a click.
     fn open_permissions(&mut self) -> Result<(), Error>;
     fn warn(&mut self, message: &str);
+    /// The polls saved before the last restart; an error if plugin storage cannot be read.
+    fn load_polls(&mut self) -> Result<Vec<Saved>, String>;
+    fn save_polls(&mut self, polls: &[Saved]);
+}
+
+/// What plugin storage keeps of a poll: enough to show its card and to recognise its chat
+/// lines and `!poll <n>` votes in replayed history. No voter names.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Saved {
+    pub question: String,
+    pub options: Vec<String>,
+    pub counts: Vec<u16>,
+    pub closed: bool,
+    pub creator: String,
+    pub my_vote: Option<usize>,
+    pub line_hash: u32,
+    pub close_hash: u32,
+}
+
+impl Saved {
+    fn of(poll: &Poll) -> Self {
+        Self {
+            question: poll.question.clone(),
+            options: poll.options.clone(),
+            counts: poll.counts.clone(),
+            closed: poll.closed,
+            creator: poll.creator.clone(),
+            my_vote: poll.my_vote,
+            line_hash: poll.line_hash,
+            close_hash: poll.close_hash,
+        }
+    }
+
+    /// The poll as it was before the restart. One that was still open is frozen: its ballots
+    /// are gone with the restart, as when a creator leaves. Storage is checked like a message.
+    fn into_poll(self) -> Option<Poll> {
+        if self.line_hash == 0
+            || !wire::valid_poll(&self.question, &self.options)
+            || self.counts.len() != self.options.len()
+        {
+            return None;
+        }
+        let mut poll = Poll::new(0, self.question, self.options, self.creator);
+        poll.counts = self.counts;
+        poll.closed = self.closed;
+        poll.frozen = !self.closed;
+        poll.my_vote = self.my_vote.filter(|&v| v < poll.options.len());
+        poll.line_hash = self.line_hash;
+        poll.close_hash = self.close_hash;
+        Some(poll)
+    }
 }
 
 /// A poll as one client sees it.
@@ -193,6 +247,13 @@ impl Own {
     }
 }
 
+/// A poll from before the last restart; read only.
+struct Past {
+    poll: Poll,
+    /// Its card was put in place of a replayed line, so it is shown again on a language change.
+    shown: bool,
+}
+
 /// Another user's poll, identified by the creator's session.
 struct Other {
     session: u32,
@@ -222,6 +283,9 @@ pub struct App {
     draft: Draft,
     own: Option<Own>,
     others: Vec<Other>,
+    past: Vec<Past>,
+    /// What plugin storage holds, oldest first.
+    saved: Vec<Saved>,
     outbox: VecDeque<Outgoing>,
     flush_timer: Option<u32>,
     tally_timer: Option<u32>,
@@ -242,6 +306,8 @@ pub struct App {
 enum Target {
     Own,
     Other(u32),
+    /// A poll from before the restart, by its line hash.
+    Past(u32),
 }
 
 pub fn own_card_id(poll_id: u32) -> String {
@@ -252,8 +318,27 @@ pub fn other_card_id(session: u32, poll_id: u32) -> String {
     format!("p-{session}-{poll_id}")
 }
 
+/// Polls from before a restart have no session or reliable id; their line hash names them.
+pub fn past_card_id(line_hash: u32) -> String {
+    format!("past-{line_hash}")
+}
+
 impl App {
     pub fn start(&mut self, host: &mut impl Host) {
+        match host.load_polls() {
+            Ok(mut saved) => {
+                let excess = saved.len().saturating_sub(MAX_SAVED);
+                saved.drain(..excess);
+                self.past = saved
+                    .iter()
+                    .filter_map(|s| s.clone().into_poll())
+                    .map(|poll| Past { poll, shown: false })
+                    .collect();
+                self.saved = saved;
+            }
+            // Old chat lines then stay plain text; Poll itself works as usual.
+            Err(e) => host.warn(&format!("could not read the saved polls: {e}")),
+        }
         self.render_panel(host);
     }
 
@@ -266,6 +351,15 @@ impl App {
         let sessions: Vec<u32> = self.others.iter().map(|o| o.session).collect();
         for session in sessions {
             self.render_other(host, session);
+        }
+        let past: Vec<u32> = self
+            .past
+            .iter()
+            .filter(|p| p.shown)
+            .map(|p| p.poll.line_hash)
+            .collect();
+        for hash in past {
+            self.render_past(host, hash);
         }
         true
     }
@@ -419,6 +513,7 @@ impl App {
         let focused = self.focus.filter(|t| match t {
             Target::Own => self.own.is_some(),
             Target::Other(session) => self.others.iter().any(|o| o.session == *session),
+            Target::Past(hash) => self.past_poll(*hash).is_some(),
         });
         focused.filter(|_| self.expanded).or_else(|| self.current())
     }
@@ -431,10 +526,58 @@ impl App {
         {
             return Some(Target::Own);
         }
-        self.others
+        if let Some(other) = self
+            .others
             .iter()
             .find(|o| other_card_id(o.session, o.poll.id) == card)
-            .map(|o| Target::Other(o.session))
+        {
+            return Some(Target::Other(other.session));
+        }
+        self.past
+            .iter()
+            .find(|p| past_card_id(p.poll.line_hash) == card)
+            .map(|p| Target::Past(p.poll.line_hash))
+    }
+
+    fn past_poll(&self, line_hash: u32) -> Option<&Poll> {
+        self.past
+            .iter()
+            .map(|p| &p.poll)
+            .find(|p| p.line_hash == line_hash)
+    }
+
+    /// Keeps the poll's latest state in plugin storage. Polls without a chat line have nothing
+    /// to recognise in history and are not kept.
+    fn remember(&mut self, host: &mut impl Host, saved: Saved) {
+        if saved.line_hash == 0 {
+            return;
+        }
+        if self.saved.last() == Some(&saved) {
+            return;
+        }
+        self.saved.retain(|s| s.line_hash != saved.line_hash);
+        if self.saved.len() >= MAX_SAVED {
+            self.saved.remove(0);
+        }
+        self.saved.push(saved);
+        host.save_polls(&self.saved);
+    }
+
+    fn remember_own(&mut self, host: &mut impl Host) {
+        if let Some(saved) = self.own.as_ref().map(|o| Saved::of(&o.poll)) {
+            self.remember(host, saved);
+        }
+    }
+
+    fn remember_other(&mut self, host: &mut impl Host, session: u32) {
+        if let Some(saved) = self
+            .others
+            .iter()
+            .find(|o| o.session == session)
+            .map(|o| Saved::of(&o.poll))
+        {
+            self.remember(host, saved);
+        }
     }
 
     fn create(&mut self, host: &mut impl Host) {
@@ -493,6 +636,7 @@ impl App {
             self.expanded = false;
         }
         self.render_own(host);
+        self.remember_own(host);
         self.supersede_own(host, id, line_hash);
     }
 
@@ -534,11 +678,18 @@ impl App {
         }
         self.flush(host);
         self.render_own(host);
+        self.remember_own(host);
         self.supersede_own(host, poll_id, close_hash);
     }
 
     fn vote(&mut self, host: &mut impl Host, target: Target, option: usize) {
-        let Target::Other(session) = target else {
+        let session = match target {
+            Target::Own => None,
+            Target::Other(session) => Some(session),
+            // A poll from before the restart takes no votes.
+            Target::Past(_) => return,
+        };
+        let Some(session) = session else {
             let Some(own) = self.own.as_mut() else {
                 return;
             };
@@ -646,6 +797,7 @@ impl App {
             poll,
         });
         self.render_other(host, sender.session);
+        self.remember_other(host, sender.session);
         if create.line_hash != 0 {
             host.supersede(&card, sender.session, create.line_hash);
         }
@@ -690,7 +842,8 @@ impl App {
     pub fn on_chat_trigger(&mut self, host: &mut impl Host, sender: &Peer, args: &str) {
         let is_vote = |poll: &Poll| parse_choice(args, poll.options.len()).is_some();
         let known = self.own.as_ref().is_some_and(|o| is_vote(&o.poll))
-            || self.others.iter().any(|o| is_vote(&o.poll));
+            || self.others.iter().any(|o| is_vote(&o.poll))
+            || self.past.iter().any(|p| is_vote(&p.poll));
         if !known {
             return;
         }
@@ -738,31 +891,48 @@ impl App {
         if hash == 0 {
             return;
         }
-        let own = self.own.iter().map(|o| (&o.poll, None));
-        let others = self.others.iter().map(|o| (&o.poll, Some(o.session)));
-        let Some((poll, session, closing)) = own.chain(others).find_map(|(poll, session)| {
-            if poll.line_hash == hash {
-                Some((poll.id, session, false))
-            } else if poll.close_hash == hash {
-                Some((poll.id, session, true))
-            } else {
-                None
-            }
-        }) else {
+        // Polls of this run first: a poll from before the restart may be live again.
+        let own = self.own.iter().map(|o| (&o.poll, Target::Own));
+        let others = self
+            .others
+            .iter()
+            .map(|o| (&o.poll, Target::Other(o.session)));
+        let past = self
+            .past
+            .iter()
+            .map(|p| (&p.poll, Target::Past(p.poll.line_hash)));
+        let Some((poll, target, closing)) =
+            own.chain(others).chain(past).find_map(|(poll, target)| {
+                if poll.line_hash == hash {
+                    Some((poll.id, target, false))
+                } else if poll.close_hash == hash {
+                    Some((poll.id, target, true))
+                } else {
+                    None
+                }
+            })
+        else {
             return;
         };
         if closing {
             host.hide_message();
             return;
         }
-        match session {
-            None => {
+        match target {
+            Target::Own => {
                 host.replace_message(&own_card_id(poll));
                 self.render_own(host);
             }
-            Some(session) => {
+            Target::Other(session) => {
                 host.replace_message(&other_card_id(session, poll));
                 self.render_other(host, session);
+            }
+            Target::Past(hash) => {
+                host.replace_message(&past_card_id(hash));
+                if let Some(past) = self.past.iter_mut().find(|p| p.poll.line_hash == hash) {
+                    past.shown = true;
+                }
+                self.render_past(host, hash);
             }
         }
     }
@@ -791,6 +961,7 @@ impl App {
             }
         }
         self.render_other(host, sender);
+        self.remember_other(host, sender);
     }
 
     fn received_voters(&mut self, host: &mut impl Host, sender: u32, voters: Voters) {
@@ -837,6 +1008,7 @@ impl App {
         if !other.poll.closed && !other.poll.frozen {
             other.poll.frozen = true;
             self.render_other(host, peer.session);
+            self.remember_other(host, peer.session);
         }
     }
 
@@ -855,6 +1027,7 @@ impl App {
                 });
                 self.queue(To::Channel, KIND_TALLY, tally, false);
                 self.flush(host);
+                self.remember_own(host);
             }
         } else if let Some(pos) = self.resend_timers.iter().position(|&(t, _)| t == id) {
             let (_, session) = self.resend_timers.remove(pos);
@@ -948,6 +1121,7 @@ impl App {
                 .iter()
                 .find(|o| o.session == session)
                 .map(|o| (&o.poll, Role::Voter)),
+            Some(Target::Past(hash)) => self.past_poll(hash).map(|p| (p, Role::Voter)),
             None => None,
         };
         let panel = view::Panel {
@@ -981,6 +1155,15 @@ impl App {
             );
         }
         self.render_panel(host);
+    }
+
+    fn render_past(&self, host: &mut impl Host, line_hash: u32) {
+        if let Some(poll) = self.past_poll(line_hash) {
+            host.show(
+                Slot::ChatCard(past_card_id(line_hash)),
+                view::card(&self.strings.0, poll, Role::Voter),
+            );
+        }
     }
 }
 

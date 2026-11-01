@@ -9,7 +9,9 @@ use mumcord_plugin_sdk::{
     ui::{Component, El, Slot},
 };
 
-use crate::app::{App, Host, RESEND_DELAY_MS, TALLY_DELAY_MS, To, other_card_id, own_card_id};
+use crate::app::{
+    App, Host, RESEND_DELAY_MS, Saved, TALLY_DELAY_MS, To, other_card_id, own_card_id, past_card_id,
+};
 use crate::wire::{
     Create, KIND_CREATE, KIND_TALLY, KIND_VOTE, KIND_VOTERS, Tally, Vote, VoterEntry, Voters,
 };
@@ -44,6 +46,10 @@ struct Fake {
     replaced: Vec<String>,
     /// How many current messages were hidden.
     hidden: usize,
+    /// The polls in plugin storage, kept across a simulated restart.
+    stored: Vec<Saved>,
+    /// Reading plugin storage fails (e.g. no identity yet).
+    load_fails: bool,
 }
 
 impl Host for Fake {
@@ -140,6 +146,17 @@ impl Host for Fake {
 
     fn warn(&mut self, message: &str) {
         self.warnings.push(message.to_owned());
+    }
+
+    fn load_polls(&mut self) -> Result<Vec<Saved>, String> {
+        if self.load_fails {
+            return Err("no identity".to_owned());
+        }
+        Ok(self.stored.clone())
+    }
+
+    fn save_polls(&mut self, polls: &[Saved]) {
+        self.stored = polls.to_vec();
     }
 }
 
@@ -1253,4 +1270,118 @@ fn replayed_lines_of_another_creators_poll_give_way_to_its_card() {
     host.replay = true;
     app.on_own_line(&mut host, &format!("[Poll] {line}"));
     assert_eq!(host.replaced, vec![other_card_id(1, 1000)]);
+}
+
+/// The app restarts: everything in memory is gone, only plugin storage stays.
+fn restart(host: &Fake) -> (App, Fake) {
+    let mut app = App::default();
+    let mut host = Fake {
+        now: host.now + 60,
+        name: host.name.clone(),
+        stored: host.stored.clone(),
+        replay: true,
+        ..Fake::default()
+    };
+    app.start(&mut host);
+    (app, host)
+}
+
+#[test]
+fn after_a_restart_replayed_lines_of_an_own_poll_give_way_to_its_card() {
+    let (mut app, mut host) = creator();
+    trigger(&mut app, &mut host, &peer(2, "Ben", Some("kb")), "2");
+    app.on_action(&mut host, None, "close", None);
+    let create_line = format!("[Poll] {}", host.chat[0]);
+    let close_line = format!("[Poll] {}", host.chat[1]);
+    let hash = host.line_hash(&host.chat[0].clone());
+
+    let (mut app, mut host) = restart(&host);
+    app.on_own_line(&mut host, &create_line);
+    assert_eq!(host.replaced, vec![past_card_id(hash)]);
+    let card = host.texts(&past_card_id(hash));
+    assert!(card.iter().any(|t| t == "Pizza or pasta?"), "{card:?}");
+    assert!(card.iter().any(|t| t == "Pasta: 1 vote"), "{card:?}");
+    app.on_own_line(&mut host, &close_line);
+    assert_eq!(host.hidden, 1);
+
+    // A replayed vote for it is hidden again and never counted.
+    trigger(&mut app, &mut host, &peer(3, "Cleo", Some("kc")), "1");
+    assert_eq!(host.hidden, 2);
+    assert!(host.sent.is_empty());
+    assert!(host.timers.iter().all(|&(_, ms)| ms != TALLY_DELAY_MS));
+}
+
+#[test]
+fn after_a_restart_an_open_poll_is_frozen_and_takes_no_votes() {
+    let (_, mut host) = creator();
+    let create_line = format!("[Poll] {}", host.chat[0]);
+    let hash = host.line_hash(&host.chat[0].clone());
+
+    let (mut app, mut host) = restart(&host);
+    app.on_own_line(&mut host, &create_line);
+    assert_eq!(host.replaced, vec![past_card_id(hash)]);
+    let card = host.texts(&past_card_id(hash));
+    assert!(card.iter().any(|t| t.contains("frozen")), "{card:?}");
+
+    // "Open" shows it in the popover, with its Vote buttons off.
+    host.replay = false;
+    app.on_action(&mut host, Some(&past_card_id(hash)), "open", None);
+    let panel = host.texts("panel");
+    assert!(panel.iter().any(|t| t == "[vote-0] off"), "{panel:?}");
+    app.on_action(&mut host, None, "vote-0", None);
+    assert!(host.sent.is_empty());
+    // A new poll can be started as usual.
+    assert!(panel.iter().all(|t| t != "[new-poll] off"), "{panel:?}");
+}
+
+#[test]
+fn after_a_restart_replayed_lines_of_another_creators_poll_give_way_to_its_card() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    let line = "📊 Pizza or pasta? · 1) Pizza · 2) Pasta";
+    let hash = line.len() as u32 + 1000;
+    app.on_peer_message(
+        &mut host,
+        &peer(1, "Anna", Some("ka")),
+        KIND_CREATE,
+        &create_payload(1000, hash),
+        false,
+    );
+
+    let (mut app, mut host) = restart(&host);
+    app.on_own_line(&mut host, &format!("[Poll] {line}"));
+    assert_eq!(host.replaced, vec![past_card_id(hash)]);
+    let card = host.texts(&past_card_id(hash));
+    assert!(card.iter().any(|t| t.contains("frozen")), "{card:?}");
+}
+
+#[test]
+fn a_failed_storage_read_starts_empty() {
+    let mut app = App::default();
+    let mut host = Fake {
+        load_fails: true,
+        replay: true,
+        ..Fake::default()
+    };
+    app.start(&mut host);
+    assert_eq!(host.warnings.len(), 1);
+    app.on_own_line(&mut host, "[Poll] 📊 Tea? · 1) Yes · 2) No");
+    assert!(host.replaced.is_empty());
+}
+
+#[test]
+fn only_the_newest_polls_are_kept() {
+    let (mut app, mut host) = creator();
+    for i in 0..30u32 {
+        let line = format!("{}{i}", "x".repeat(i as usize));
+        app.on_peer_message(
+            &mut host,
+            &peer(10 + i, "Ben", None),
+            KIND_CREATE,
+            &create_payload(i + 1, line.len() as u32 + 1000),
+            false,
+        );
+    }
+    assert_eq!(host.stored.len(), 20);
+    assert_eq!(host.stored.last().map(|s| s.line_hash), Some(1000 + 29 + 2));
 }

@@ -13,6 +13,7 @@ Official Mumcord plugin: ask the channel a question with up to ten options and w
 - If the creator leaves, the poll stays visible as "Creator left, poll is frozen".
 - Closing the poll posts the result and sends the final tally and the list of voters.
 - When a poll is created or ended, a plain text line goes to the channel so people on the official Mumble client see it too, e.g. `[Poll] Pizza or pasta? 1) Pizza 2) Pasta · Vote with !poll 1 to !poll 2`. Mumcord users with Poll see the card instead of that line.
+- Poll remembers the last 20 polls (question, options, counts, who created it; no voter names) in its plugin storage, so after Mumcord restarts their text lines in the chat history still show as cards and old `!poll` votes stay hidden. A poll that was still open becomes frozen: its votes were only kept in memory.
 - If several people in the channel run a poll at the same time, a `!poll 2` counts for each of their polls.
 
 ## Permissions

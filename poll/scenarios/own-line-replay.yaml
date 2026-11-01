@@ -1,4 +1,4 @@
-# After a restart the host replays the poll's own "[Poll] " lines from chat history (chat-match
+# The host replays the poll's own "[Poll] " lines from chat history (chat-match
 # pattern index 255, `own: true`). The create line of a known poll gives way to its card and
 # the closing line is hidden, as the card shows the result.
 name: A replayed own create line is replaced by the card, the close line is hidden
