@@ -57,6 +57,21 @@ pub const TREAT_CHEER: u8 = 10;
 pub const TREAT_ENERGY: u8 = 15;
 pub const TREAT_POINTS: u32 = 5;
 
+/// A pat given to someone else's pet on a visit (once per pet per day).
+pub const VISIT_NOTES: u32 = 2;
+pub const VISIT_NOTES_PER_DAY: u32 = 10;
+pub const VISIT_POINTS: u32 = 2;
+/// A pat the user's pet got from a visitor (once per visitor per day).
+pub const VISITED_NOTES: u32 = 2;
+pub const VISITED_NOTES_PER_DAY: u32 = 10;
+pub const VISITED_CHEER: u8 = 5;
+pub const VISITED_POINTS: u32 = 2;
+
+/// Finishing a mini-game, whatever the score.
+pub const GAME_NOTES: u32 = 3;
+pub const GAME_NOTES_PER_DAY: u32 = 9;
+pub const GAME_POINTS: u32 = 3;
+
 pub const PLAY_CHEER: u8 = 10;
 pub const PLAY_ENERGY_COST: u8 = 10;
 pub const PLAY_POINTS: u32 = 3;

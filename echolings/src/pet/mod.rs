@@ -147,6 +147,12 @@ pub struct Today {
     pub greet_notes: u32,
     pub bond_points: u32,
     pub pat_points: u32,
+    #[serde(default)]
+    pub visit_notes: u32,
+    #[serde(default)]
+    pub visited_notes: u32,
+    #[serde(default)]
+    pub game_notes: u32,
 }
 
 /// The stored pet.
@@ -514,6 +520,42 @@ impl Pet {
         self.nap_until = now.secs + NAP_SECS;
         self.together(now);
         Ok(Reaction::Nap)
+    }
+
+    /// The user patted someone else's pet on a visit.
+    pub fn visit(&mut self, now: Now) {
+        self.roll_day(now);
+        let notes = capped(
+            &mut self.today.visit_notes,
+            VISIT_NOTES_PER_DAY,
+            VISIT_NOTES,
+        );
+        self.add_notes(notes);
+        self.add_bond_points(VISIT_POINTS);
+        self.together(now);
+    }
+
+    /// A visitor patted the user's pet.
+    pub fn visited(&mut self, session: &Session, now: Now) -> Option<Reaction> {
+        self.roll_day(now);
+        let notes = capped(
+            &mut self.today.visited_notes,
+            VISITED_NOTES_PER_DAY,
+            VISITED_NOTES,
+        );
+        self.add_notes(notes);
+        raise(&mut self.cheer, VISITED_CHEER);
+        self.add_bond_points(VISITED_POINTS);
+        (!self.asleep(session, now)).then_some(Reaction::Hop)
+    }
+
+    /// The user finished a mini-game.
+    pub fn game_finished(&mut self, now: Now) {
+        self.roll_day(now);
+        let notes = capped(&mut self.today.game_notes, GAME_NOTES_PER_DAY, GAME_NOTES);
+        self.add_notes(notes);
+        self.add_bond_points(GAME_POINTS);
+        self.together(now);
     }
 
     fn voice_block(&mut self) {
