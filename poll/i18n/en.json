@@ -1,4 +1,25 @@
 {
   "manifest.name": "Poll",
-  "manifest.description": "Ask the channel a question with up to ten options and watch the votes come in live."
+  "manifest.description": "Ask the channel a question with up to ten options and watch the votes come in live.",
+  "panel.new_poll": "New poll",
+  "panel.your_poll": "Your poll",
+  "field.question": "Question",
+  "field.option": "Option {{number}}",
+  "button.add_option": "Add option",
+  "button.remove_option": "Remove option",
+  "button.create": "Create poll",
+  "button.close": "Close poll",
+  "button.vote": "Vote: {{option}}",
+  "status.frozen": "Creator left, poll is frozen · {{votes}}",
+  "status.closed": "Closed · {{votes}}",
+  "status.own": "Your poll · {{votes}}",
+  "status.by": "Poll by {{name}} · {{votes}}",
+  "votes_one": "{{count}} vote",
+  "votes_other": "{{count}} votes",
+  "error.poll_open": "Close your current poll first.",
+  "error.incomplete": "Enter a question and at least two options.",
+  "chat.closed": "Closed: {{question}} {{results}}",
+  "notify.title": "New poll",
+  "notify.body": "{{name}} asks: {{question}}",
+  "creator_fallback": "Poll creator"
 }

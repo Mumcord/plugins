@@ -4,12 +4,12 @@
 use std::collections::HashMap;
 
 use mumcord_plugin_sdk::{
+    events::Event,
     types::{Error, Peer},
     ui::{Component, El, Slot},
 };
 
 use crate::app::{App, Host, RESEND_DELAY_MS, TALLY_DELAY_MS, To, other_card_id, own_card_id};
-use crate::view::FROZEN_TEXT;
 use crate::wire::{
     Create, KIND_CREATE, KIND_TALLY, KIND_VOTE, KIND_VOTERS, Tally, Vote, VoterEntry, Voters,
 };
@@ -585,11 +585,18 @@ fn creator_leaving_freezes_the_poll() {
     let (mut app, mut host) = voter();
     app.on_left(&mut host, &peer(5, "Someone else", None));
     let card = other_card_id(1, 1000);
-    assert!(!host.texts(&card).iter().any(|t| t.contains(FROZEN_TEXT)));
+    assert!(
+        !host
+            .texts(&card)
+            .iter()
+            .any(|t| t.contains("Creator left, poll is frozen"))
+    );
     app.on_left(&mut host, &peer(1, "Anna", None));
     let texts = host.texts(&card);
     assert!(
-        texts.iter().any(|t| t.starts_with(FROZEN_TEXT)),
+        texts
+            .iter()
+            .any(|t| t.starts_with("Creator left, poll is frozen")),
         "{texts:?}"
     );
     assert!(texts.contains(&"[vote-0] off".to_owned()));
@@ -735,4 +742,61 @@ fn trees_stay_within_host_limits() {
         collect_texts(tree, &mut texts);
         assert!(texts.iter().all(|t| t.chars().count() <= 200), "{key}");
     }
+}
+
+#[test]
+fn every_language_has_the_keys_of_english() {
+    use mumcord_plugin_sdk::i18n::LANGUAGES;
+    use std::collections::BTreeSet;
+
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("i18n");
+    let read = |tag: &str| -> std::collections::BTreeMap<String, String> {
+        let text = std::fs::read_to_string(dir.join(format!("{tag}.json"))).expect("language file");
+        serde_json::from_str(&text).expect("flat JSON object of strings")
+    };
+    let english = read("en");
+    // Plural forms differ per language, so compare the plain keys and, for plurals, the
+    // placeholder only.
+    let plain = |m: &std::collections::BTreeMap<String, String>| -> BTreeSet<String> {
+        m.keys()
+            .filter(|k| !k.starts_with("votes_"))
+            .cloned()
+            .collect()
+    };
+    for tag in LANGUAGES {
+        let file = read(tag);
+        assert_eq!(plain(&file), plain(&english), "keys of {tag}.json");
+        assert!(
+            file.contains_key("votes_other"),
+            "{tag}.json needs votes_other"
+        );
+        for (key, text) in &file {
+            if key.starts_with("votes_") {
+                assert!(text.contains("{{count}}"), "{tag}.json {key}");
+            } else {
+                let placeholders = |t: &str| -> BTreeSet<String> {
+                    t.split("{{")
+                        .skip(1)
+                        .filter_map(|r| r.split("}}").next())
+                        .map(str::to_owned)
+                        .collect()
+                };
+                assert_eq!(
+                    placeholders(text),
+                    placeholders(&english[key]),
+                    "{tag}.json {key}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_language_change_shows_the_panel_again_in_that_language() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.start(&mut host);
+    assert!(app.on_event(&mut host, &Event::LanguageChanged("de-AT".into())));
+    assert!(host.texts("panel").iter().any(|t| t == "Neue Umfrage"));
+    assert!(!app.on_event(&mut host, &Event::Timer(1)));
 }

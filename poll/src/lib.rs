@@ -101,6 +101,9 @@ impl Plugin for PollPlugin {
 
 fn handle(app: &mut App, event: Event) {
     let host = &mut Mumcord;
+    if app.on_event(host, &event) {
+        return;
+    }
     match event {
         Event::UiAction(action) => {
             let card = match &action.source {

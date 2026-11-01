@@ -1,9 +1,12 @@
 //! The panel and the chat cards, built from the plugin state. Pure functions, so tests can
 //! inspect the trees without a host.
 
-use mumcord_plugin_sdk::ui::{self, ButtonKind, El};
+use mumcord_plugin_sdk::{
+    i18n::Strings,
+    ui::{self, ButtonKind, El},
+};
 
-use crate::app::{Draft, Poll};
+use crate::app::{Draft, DraftError, Poll};
 use crate::wire::{MAX_OPTION_BYTES, MAX_OPTIONS, MIN_OPTIONS, truncate};
 
 /// The question field is a host text input, which holds at most 64 bytes (FR-6.41), although the
@@ -12,29 +15,27 @@ pub const QUESTION_INPUT_BYTES: u8 = 64;
 /// Host limit for any text string in a tree (FR-6.42); used for the voter lines.
 const MAX_TEXT_CHARS: usize = 200;
 
-pub const FROZEN_TEXT: &str = "Creator left, poll is frozen";
-
 /// The panel: the creation form, or the user's open poll with a Close button.
-pub fn panel(draft: &Draft, own_open: Option<&Poll>) -> El {
+pub fn panel(s: &Strings, draft: &Draft, own_open: Option<&Poll>) -> El {
     if let Some(poll) = own_open {
         return ui::column()
-            .child(ui::heading("Your poll"))
+            .child(ui::heading(&s.t("panel.your_poll")))
             .child(ui::text(&poll.question))
-            .child(ui::caption(&votes_text(poll.total())))
-            .child(ui::button("close", "Close poll").kind(ButtonKind::Danger));
+            .child(ui::caption(&votes_text(s, poll.total())))
+            .child(ui::button("close", &s.t("button.close")).kind(ButtonKind::Danger));
     }
     let mut form = ui::column()
-        .child(ui::heading("New poll"))
+        .child(ui::heading(&s.t("panel.new_poll")))
         .child(ui::text_input(
             "question",
-            "Question",
+            &s.t("field.question"),
             &draft.question,
             QUESTION_INPUT_BYTES,
         ));
     for (i, option) in draft.options.iter().enumerate() {
         form = form.child(ui::text_input(
             &format!("option-{i}"),
-            &format!("Option {}", i + 1),
+            &s.t_with("field.option", &[("number", &(i + 1).to_string())]),
             option,
             option_input_bytes(),
         ));
@@ -42,19 +43,23 @@ pub fn panel(draft: &Draft, own_open: Option<&Poll>) -> El {
     form = form.child(
         ui::row()
             .child(
-                ui::button("add-option", "Add option")
+                ui::button("add-option", &s.t("button.add_option"))
                     .kind(ButtonKind::Secondary)
                     .disabled(draft.options.len() >= MAX_OPTIONS),
             )
             .child(
-                ui::button("remove-option", "Remove option")
+                ui::button("remove-option", &s.t("button.remove_option"))
                     .kind(ButtonKind::Secondary)
                     .disabled(draft.options.len() <= MIN_OPTIONS),
             ),
     );
-    form = form.child(ui::button("create", "Create poll"));
-    if let Some(error) = &draft.error {
-        form = form.child(ui::caption(error).color("danger"));
+    form = form.child(ui::button("create", &s.t("button.create")));
+    if let Some(error) = draft.error {
+        let key = match error {
+            DraftError::PollOpen => "error.poll_open",
+            DraftError::Incomplete => "error.incomplete",
+        };
+        form = form.child(ui::caption(&s.t(key)).color("danger"));
     }
     form
 }
@@ -71,12 +76,12 @@ pub enum Role {
 }
 
 /// A poll's chat card: one meter and Vote button per option, the status and the voter list.
-pub fn card(poll: &Poll, role: Role) -> El {
+pub fn card(s: &Strings, poll: &Poll, role: Role) -> El {
     let open = !poll.closed && !poll.frozen;
     let total = poll.total();
     let mut card = ui::column()
         .child(ui::heading(&poll.question))
-        .child(ui::caption(&status_text(poll, role)));
+        .child(ui::caption(&status_text(s, poll, role)));
     for (i, option) in poll.options.iter().enumerate() {
         let count = poll.counts.get(i).copied().unwrap_or(0);
         let share = if total == 0 {
@@ -85,17 +90,20 @@ pub fn card(poll: &Poll, role: Role) -> El {
             f32::from(count) / total as f32
         };
         let chosen = poll.my_vote == Some(i);
-        let vote = ui::button(&format!("vote-{i}"), &format!("Vote: {option}"))
-            .kind(if chosen {
-                ButtonKind::Primary
-            } else {
-                ButtonKind::Secondary
-            })
-            .disabled(!open);
+        let vote = ui::button(
+            &format!("vote-{i}"),
+            &s.t_with("button.vote", &[("option", option)]),
+        )
+        .kind(if chosen {
+            ButtonKind::Primary
+        } else {
+            ButtonKind::Secondary
+        })
+        .disabled(!open);
         card = card.child(
             ui::row()
                 .child(ui::meter(
-                    &format!("{option}: {}", votes_text(u32::from(count))),
+                    &format!("{option}: {}", votes_text(s, u32::from(count))),
                     share,
                 ))
                 .child(vote),
@@ -105,30 +113,27 @@ pub fn card(poll: &Poll, role: Role) -> El {
         card = card.child(ui::caption(&line));
     }
     if role == Role::Creator && !poll.closed {
-        card = card.child(ui::button("close", "Close poll").kind(ButtonKind::Danger));
+        card = card.child(ui::button("close", &s.t("button.close")).kind(ButtonKind::Danger));
     }
     card
 }
 
-fn status_text(poll: &Poll, role: Role) -> String {
-    let votes = votes_text(poll.total());
-    if poll.frozen {
-        format!("{FROZEN_TEXT} · {votes}")
+fn status_text(s: &Strings, poll: &Poll, role: Role) -> String {
+    let votes = votes_text(s, poll.total());
+    let key = if poll.frozen {
+        "status.frozen"
     } else if poll.closed {
-        format!("Closed · {votes}")
+        "status.closed"
     } else if role == Role::Creator {
-        format!("Your poll · {votes}")
+        "status.own"
     } else {
-        format!("Poll by {} · {votes}", poll.creator)
-    }
+        "status.by"
+    };
+    s.t_with(key, &[("name", &poll.creator), ("votes", &votes)])
 }
 
-fn votes_text(n: u32) -> String {
-    if n == 1 {
-        "1 vote".to_owned()
-    } else {
-        format!("{n} votes")
-    }
+fn votes_text(s: &Strings, n: u32) -> String {
+    s.tn("votes", u64::from(n), &[])
 }
 
 /// "Pizza: Anna, Ben" per option that has named voters, each cut to the host's text limit.
@@ -173,14 +178,20 @@ pub fn creation_line(question: &str, options: &[String]) -> String {
 }
 
 /// The fallback chat line posted when the creator closes the poll.
-pub fn close_line(poll: &Poll) -> String {
+pub fn close_line(s: &Strings, poll: &Poll) -> String {
     let results: Vec<String> = poll
         .options
         .iter()
         .zip(&poll.counts)
         .map(|(o, n)| format!("{o}: {n}"))
         .collect();
-    chat_line(&format!("Closed: {} {}", poll.question, results.join(", ")))
+    chat_line(&s.t_with(
+        "chat.closed",
+        &[
+            ("question", &poll.question),
+            ("results", &results.join(", ")),
+        ],
+    ))
 }
 
 /// Chat lines are limited to 500 characters including the host's "[Poll] " prefix.

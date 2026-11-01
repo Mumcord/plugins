@@ -16,6 +16,7 @@ use crate::wire::{
     self, Create, KIND_CREATE, KIND_TALLY, KIND_VOTE, KIND_VOTERS, MAX_OPTIONS, MAX_VOTERS,
     MIN_OPTIONS, Tally, Vote, VoterEntry, Voters,
 };
+use mumcord_plugin_sdk::{events::Event, i18n::Strings};
 
 /// The tally goes out at most once per 2 s (FR-6.81) and right after a 2 s wait for more votes.
 pub const TALLY_DELAY_MS: u32 = 2_000;
@@ -29,9 +30,6 @@ const MAX_TRACKED: usize = 16;
 const MAX_BALLOTS: usize = 1_000;
 /// Messages waiting for send budget; the oldest are dropped beyond this.
 const MAX_OUTBOX: usize = 32;
-/// Name used for the creator's own ballot when the host cannot tell the user's name.
-const FALLBACK_OWN_NAME: &str = "Poll creator";
-
 /// Who a message goes to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum To {
@@ -94,12 +92,20 @@ impl Poll {
     }
 }
 
+/// Why the creation form was refused. Kept as a code, not text, so a language change can
+/// translate it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftError {
+    PollOpen,
+    Incomplete,
+}
+
 /// What the user typed into the creation form.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Draft {
     pub question: String,
     pub options: Vec<String>,
-    pub error: Option<String>,
+    pub error: Option<DraftError>,
 }
 
 impl Default for Draft {
@@ -182,8 +188,18 @@ struct Outgoing {
     retry: bool,
 }
 
+/// The embedded translations; English until the host reports the language.
+pub struct Texts(Strings);
+
+impl Default for Texts {
+    fn default() -> Self {
+        Self(Strings::new(mumcord_plugin_sdk::i18n_all!()))
+    }
+}
+
 #[derive(Default)]
 pub struct App {
+    strings: Texts,
     draft: Draft,
     own: Option<Own>,
     others: Vec<Other>,
@@ -207,6 +223,20 @@ pub fn other_card_id(session: u32, poll_id: u32) -> String {
 impl App {
     pub fn start(&mut self, host: &mut impl Host) {
         self.render_panel(host);
+    }
+
+    /// Switches the language and shows everything again. Returns false for other events.
+    pub fn on_event(&mut self, host: &mut impl Host, event: &Event) -> bool {
+        if !self.strings.0.on_event(event) {
+            return false;
+        }
+        self.render_panel(host);
+        self.render_own(host);
+        let sessions: Vec<u32> = self.others.iter().map(|o| o.session).collect();
+        for session in sessions {
+            self.render_other(host, session);
+        }
+        true
     }
 
     pub fn set_granted(&mut self, granted: Vec<String>) {
@@ -258,7 +288,7 @@ impl App {
 
     fn create(&mut self, host: &mut impl Host) {
         if self.own.as_ref().is_some_and(|o| !o.poll.closed) {
-            self.draft.error = Some("Close your current poll first.".into());
+            self.draft.error = Some(DraftError::PollOpen);
             self.render_panel(host);
             return;
         }
@@ -270,7 +300,7 @@ impl App {
             .map(|o| o.trim().to_owned())
             .collect();
         if !wire::valid_poll(&question, &options) {
-            self.draft.error = Some("Enter a question and at least two options.".into());
+            self.draft.error = Some(DraftError::Incomplete);
             self.render_panel(host);
             return;
         }
@@ -294,7 +324,9 @@ impl App {
             options: options.clone(),
         };
         self.queue(To::Channel, KIND_CREATE, create.encode(), false);
-        let creator = host.my_name().unwrap_or_else(|| FALLBACK_OWN_NAME.into());
+        let creator = host
+            .my_name()
+            .unwrap_or_else(|| self.strings.0.t("creator_fallback"));
         self.own = Some(Own {
             poll: Poll::new(id, question, options, creator),
             ballots: Vec::new(),
@@ -312,7 +344,7 @@ impl App {
         };
         own.poll.closed = true;
         own.tally_due = false;
-        let line = view::close_line(&own.poll);
+        let line = view::close_line(&self.strings.0, &own.poll);
         let close_hash = match host.chat_send(&line) {
             Ok(()) => host.line_hash(&line),
             Err(e) => {
@@ -341,7 +373,9 @@ impl App {
             if own.poll.closed || option >= own.poll.options.len() {
                 return;
             }
-            let name = host.my_name().unwrap_or_else(|| FALLBACK_OWN_NAME.into());
+            let name = host
+                .my_name()
+                .unwrap_or_else(|| self.strings.0.t("creator_fallback"));
             own.poll.my_vote = Some(option);
             record_ballot(own, Voter::Me, option, name);
             self.tally_changed(host);
@@ -422,7 +456,7 @@ impl App {
         // One poll per creator: an older one from the same session ends here.
         if let Some(old) = self.others.iter_mut().find(|o| o.session == sender.session) {
             old.poll.closed = true;
-            let card = view::card(&old.poll, Role::Voter);
+            let card = view::card(&self.strings.0, &old.poll, Role::Voter);
             host.show(
                 Slot::ChatCard(other_card_id(old.session, old.poll.id)),
                 card,
@@ -453,8 +487,12 @@ impl App {
                 .last()
                 .map(|o| o.poll.question.clone())
                 .unwrap_or_default();
-            let body = format!("{} asks: {question}", sender.name);
-            host.notify("New poll", wire::truncate(&body, 200));
+            let s = &self.strings.0;
+            let body = s.t_with(
+                "notify.body",
+                &[("name", &sender.name), ("question", &question)],
+            );
+            host.notify(&s.t("notify.title"), wire::truncate(&body, 200));
         }
     }
 
@@ -645,14 +683,14 @@ impl App {
 
     fn render_panel(&self, host: &mut impl Host) {
         let open = self.own.as_ref().map(|o| &o.poll).filter(|p| !p.closed);
-        host.show(Slot::Panel, view::panel(&self.draft, open));
+        host.show(Slot::Panel, view::panel(&self.strings.0, &self.draft, open));
     }
 
     fn render_own(&self, host: &mut impl Host) {
         if let Some(own) = &self.own {
             host.show(
                 Slot::ChatCard(own_card_id(own.poll.id)),
-                view::card(&own.poll, Role::Creator),
+                view::card(&self.strings.0, &own.poll, Role::Creator),
             );
         }
     }
@@ -661,7 +699,7 @@ impl App {
         if let Some(other) = self.others.iter().find(|o| o.session == session) {
             host.show(
                 Slot::ChatCard(other_card_id(session, other.poll.id)),
-                view::card(&other.poll, Role::Voter),
+                view::card(&self.strings.0, &other.poll, Role::Voter),
             );
         }
     }
