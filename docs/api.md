@@ -86,6 +86,7 @@ example `NoRecipients` when nobody else runs the plugin).
 | `UiAction(action)` | none | A click, change or input in your UI, or a slash command (`source = Command`, the value is the rest of the line). |
 | `Timer(id)` | none | A timer fired. |
 | `PeerMessage(message)` | `peers.messages` | A message from the same plugin of another user. Untrusted: validate. |
+| `PeerReady(peer)` | `peers.messages` | A user in your current channel can now receive your plugin's messages, because their Mumcord just started announcing the plugin (for example they installed or enabled it). Resend any state a late joiner needs. Not sent for users who already announced it when they joined. |
 | `ChatTrigger(trigger)` | `chat.triggers` | A channel message that starts with one of the manifest `triggers` words, for example `!poll 2`. Carries `sender`, `trigger` and the rest of the line in `args` (at most 200 characters, untrusted). |
 | `ChatMatch(match)` | `chat.patterns` | A channel message whose plain text matches one of the manifest `chat_patterns`. Carries `sender`, `pattern_index` and `text` (at most 4 KiB, untrusted). |
 | `ProfileCardOpened(peer)` | `ui.profile-card` | Answer by setting the `ProfileCard` slot within 500 ms. |

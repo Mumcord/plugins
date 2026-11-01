@@ -86,7 +86,7 @@ A step is one of:
 
 - `event:` sends an event to the plugin. Kinds: `ui-action` (`action`, optional `slot`, `command`
   for a typed slash command, `value`), `peer-message` (`from`, `kind`, `text` or `hex`, optional
-  `direct`), `joined`, `left`, `talking` (`session`, `talking`), `screen-share-started`,
+  `direct`), `peer-ready` (a session number: that user's Mumcord started announcing the plugin), `joined`, `left`, `talking` (`session`, `talking`), `screen-share-started`,
   `chat-activity`, `mentioned`, `profile-card-opened`, `user-menu-requested` (each with a session
   number), `chat-trigger` (`sender`, `trigger`, `args`) and `chat-match` (`sender`, `text`), both
   with the chat options described [below](#chat-messages-in-scenarios), `panel-visibility` (`hidden`, `inline` or `expanded`), `dialog-closed` and `language`.
