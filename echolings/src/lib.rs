@@ -680,7 +680,7 @@ impl App {
                 self.render(now);
             }
             Event::LanguageChanged(language) => {
-                self.t = I18n::new(&language);
+                self.t.set_language(&language);
                 self.render(now);
                 self.render_settings();
             }

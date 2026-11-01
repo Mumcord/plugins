@@ -4,7 +4,7 @@ use mumcord_plugin_sdk::ui::{self, Align, Animation, ButtonKind, Direction, El};
 
 use super::{OtherPet, PatNote, action};
 use crate::pet::{Mood, Stage};
-use crate::ui::{Motion, i18n::I18n, i18n::count_key, mood_key, species_key, stage_key};
+use crate::ui::{Motion, i18n::I18n, mood_key, species_key, stage_key};
 
 pub struct OtherView<'a> {
     pub pet: &'a OtherPet,
@@ -13,7 +13,7 @@ pub struct OtherView<'a> {
 }
 
 impl OtherView<'_> {
-    fn species_name(&self) -> &str {
+    fn species_name(&self) -> String {
         self.t.t(species_key(self.pet.card.species))
     }
 
@@ -23,8 +23,8 @@ impl OtherView<'_> {
             "pet.label",
             &[
                 ("name", &self.pet.card.name),
-                ("species", self.species_name()),
-                ("mood", self.t.t(mood_key(self.pet.card.mood))),
+                ("species", &self.species_name()),
+                ("mood", &self.t.t(mood_key(self.pet.card.mood))),
             ],
         )
     }
@@ -68,8 +68,8 @@ impl OtherView<'_> {
         let kind = self.t.f(
             "pet.kind",
             &[
-                ("species", self.species_name()),
-                ("stage", self.t.t(stage_key(card.stage().id()).as_str())),
+                ("species", &self.species_name()),
+                ("stage", &self.t.t(stage_key(card.stage().id()).as_str())),
             ],
         );
         let name = [("name", card.name.as_str())];
@@ -81,16 +81,13 @@ impl OtherView<'_> {
                         ui::column()
                             .child(ui::heading(&card.name))
                             .child(ui::text(&kind))
-                            .child(ui::caption(self.t.t(mood_key(card.mood)))),
+                            .child(ui::caption(&self.t.t(mood_key(card.mood)))),
                     ),
             )
             .child(
                 ui::row().children([
                     ui::chip(&self.t.f("stat.bond", &[("bond", &card.bond.to_string())])),
-                    ui::chip(&self.t.f(
-                        &count_key("stat.together", u32::from(card.days_together)),
-                        &[("days", &card.days_together.to_string())],
-                    )),
+                    ui::chip(&self.t.n("stat.together", u64::from(card.days_together))),
                     ui::chip(
                         &self
                             .t

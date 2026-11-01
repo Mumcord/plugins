@@ -83,7 +83,7 @@ pub struct View<'a> {
 }
 
 impl View<'_> {
-    fn species_name(&self) -> &str {
+    fn species_name(&self) -> String {
         self.t.t(species_key(self.pet.species))
     }
 
@@ -94,8 +94,8 @@ impl View<'_> {
             "pet.label",
             &[
                 ("name", &self.pet.name),
-                ("species", self.species_name()),
-                ("mood", self.t.t(mood_key(mood))),
+                ("species", &self.species_name()),
+                ("mood", &self.t.t(mood_key(mood))),
             ],
         )
     }
@@ -104,8 +104,11 @@ impl View<'_> {
         self.t.f(
             "pet.kind",
             &[
-                ("species", self.species_name()),
-                ("stage", self.t.t(stage_key(self.pet.stage().id()).as_str())),
+                ("species", &self.species_name()),
+                (
+                    "stage",
+                    &self.t.t(stage_key(self.pet.stage().id()).as_str()),
+                ),
             ],
         )
     }
@@ -140,8 +143,8 @@ impl View<'_> {
 
     fn meters(&self) -> [El; 2] {
         [
-            ui::meter(self.t.t("meter.cheer"), fraction(self.pet.cheer)),
-            ui::meter(self.t.t("meter.energy"), fraction(self.pet.energy)),
+            ui::meter(&self.t.t("meter.cheer"), fraction(self.pet.cheer)),
+            ui::meter(&self.t.t("meter.energy"), fraction(self.pet.energy)),
         ]
     }
 
@@ -157,14 +160,14 @@ impl View<'_> {
         let asleep = self.pet.asleep(self.session, self.now);
         let cost = balance::TREAT_COST.to_string();
         ui::row().children([
-            ui::button(action::PAT, self.t.t("action.pat")).kind(ButtonKind::Primary),
+            ui::button(action::PAT, &self.t.t("action.pat")).kind(ButtonKind::Primary),
             ui::button(action::TREAT, &self.t.f("action.treat", &[("cost", &cost)]))
                 .kind(ButtonKind::Secondary)
                 .disabled(self.pet.notes < balance::TREAT_COST),
-            ui::button(action::PLAY, self.t.t("action.play"))
+            ui::button(action::PLAY, &self.t.t("action.play"))
                 .kind(ButtonKind::Secondary)
                 .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
-            ui::button(action::NAP, self.t.t("action.nap"))
+            ui::button(action::NAP, &self.t.t("action.nap"))
                 .kind(ButtonKind::Secondary)
                 .disabled(asleep),
         ])
@@ -189,7 +192,7 @@ impl View<'_> {
                     "growth.next",
                     &[
                         ("bond", &bond),
-                        ("stage", self.t.t(stage_key(next_stage.id()).as_str())),
+                        ("stage", &self.t.t(stage_key(next_stage.id()).as_str())),
                         ("next", &next.to_string()),
                     ],
                 );
@@ -205,15 +208,15 @@ impl View<'_> {
     fn stats(&self) -> El {
         let today = self.pet.notes_today(self.now).to_string();
         let streak = self.pet.streak.current(self.now.day()).to_string();
-        let together = self.pet.streak.days_together.to_string();
         ui::row().children([
             self.notes_chip(),
             ui::chip(&self.t.f("stat.today", &[("notes", &today)])),
             ui::chip(&self.t.f("stat.streak", &[("days", &streak)])),
-            ui::chip(&self.t.f(
-                &i18n::count_key("stat.together", self.pet.streak.days_together),
-                &[("days", &together)],
-            )),
+            ui::chip(
+                &self
+                    .t
+                    .n("stat.together", u64::from(self.pet.streak.days_together)),
+            ),
         ])
     }
 
@@ -235,7 +238,7 @@ impl View<'_> {
             .child(ui::caption(&self.kind()))
             .children(self.meters())
             .child(ui::row().children([
-                ui::button(action::PAT, self.t.t("action.pat")).kind(ButtonKind::Primary),
+                ui::button(action::PAT, &self.t.t("action.pat")).kind(ButtonKind::Primary),
                 self.notes_chip(),
             ]));
         if let Some(refusal) = self.refusal_text() {
@@ -255,7 +258,7 @@ impl View<'_> {
                 ui::column()
                     .child(ui::heading(&self.pet.name))
                     .child(ui::text(&self.kind()))
-                    .child(ui::caption(self.t.t(mood_key(mood)))),
+                    .child(ui::caption(&self.t.t(mood_key(mood)))),
             );
         let mut body = ui::column()
             .child(header)
@@ -269,11 +272,11 @@ impl View<'_> {
         body.child(ui::divider())
             .child(ui::text_input(
                 action::RENAME,
-                self.t.t("customise.name"),
+                &self.t.t("customise.name"),
                 &self.pet.name,
                 NAME_INPUT_BYTES,
             ))
-            .child(self.colour_select(action::COLOUR, self.t.t("customise.colour")))
+            .child(self.colour_select(action::COLOUR, &self.t.t("customise.colour")))
     }
 
     /// The 24 px pet next to the user's own name.
@@ -286,7 +289,6 @@ impl View<'_> {
         let mood = self.pet.mood(self.session, self.now);
         let bond = self.pet.bond.to_string();
         let streak = self.pet.streak.current(self.now.day()).to_string();
-        let together = self.pet.streak.days_together.to_string();
         ui::column()
             .child(
                 ui::stack(Direction::Row, 12, Align::Center)
@@ -295,25 +297,28 @@ impl View<'_> {
                         ui::column()
                             .child(ui::heading(&self.pet.name))
                             .child(ui::text(&self.kind()))
-                            .child(ui::caption(self.t.t(mood_key(mood)))),
+                            .child(ui::caption(&self.t.t(mood_key(mood)))),
                     ),
             )
-            .child(ui::row().children([
-                ui::chip(&self.t.f("stat.bond", &[("bond", &bond)])),
-                ui::chip(&self.t.f(
-                    &i18n::count_key("stat.together", self.pet.streak.days_together),
-                    &[("days", &together)],
-                )),
-                ui::chip(&self.t.f("stat.streak", &[("days", &streak)])),
-            ]))
+            .child(
+                ui::row().children([
+                    ui::chip(&self.t.f("stat.bond", &[("bond", &bond)])),
+                    ui::chip(
+                        &self
+                            .t
+                            .n("stat.together", u64::from(self.pet.streak.days_together)),
+                    ),
+                    ui::chip(&self.t.f("stat.streak", &[("days", &streak)])),
+                ]),
+            )
     }
 }
 
 /// The inline panel before the first hatch only points to the expanded panel.
 pub fn hatch_prompt(t: &I18n) -> El {
     ui::column()
-        .child(ui::heading(t.t("picker.title")))
-        .child(ui::caption(t.t("panel.hatchPrompt")))
+        .child(ui::heading(&t.t("picker.title")))
+        .child(ui::caption(&t.t("panel.hatchPrompt")))
 }
 
 /// Species, name and colour for a new pet.
@@ -324,8 +329,8 @@ pub fn picker(t: &I18n, draft: &Draft, need_name: bool, motion: Motion) -> El {
             let label = t.f(
                 "picker.speciesOption",
                 &[
-                    ("species", t.t(species_key(*s))),
-                    ("trait", t.t(trait_key(*s))),
+                    ("species", &t.t(species_key(*s))),
+                    ("trait", &t.t(trait_key(*s))),
                 ],
             );
             (s.id().to_owned(), label)
@@ -339,8 +344,8 @@ pub fn picker(t: &I18n, draft: &Draft, need_name: bool, motion: Motion) -> El {
     let preview_alt = t.f(
         "picker.speciesOption",
         &[
-            ("species", t.t(species_key(draft.species))),
-            ("trait", t.t(trait_key(draft.species))),
+            ("species", &t.t(species_key(draft.species))),
+            ("trait", &t.t(trait_key(draft.species))),
         ],
     );
     // Show what the Hum will grow into, so the species choice is visible.
@@ -355,18 +360,18 @@ pub fn picker(t: &I18n, draft: &Draft, need_name: bool, motion: Motion) -> El {
         None => preview,
     };
     let mut tree = ui::column()
-        .child(ui::heading(t.t("picker.title")))
-        .child(ui::caption(t.t("picker.intro")))
+        .child(ui::heading(&t.t("picker.title")))
+        .child(ui::caption(&t.t("picker.intro")))
         .child(ui::stack(Direction::Row, 8, Align::Center).child(preview))
         .child(ui::select(
             action::PICK_SPECIES,
-            t.t("picker.species"),
+            &t.t("picker.species"),
             &options,
             Some(draft.species.id()),
         ))
         .child(ui::text_input(
             action::PICK_NAME,
-            t.t("picker.name"),
+            &t.t("picker.name"),
             &draft.name,
             NAME_INPUT_BYTES,
         ))
@@ -376,23 +381,24 @@ pub fn picker(t: &I18n, draft: &Draft, need_name: bool, motion: Motion) -> El {
             draft.colour,
             2,
             action::PICK_COLOUR,
-            t.t("picker.colour"),
+            &t.t("picker.colour"),
         ));
     if need_name {
-        tree = tree.child(ui::caption(t.t("picker.needName")));
+        tree = tree.child(ui::caption(&t.t("picker.needName")));
     }
-    tree.child(ui::button(action::HATCH, t.t("picker.hatch")).kind(ButtonKind::Primary))
+    tree.child(ui::button(action::HATCH, &t.t("picker.hatch")).kind(ButtonKind::Primary))
 }
 
 /// This plugin's form in Settings → Plugins.
 pub fn settings(t: &I18n, level: AnimationLevel) -> El {
-    let options: Vec<(&str, &str)> = AnimationLevel::ALL
+    let labels: Vec<(&str, String)> = AnimationLevel::ALL
         .iter()
         .map(|a| (a.id(), t.t(animation_key(*a))))
         .collect();
+    let options: Vec<(&str, &str)> = labels.iter().map(|(v, l)| (*v, l.as_str())).collect();
     ui::column().child(ui::select(
         action::ANIMATION,
-        t.t("settings.animation"),
+        &t.t("settings.animation"),
         &options,
         Some(level.id()),
     ))
@@ -411,7 +417,7 @@ fn colour_select(
         .iter()
         .enumerate()
         .map(|(i, id)| {
-            let name = t.t(&format!("colour.{id}")).to_owned();
+            let name = t.t(&format!("colour.{id}"));
             let name = if i < usize::from(unlocked) {
                 name
             } else {

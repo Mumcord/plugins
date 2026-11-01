@@ -44,7 +44,7 @@ impl GameView<'_> {
     }
 
     fn results(&self) -> String {
-        let you = self.t.t("echo.you");
+        let you = &self.t.t("echo.you");
         let len = self.len();
         let lines: Vec<String> = self
             .game
@@ -62,7 +62,7 @@ impl GameView<'_> {
             })
             .collect();
         if lines.is_empty() {
-            self.t.t("echo.noScores").to_owned()
+            self.t.t("echo.noScores")
         } else {
             lines.join(" · ")
         }
@@ -90,21 +90,21 @@ impl GameView<'_> {
 
     pub fn card(&self) -> El {
         let mut body = ui::stack(Direction::Column, 8, Align::Stretch)
-            .child(ui::heading(self.t.t("echo.title")))
+            .child(ui::heading(&self.t.t("echo.title")))
             .child(ui::text(&self.status()));
         match self.game.phase {
             Phase::Invited => {
                 body = body.child(ui::row().children([
-                    ui::button(action::JOIN, self.t.t("echo.join")).kind(ButtonKind::Primary),
-                    ui::countdown(self.t.t("echo.endsIn"), self.game.ends_at),
+                    ui::button(action::JOIN, &self.t.t("echo.join")).kind(ButtonKind::Primary),
+                    ui::countdown(&self.t.t("echo.endsIn"), self.game.ends_at),
                 ]));
             }
             Phase::Listen { .. } | Phase::Repeat { .. } => body = body.child(self.pads()),
             Phase::Finished { .. } => {
-                body = body.child(ui::countdown(self.t.t("echo.endsIn"), self.game.ends_at));
+                body = body.child(ui::countdown(&self.t.t("echo.endsIn"), self.game.ends_at));
             }
             Phase::Over => {
-                body = body.child(ui::button(action::CLOSE, self.t.t("echo.close")));
+                body = body.child(ui::button(action::CLOSE, &self.t.t("echo.close")));
             }
         }
         body
