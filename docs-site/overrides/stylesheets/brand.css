@@ -1,0 +1,105 @@
+/* Mumcord Plugins brand colours, taken from assets/brand. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #3a0294;
+  --md-primary-fg-color--light: #7126fe;
+  --md-primary-fg-color--dark: #26026d;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: #c2621a;
+  --md-typeset-a-color: #5a14d6;
+  --mp-hero-bg: linear-gradient(135deg, #26026d 0%, #3a0294 55%, #7126fe 100%);
+  --mp-card-border: #e1d0fd;
+  --mp-soon-bg: #fdecd9;
+  --mp-soon-fg: #7a3a06;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 265;
+  --md-default-bg-color: #140437;
+  --md-default-bg-color--light: #1b0748;
+  --md-code-bg-color: #1f0a52;
+  --md-primary-fg-color: #26026d;
+  --md-primary-fg-color--light: #7126fe;
+  --md-primary-fg-color--dark: #140437;
+  --md-accent-fg-color: #fdb558;
+  --md-typeset-a-color: #c4a2ff;
+  --md-footer-bg-color: #0e0228;
+  --md-footer-bg-color--dark: #0a011d;
+  --mp-card-border: #3a0294;
+  --mp-soon-bg: #4a2a08;
+  --mp-soon-fg: #fdd3a0;
+}
+
+/* Home page hero */
+.mp-hero {
+  background: var(--mp-hero-bg, linear-gradient(135deg, #26026d, #7126fe));
+  border-radius: 1rem;
+  color: #fff;
+  padding: 2rem 1.5rem;
+  margin: 0 0 2rem;
+}
+.mp-hero h1 {
+  color: #fff;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+.mp-hero p {
+  font-size: 1.05rem;
+  margin: 0 0 1rem;
+}
+.mp-hero .md-button {
+  color: #fff;
+  border-color: #fff;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+}
+.mp-hero .md-button--primary {
+  background: #e8913c;
+  border-color: #e8913c;
+  color: #26026d;
+}
+.mp-hero .md-button:focus-visible,
+.mp-hero .md-button:hover {
+  background: #fdb558;
+  border-color: #fdb558;
+  color: #26026d;
+}
+
+/* Plugin cards */
+.md-typeset .grid.cards > ul > li {
+  border-color: var(--mp-card-border);
+  border-radius: 0.75rem;
+}
+.md-typeset .grid.cards img {
+  border-radius: 0.6rem;
+  vertical-align: middle;
+}
+
+/* Icon next to the title of a plugin guide */
+.md-typeset .mp-plugin-icon {
+  float: right;
+  margin: 0 0 1rem 1rem;
+  border-radius: 1rem;
+}
+
+.mp-soon {
+  display: inline-block;
+  background: var(--mp-soon-bg);
+  color: var(--mp-soon-fg);
+  border-radius: 1rem;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.75em;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* Brand-coloured page titles with stronger contrast than the default grey. */
+.md-typeset h1 {
+  color: #26026d;
+  font-weight: 600;
+}
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: #e1d0fd;
+}
+.md-typeset .mp-hero h1 {
+  color: #fff;
+}
