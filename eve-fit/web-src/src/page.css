@@ -1,0 +1,71 @@
+/* EVE's fitting window is dark only; the page follows it in light mode too. */
+html,
+body {
+  margin: 0;
+  background: #0d1012;
+  color: #c8c8c8;
+  font: 13px/1.4 "Noto Sans", system-ui, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+.wheel {
+  --esf-wheel-size: max(280px, min(560px, calc(100vw - 24px)));
+  flex: 0 1 auto;
+}
+
+.stats {
+  flex: 1 1 260px;
+  max-width: 320px;
+  min-width: 240px;
+}
+
+.status {
+  align-self: center;
+  font-size: 15px;
+}
+
+footer {
+  padding: 8px 12px 12px;
+  font-size: 11px;
+  color: #8a8a8a;
+}
+
+footer p {
+  margin: 0 0 4px;
+}
+
+footer summary {
+  cursor: pointer;
+}
+
+footer pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* The wheel's "open on eveship.fit" link would navigate the sealed frame, which closes it. */
+.wheel a[href^="https://eveship.fit"] {
+  display: none;
+}

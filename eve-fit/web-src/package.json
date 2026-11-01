@@ -1,0 +1,33 @@
+{
+  "name": "eve-fit-web",
+  "private": true,
+  "type": "module",
+  "description": "Builds eve-fit's web/ folder: the eveship.fit fitting wheel with EVE's data, for offline use.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@eveshipfit/dogma-engine": "13.7.0",
+    "@eveshipfit/fitting": "2.5.0",
+    "@eveshipfit/images": "3.3662168.2",
+    "@eveshipfit/react-hooks": "2.5.0",
+    "@eveshipfit/sde": "14.3662168.3",
+    "@eveshipfit/sde-loader": "4.0.0",
+    "@eveshipfit/ui-ingame": "1.11.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "sharp": "0.35.5",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
