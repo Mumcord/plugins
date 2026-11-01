@@ -1,7 +1,7 @@
 # Bob's pet card turns into a badge and a profile card; Alice may pat it once per day.
 # Card, version 1: version, species, colour, mood, bond u16, days u16, streak u16, name length, name.
 name: Another user's pet and a visit pat
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

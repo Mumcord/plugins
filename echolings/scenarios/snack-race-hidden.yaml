@@ -1,7 +1,7 @@
 # Without the web view permission Snack Race is hidden (FR-6.83): invites are ignored and the
 # race action does nothing; the panel and badge only show the pet again.
 name: Snack Race needs the web view
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, events.voice, events.presence, events.self, peers.messages]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

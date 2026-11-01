@@ -4,7 +4,7 @@
 # Invite: version, race id u32, lobby secs. Start: version, race id. Score: version, race id,
 # hops, finish ms u16.
 name: Hosting a Snack Race
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.webview, events.voice, events.presence, events.self, peers.messages]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.webview, events.voice, events.presence, events.self, peers.messages]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

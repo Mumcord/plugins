@@ -1,7 +1,7 @@
 # Bob starts Echo Echo; Alice joins, repeats the tune, her score goes out and the scores show.
 # Invite: version, game id u32, tune length, notes. Score: version, game id u32, correct notes.
 name: Joining an Echo Echo round
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

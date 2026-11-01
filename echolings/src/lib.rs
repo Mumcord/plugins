@@ -772,7 +772,10 @@ impl App {
         if !self.race.as_ref().is_some_and(Race::playing) {
             return;
         }
-        match webview::show(Place::Dialog, page::ENTRY) {
+        // A dialog web view needs the plugin's dialog open first; the host refuses it otherwise.
+        let shown = host_ui::open_dialog(&self.t.t("race.title"))
+            .and_then(|()| webview::show(Place::Dialog, page::ENTRY));
+        match shown {
             Ok(()) => {
                 // The page asks for the state with `ready` once it listens.
                 self.race_page = true;
@@ -782,6 +785,7 @@ impl App {
                 if e != Error::NotPermitted {
                     log::warn(&format!("could not open the race page: {e:?}"));
                 }
+                host_ui::close_dialog();
                 self.race_no_view = true;
             }
         }
@@ -1032,6 +1036,7 @@ impl App {
         self.race_no_view = false;
         if self.race_page {
             webview::hide();
+            host_ui::close_dialog();
             self.race_page = false;
         }
         if let Some(race) = self.race.take()
@@ -1111,6 +1116,8 @@ impl App {
                 self.render_race(now);
             }
             Event::WebviewMessage(message) => self.page_message(&message, now),
+            // Closing the dialog also closed the race page in it; the card can reopen it.
+            Event::DialogClosed => self.race_page = false,
             Event::UiAction(action) => self.ui_action(action, now),
             Event::Timer(id) if Some(id) == self.tick_timer => self.tick(now),
             Event::Timer(id) if Some(id) == self.card_timer => {

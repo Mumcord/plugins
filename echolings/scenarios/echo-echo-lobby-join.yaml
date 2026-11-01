@@ -2,7 +2,7 @@
 # message arrives, so every client starts together. A start from anyone else is ignored.
 # Invite: version, game id u32, tune length, notes, lobby seconds. Start: version, game id u32.
 name: Waiting in an Echo Echo lobby
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

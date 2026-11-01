@@ -3,7 +3,7 @@
 # Invite: version, race id u32, lobby secs. Start: version, race id. Progress: version, race
 # id, hops. Score: version, race id, hops, finish ms u16 (0x1b58 = 7000 ms, 0x3a98 = 15000 ms).
 name: Joining a Snack Race
-grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, ui.webview, events.voice, events.presence, events.self, peers.messages]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, ui.webview, events.voice, events.presence, events.self, peers.messages]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}

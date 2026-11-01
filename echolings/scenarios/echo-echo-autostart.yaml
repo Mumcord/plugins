@@ -2,7 +2,7 @@
 # Without the chat-card permission the game takes over the panel.
 # goes to the channel and the tune plays, even though nobody joined (the host plays alone).
 name: Echo Echo starts on its own
-grant: [ui.panel, ui.member-badge, ui.profile-card, events.voice, events.presence, events.self, peers.messages, notify]
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, events.voice, events.presence, events.self, peers.messages, notify]
 me: {session: 1, name: Alice}
 peers:
   - {session: 2, name: Bob}
