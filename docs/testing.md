@@ -50,8 +50,9 @@ mumcord-plugin test dist/my-plugin-0.1.0.mcplugin scenarios/hello.yaml
 
 The first argument is a built `.mcplugin` package or an unpacked plugin folder, followed by one or
 more scenario files. Each scenario prints `ok <name>` or `FAIL <name>` with the reason, and the
-command exits with an error if any scenario failed. `mumcord-plugin new` creates a working
-`scenarios/hello.yaml` for you. A short example:
+command exits with an error if any scenario failed. `mumcord-plugin new` does not create a
+scenario, so write your own, for example `scenarios/hello.yaml`. A short example for the generated
+template:
 
 ```yaml
 name: Waving counts and tells the channel
@@ -61,10 +62,10 @@ peers:
   - { session: 2, name: Bob }
 
 steps:
-  - expect: { tree: { slot: panel, text: "Waves: 0" } }
+  - expect: { tree: { slot: panel, text: "0 waves" } }
   - event: { ui-action: { action: wave } }
   - expect: { message: { to: channel, kind: 1, text: "null" } }
-  - expect: { tree: { slot: panel, text: "Waves: 1" } }
+  - expect: { tree: { slot: panel, text: "1 wave" } }
   - event: { peer-message: { from: 2, kind: 1, text: "null" } }
   - expect: { log: { contains: someone waved } }
   - expect: nothing
@@ -147,8 +148,9 @@ Mumcord itself. The command fails if the plugin shows no UI.
 
 ## 4. Load it in Mumcord
 
-Switch on Developer mode in Mumcord, then load the project folder or package through the plugin
-settings. Developer plugins:
+Switch on Developer mode in Mumcord, then use Developer → load on the plugins page. It needs an
+**unpacked folder** (`manifest.json`, `plugin.wasm` and `i18n/en.json`), not a `.mcplugin` package.
+Developer plugins:
 
 - may use all permissions except the three official-only ones,
 - are marked as developer plugins, and exchange messages only with other developer copies of the
@@ -179,6 +181,9 @@ This serves your packages as the official registry on `http://127.0.0.1:<port>/v
 test key. Point a development build of Mumcord at it with the registry mirror setting and
 `MUMCORD_PLUGIN_REGISTRY_KEY=<public key line>`. Add `--repository <name>` to serve a third-party
 repository instead (see [Third-party repositories](third-party-repositories.md)).
+
+A registry on a localhost `http` address is accepted only when Developer mode is switched on in
+Mumcord.
 
 `serve-registry` can also produce what the client must refuse, which is useful to see how your
 update flow behaves: `tampered-hash:<id>`, `lower-sequence`, `wrong-key`, `extra-permission:<id>`,

@@ -1,4 +1,8 @@
 {
+  "heading": "Hello",
   "manifest.description": "Wave at the channel.",
-  "manifest.name": "My plugin"
+  "manifest.name": "My plugin",
+  "wave": "Wave",
+  "waves_one": "{{count}} wave",
+  "waves_other": "{{count}} waves"
 }

@@ -26,8 +26,8 @@ Ids are 3 to 32 characters of `a-z`, `0-9` and `-`, start with a letter, and may
 
 ## Try it in Mumcord
 
-Load the package or the project folder through the Developer settings of the plugins page. A
-plugin loaded this way is marked as a developer plugin and only exchanges messages with other
+Use Developer → load on the plugins page. It needs an **unpacked folder** (`manifest.json`,
+`plugin.wasm` and `i18n/en.json`), not a `.mcplugin` package. A plugin loaded this way is marked as a developer plugin and only exchanges messages with other
 developer copies of the same id. See [Testing](testing.md) for loading packages and for serving a
 local registry.
 
