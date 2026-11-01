@@ -9,7 +9,6 @@ steps:
   - event:
       chat-match:
         sender: 2
-        pattern-index: 0
         text: &fit |
           [Rifter, Tackle]
           Damage Control II

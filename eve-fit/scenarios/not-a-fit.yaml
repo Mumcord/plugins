@@ -8,7 +8,6 @@ steps:
   - event:
       chat-match:
         sender: 2
-        pattern-index: 0
         text: |
           [Rifter, anyone?]
           
