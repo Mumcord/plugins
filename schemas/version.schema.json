@@ -12,7 +12,7 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "api": { "type": "integer", "const": 1 },
-    "size": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+    "size": { "type": "integer", "minimum": 1, "maximum": 67108864 },
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "permissions": {
       "type": "array",
