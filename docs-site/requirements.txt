@@ -1,0 +1,6 @@
+# Documentation site (mkdocs.yml). Pinned so CI and local previews render the same site.
+mkdocs==1.6.1
+mkdocs-material==9.8.0
+markdown-callouts==0.4.0
+pymdown-extensions==12.3
+Markdown==3.11.2

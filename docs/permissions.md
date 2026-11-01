@@ -26,6 +26,8 @@ the Mumcord catalogue, not from your plugin.
 | `commands` | green | Chat commands such as `/roll` (declared in the manifest) |
 | `chat.send` | yellow | Posting a chat message for you after a click or a command |
 | `chat.supersedes` | green | Hiding the plugin's own text line for people who see its card |
+| `chat.triggers` | yellow | Chat lines that start with one of the plugin's trigger words (on every connected server) |
+| `chat.patterns` | yellow | Chat lines that match one of the plugin's declared patterns (on every connected server) |
 | `net.http` | red | Talking to a server the user chose (official plugins only) |
 | `secrets` | red | A secret in the system keychain (official plugins only) |
 | `ui.webview` | yellow | A sealed web view with no internet (official plugins only) |
@@ -48,3 +50,13 @@ The live catalogue is `https://mumcord.github.io/plugins/v1/permissions.json`.
   card instead of the plain text line.
 - **Handle revocation.** The user can revoke an optional permission while the plugin runs. React to
   `SettingsChanged` and to `NotPermitted`, and keep working with what is left.
+
+## New optional permissions in an update
+
+When an update adds optional permissions, Mumcord does not leave them silently off. The Updates tab
+(and auto-update) shows "New optional permission: ..." for each one with a toggle, switched on for
+permissions you marked `suggested: true`. Permissions the user already decided about are not asked
+again, and an update never turns on a required permission without the usual consent step.
+
+Even so, a user can say no. If a feature depends on an optional permission, show a hint when it is
+missing and call `ui::open_permissions()` from its button, so the user lands on the switch.
