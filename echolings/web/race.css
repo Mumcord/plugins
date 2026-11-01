@@ -1,0 +1,278 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fbf8f3;
+  --fg: #2a2633;
+  --muted: #6b6475;
+  --lane: #efe8dc;
+  --bar: #e4dccd;
+  --zone: #f2b84b;
+  --zone-edge: #9a6510;
+  --marker: #2a2633;
+  --accent: #6a4fd8;
+  --accent-fg: #ffffff;
+  --focus: #6a4fd8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #1c1a22;
+    --fg: #f1edf7;
+    --muted: #b3abc0;
+    --lane: #2b2833;
+    --bar: #36323f;
+    --zone: #e0a43a;
+    --zone-edge: #ffd27a;
+    --marker: #f1edf7;
+    --accent: #9b85ff;
+    --accent-fg: #1c1a22;
+    --focus: #9b85ff;
+  }
+}
+
+:root.dark {
+  --bg: #1c1a22;
+  --fg: #f1edf7;
+  --muted: #b3abc0;
+  --lane: #2b2833;
+  --bar: #36323f;
+  --zone: #e0a43a;
+  --zone-edge: #ffd27a;
+  --marker: #f1edf7;
+  --accent: #9b85ff;
+  --accent-fg: #1c1a22;
+  --focus: #9b85ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.4 system-ui, sans-serif;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.clock {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.status,
+.hint,
+.note {
+  margin: 0;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.note {
+  min-height: 1.4em;
+  font-weight: 600;
+}
+
+/* Lanes: label, then the path from the start line to the snack. */
+.track {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane {
+  display: grid;
+  grid-template-columns: minmax(0, 7rem) 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.lane .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.lane.me .name {
+  font-weight: 700;
+}
+
+.path {
+  position: relative;
+  height: 36px;
+  border-radius: 18px;
+  background: var(--lane);
+}
+
+.lane.me .path {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.pet,
+.snack {
+  position: absolute;
+  top: 2px;
+  width: 32px;
+  height: 32px;
+}
+
+.pet {
+  left: calc(4px + (100% - 72px) * var(--progress, 0));
+}
+
+.pet img,
+.pet .blob {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pet .blob {
+  border: 2px solid var(--fg);
+  border-radius: 50% 50% 45% 45%;
+  background: var(--zone);
+}
+
+.snack {
+  right: 2px;
+}
+
+/* The snack zone and marker of the timing bar. */
+.bar {
+  position: relative;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--bar);
+  overflow: hidden;
+}
+
+.zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--zone-edge);
+  border-right: 2px solid var(--zone-edge);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--zone),
+    var(--zone) 6px,
+    var(--zone-edge) 6px,
+    var(--zone-edge) 8px
+  );
+}
+
+.marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: var(--marker);
+}
+
+button {
+  font: inherit;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.start {
+  align-self: flex-start;
+}
+
+.hop,
+.start {
+  padding: 12px 20px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 1.2rem;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.hop:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.results {
+  margin: 0;
+  padding-left: 1.4rem;
+  font-size: 1.05rem;
+}
+
+/* Animation levels: Full hops, Subtle slides, Still jumps. The timing marker always moves,
+   because it is the game itself, not decoration. */
+.motion-full .pet {
+  transition: left 240ms ease-out;
+}
+
+.motion-full .pet.hopped {
+  animation: hop 240ms ease-out;
+}
+
+.motion-full .pet.stumbled {
+  animation: wobble 400ms ease-in-out;
+}
+
+.motion-subtle .pet {
+  transition: left 200ms linear;
+}
+
+@keyframes hop {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes wobble {
+  25% {
+    transform: rotate(-12deg);
+  }
+  75% {
+    transform: rotate(12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet {
+    transition: none !important;
+    animation: none !important;
+  }
+}

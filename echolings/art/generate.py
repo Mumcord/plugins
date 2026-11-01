@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generates the Echoling pet art: one SVG per species, stage and colour, plus a small variant and closed-eye sleeping variants of both.
 
-Usage: python3 art/generate.py  (run from the echolings folder; writes assets/pets/*.svg)
+Usage: python3 art/generate.py  (run from the echolings folder; writes assets/pets/*.svg and
+the small awake pictures again to web/pets/ for Snack Race)
 
 Files:
 - `<species>-<stage>-<colour>.svg`: the full picture (pet panel, profile card), 128x128 with a
@@ -20,6 +21,9 @@ styles, no external references), so the installed files look exactly like these.
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "pets"
+# Snack Race's web view may only load files below `web/`, so it gets its own copy of the small
+# awake pictures.
+WEB_OUT = Path(__file__).resolve().parent.parent / "web" / "pets"
 
 INK = "#2b1d4f"
 GOLD = "#ffd36b"
@@ -394,11 +398,14 @@ def svg(species, stage, p, small, sleep=False):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    WEB_OUT.mkdir(parents=True, exist_ok=True)
     for species, colours in PALETTES.items():
         for colour, p in colours.items():
             for stage in STAGES:
                 (OUT / f"{species}-{stage}-{colour}.svg").write_text(svg(species, stage, p, False))
-                (OUT / f"{species}-{stage}-{colour}-small.svg").write_text(svg(species, stage, p, True))
+                small = svg(species, stage, p, True)
+                (OUT / f"{species}-{stage}-{colour}-small.svg").write_text(small)
+                (WEB_OUT / f"{species}-{stage}-{colour}-small.svg").write_text(small)
                 (OUT / f"{species}-{stage}-{colour}-sleep.svg").write_text(svg(species, stage, p, False, True))
                 (OUT / f"{species}-{stage}-{colour}-sleep-small.svg").write_text(svg(species, stage, p, True, True))
 
