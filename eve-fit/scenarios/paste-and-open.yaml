@@ -1,0 +1,38 @@
+# Someone pastes an EVE fit into the channel chat: a card with the slot summary appears, and
+# Open shows the full fit in the dialog.
+name: A pasted fit shows a card and opens in the dialog
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event:
+      chat-match:
+        sender: 2
+        pattern-index: 0
+        text: |
+          [Rifter, Tackle]
+          Damage Control II
+          Gyrostabilizer II
+          [Empty Low slot]
+
+          5MN Microwarpdrive II
+          Warp Scrambler II
+
+          200mm AutoCannon II, Republic Fleet EMP S
+          200mm AutoCannon II, Republic Fleet EMP S
+          [Empty High slot]
+
+          Small Projectile Burst Aerator I
+
+
+          Warrior II x3
+
+
+          Nanite Repair Paste x50
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Tackle · pasted by Bob"}}
+
+  - event: {ui-action: {action: open, slot: {chat-card: fit-1}}}
+  - expect: {dialog: {title: "Tackle"}}
+  - expect: {tree: {slot: dialog, text: "2× 200mm AutoCannon II · Republic Fleet EMP S"}}
+  - expect: nothing

@@ -1,0 +1,21 @@
+{
+  "manifest": 1,
+  "id": "eve-fit",
+  "name": "EVE fit",
+  "description": "Shows EVE Online ship fits pasted into the chat as a tidy card with the full fit one click away.",
+  "version": "1.0.0",
+  "api": "^1.0",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["chat", "games"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": ["ui.chat-card", "ui.dialog", "chat.patterns"]
+  },
+  "chat_patterns": [
+    {
+      "pattern": "^\\[[^,\\]\\n]{1,64},[^\\]\\n]{0,100}\\][ \\t\\r]*\\n",
+      "description": "Messages that start with an EVE Online fit, e.g. [Rifter, Tackle]"
+    }
+  ]
+}
