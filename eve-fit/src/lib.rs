@@ -14,7 +14,7 @@ mod tests;
 use std::cell::RefCell;
 
 use mumcord_plugin_sdk::{
-    Plugin, clock,
+    Plugin, chat_card, clock,
     events::{ActionSource, Event, PanelVisibility},
     log,
     storage::{self, Scope},
@@ -78,6 +78,16 @@ impl Host for Mumcord {
 
     fn warn(&mut self, message: &str) {
         log::warn(message);
+    }
+
+    fn is_replay(&mut self) -> bool {
+        chat_card::is_replay()
+    }
+
+    fn replace_message(&mut self, id: &str) {
+        if let Err(e) = chat_card::replace_message(id) {
+            log::debug(&format!("could not replace the chat message: {e:?}"));
+        }
     }
 }
 

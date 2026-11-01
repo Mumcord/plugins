@@ -1,0 +1,39 @@
+# The fit card takes the place of the pasted fit text in the chat. Fits replayed from the chat
+# history when the channel is opened again get their card too, but do not land in the fit
+# history a second time.
+name: The card replaces the pasted fit, also for replayed fits
+grant: [ui.chat-card, ui.dialog, chat.patterns, ui.panel]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+
+  - event:
+      chat-match:
+        sender: 2
+        message: 1
+        text: |
+          [Rifter, Tackle]
+          Damage Control II
+          Warp Scrambler II
+  - expect: {tree: {slot: panel, text: "▸ Fit history (1)"}}
+  - expect: {replaced: {message: 1, card: fit-1}}
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Tackle · pasted by Bob"}}
+
+  # An old fit from the stored history: it gets a card, the fit history stays as it is.
+  - event:
+      chat-match:
+        sender: 2
+        message: 2
+        replay: true
+        text: |
+          [Merlin, Brawler]
+          Medium Shield Extender II
+  - expect: {replaced: {message: 2, card: fit-2}}
+  - expect: {tree: {slot: {chat-card: fit-2}, text: "Brawler · pasted by Bob"}}
+  # The panel, drawn again, still counts one fit.
+  - event: {panel-visibility: hidden}
+  - event: {panel-visibility: expanded}
+  - expect: {tree: {slot: panel, text: "▸ Fit history (1)"}}

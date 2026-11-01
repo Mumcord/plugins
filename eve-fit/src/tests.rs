@@ -357,6 +357,10 @@ struct Fake {
     popovers: usize,
     /// Seconds since 1970 and the UTC offset in minutes.
     now: (u64, i32),
+    /// Whether events are replayed from chat history.
+    replay: bool,
+    /// Card ids that replaced a chat message, and how many cards were shown at that moment.
+    replaced: Vec<(String, usize)>,
 }
 
 impl Store for Fake {
@@ -418,6 +422,14 @@ impl Host for Fake {
 
     fn warn(&mut self, message: &str) {
         self.warnings.push(message.to_owned());
+    }
+
+    fn is_replay(&mut self) -> bool {
+        self.replay
+    }
+
+    fn replace_message(&mut self, id: &str) {
+        self.replaced.push((id.to_owned(), self.cards.len()));
     }
 }
 
@@ -504,6 +516,7 @@ fn text_that_is_no_fit_shows_nothing() {
     let mut host = Fake::default();
     app.on_chat_match(&mut host, "Alice", "[Rifter, Tackle]\n\n");
     assert!(host.cards.is_empty());
+    assert!(host.replaced.is_empty());
 }
 
 #[test]
@@ -1003,4 +1016,38 @@ fn times_from_earlier_days_show_the_date_in_local_time() {
         history::format_time(951_782_400, NOW, 0),
         "2000-02-29 00:00"
     );
+}
+
+// --- Card in place of the message and replay ---------------------------------------------------
+
+#[test]
+fn the_card_replaces_the_pasted_message_before_it_is_shown() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.on_chat_match(&mut host, "Alice", RIFTER);
+    assert_eq!(host.replaced, [(card_id(1), 0)]);
+    assert_eq!(host.cards.len(), 1);
+}
+
+#[test]
+fn a_replayed_fit_gets_a_card_but_stays_out_of_the_history() {
+    let mut host = panel_host();
+    let mut app = panel_app(&mut host);
+    app.on_chat_match(&mut host, "Bob", &small_fit("First"));
+    app.on_chat_match(&mut host, "Bob", &small_fit("Second"));
+    let stored = host.store.clone();
+
+    host.replay = true;
+    app.on_chat_match(&mut host, "Bob", &small_fit("First"));
+    app.on_chat_match(&mut host, "Carol", &small_fit("Old"));
+    assert_eq!(host.store, stored);
+    assert_eq!(panel_texts(&host), ["[\u{25b8} Fit history (2)]"]);
+    assert_eq!(
+        host.replaced
+            .iter()
+            .map(|(id, _)| id.as_str())
+            .collect::<Vec<_>>(),
+        ["fit-1", "fit-2", "fit-3", "fit-4"]
+    );
+    assert!(texts(host.last_card("fit-4")).contains(&"Old · pasted by Carol".to_owned()));
 }

@@ -26,6 +26,10 @@ pub trait Host: Store {
     /// Seconds since 1970 (UTC) and the user's offset from UTC in minutes.
     fn now(&mut self) -> (u64, i32);
     fn warn(&mut self, message: &str);
+    /// Whether the event being handled was replayed from stored chat history.
+    fn is_replay(&mut self) -> bool;
+    /// Shows card `id` in place of the chat message behind the current event.
+    fn replace_message(&mut self, id: &str);
 }
 
 /// What the page sends once it listens, asking for the fit.
@@ -113,10 +117,13 @@ impl App {
         let Some(fit) = eft::parse(text) else {
             return;
         };
-        let (now, _) = host.now();
-        self.history.add(host, sender, now, text, &fit);
-        self.pages = vec![0];
-        self.show_panel(host);
+        // A replayed fit was added when it was first seen; adding it again would move it to the top.
+        if !host.is_replay() {
+            let (now, _) = host.now();
+            self.history.add(host, sender, now, text, &fit);
+            self.pages = vec![0];
+            self.show_panel(host);
+        }
         let card = self.next_card;
         self.next_card = self.next_card.wrapping_add(1).max(1);
         let pasted = Pasted {
@@ -125,6 +132,8 @@ impl App {
             fit,
             text: text.to_owned(),
         };
+        // Replace first, so the card takes the message's place instead of appearing below it.
+        host.replace_message(&card_id(card));
         host.show_card(&card_id(card), view::card(&self.strings, &pasted));
         self.fits.push_back(pasted);
         if self.fits.len() > KEPT_FITS
