@@ -1,0 +1,15 @@
+# A replayed "[Poll] " line of a poll this client does not know stays as it is.
+name: A replayed own line of an unknown poll is left alone
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  # The panel is drawn a few times while the plugin starts; take those first.
+  - expect: {tree: {slot: panel, text: "No poll in this channel"}}
+  - expect: {tree: {slot: panel, text: "No poll in this channel"}}
+  - expect: {tree: {slot: panel, text: "No poll in this channel"}}
+  - event: {chat-match: {own: true, text: "[Poll] 📊 Tea? · 1) Green · 2) Black · Vote with !poll 1 to !poll 2", message: 40, replay: true}}
+  - event: {chat-match: {own: true, text: "[Poll] Closed: Tea? Green: 1, Black: 0", message: 41, replay: true}}
+  - event: {chat-match: {own: true, text: "no prefix at all", message: 42, replay: true}}
+  - expect: nothing
