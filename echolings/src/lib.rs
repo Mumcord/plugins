@@ -197,6 +197,7 @@ impl App {
         if me != self.session.me || channel != self.channel {
             self.session.others.clear();
             self.session.joined_at = None;
+            storage::forget_saved();
             for session in self.social.moved(now.secs) {
                 host_ui::clear(&Slot::MemberBadge(session));
             }

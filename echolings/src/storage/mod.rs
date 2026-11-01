@@ -6,6 +6,8 @@ use mumcord_plugin_sdk::{
     storage::{self, Scope},
 };
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use crate::pet::Pet;
 
@@ -145,15 +147,51 @@ pub fn save_settings(settings: &Settings) {
     save(SETTINGS_KEY, &encode_settings(settings));
 }
 
-fn save(key: &str, bytes: &[u8]) {
-    if let Err(e) = storage::set(Scope::Identity, key, bytes) {
-        log::error(&format!("could not save {key}: {e:?}"));
+thread_local! {
+    /// What each key last stored. A write costs a database commit inside the plugin's call
+    /// budget, and most ticks and clicks leave the pet unchanged.
+    static SAVED: RefCell<HashMap<&'static str, Vec<u8>>> = RefCell::new(HashMap::new());
+}
+
+fn save(key: &'static str, bytes: &[u8]) {
+    if already_saved(key, bytes) {
+        return;
     }
+    match storage::set(Scope::Identity, key, bytes) {
+        Ok(()) => remember_saved(key, bytes),
+        Err(e) => log::error(&format!("could not save {key}: {e:?}")),
+    }
+}
+
+fn already_saved(key: &str, bytes: &[u8]) -> bool {
+    SAVED.with(|saved| saved.borrow().get(key).is_some_and(|last| last == bytes))
+}
+
+fn remember_saved(key: &'static str, bytes: &[u8]) {
+    SAVED.with(|saved| {
+        saved.borrow_mut().insert(key, bytes.to_vec());
+    });
+}
+
+/// The next saves write again, e.g. after a server change that may mean another identity.
+pub fn forget_saved() {
+    SAVED.with(|saved| saved.borrow_mut().clear());
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_changed_values_are_written_again() {
+        assert!(!already_saved(PET_KEY, b"a"));
+        remember_saved(PET_KEY, b"a");
+        assert!(already_saved(PET_KEY, b"a"));
+        assert!(!already_saved(PET_KEY, b"b"));
+        assert!(!already_saved(SETTINGS_KEY, b"a"));
+        forget_saved();
+        assert!(!already_saved(PET_KEY, b"a"));
+    }
     use crate::pet::{Now, Species};
 
     fn pet() -> Pet {
