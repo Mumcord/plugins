@@ -34,6 +34,10 @@ struct Fake {
     popover: Option<bool>,
     /// The host refuses to open the popover (no fresh gesture).
     popover_refused: bool,
+    /// The host refuses to open the permissions (no fresh gesture).
+    permissions_refused: bool,
+    /// How often the plugin asked to open its permissions.
+    permissions_opened: usize,
     /// The current event is a replay from chat history.
     replay: bool,
     /// Cards put in place of the current message, in order.
@@ -112,6 +116,14 @@ impl Host for Fake {
 
     fn my_session(&mut self) -> Option<u32> {
         self.session
+    }
+
+    fn open_permissions(&mut self) -> Result<(), Error> {
+        if self.permissions_refused {
+            return Err(Error::NotPermitted);
+        }
+        self.permissions_opened += 1;
+        Ok(())
     }
 
     fn open_popover(&mut self) -> Result<(), Error> {
@@ -1047,7 +1059,7 @@ fn new_poll_waits_while_my_poll_is_open() {
 
 #[test]
 fn the_creators_popover_hints_at_the_missing_trigger_permission() {
-    let hint = "Turn on !poll voting in the plugin permissions".to_owned();
+    let hint = "[open-permissions]".to_owned();
     let (mut app, mut host) = creator();
     assert!(
         !host.texts("panel").contains(&hint),
@@ -1058,6 +1070,17 @@ fn the_creators_popover_hints_at_the_missing_trigger_permission() {
     assert!(!host.texts(&own_card_id(1000)).contains(&hint));
     app.set_granted(&mut host, vec!["chat.triggers".into()]);
     assert!(!host.texts("panel").contains(&hint));
+}
+
+#[test]
+fn the_triggers_hint_opens_the_permissions() {
+    let (mut app, mut host) = creator();
+    app.on_action(&mut host, None, "open-permissions", None);
+    assert_eq!(host.permissions_opened, 1);
+    host.permissions_refused = true;
+    app.on_action(&mut host, None, "open-permissions", None);
+    assert_eq!(host.permissions_opened, 1);
+    assert_eq!(host.warnings.len(), 1);
 }
 
 #[test]

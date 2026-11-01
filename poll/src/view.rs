@@ -85,9 +85,12 @@ pub fn panel(s: &Strings, p: &Panel) -> El {
             column = column.child(ui::caption(&line));
         }
         // Without `chat.triggers` people in plain Mumble cannot vote, although the chat line
-        // says so.
+        // says so. The button opens the plugin's permissions, where the user can turn it on.
         if role == Role::Creator && !poll.closed && !p.triggers {
-            column = column.child(ui::caption(&s.t("card.hint_triggers")));
+            column = column.child(
+                ui::button("open-permissions", &s.t("card.hint_triggers"))
+                    .kind(ButtonKind::Secondary),
+            );
         }
     }
     let mut buttons = ui::row();

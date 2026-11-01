@@ -112,6 +112,10 @@ impl Host for Mumcord {
         ui::close_panel_popover();
     }
 
+    fn open_permissions(&mut self) -> Result<(), Error> {
+        ui::open_permissions()
+    }
+
     fn warn(&mut self, message: &str) {
         log::warn(message);
     }

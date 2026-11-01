@@ -63,6 +63,8 @@ pub trait Host {
     /// Opens the panel popover; only right after a click in the plugin's UI.
     fn open_popover(&mut self) -> Result<(), Error>;
     fn close_popover(&mut self);
+    /// Opens this plugin's details and permissions in Mumcord; only right after a click.
+    fn open_permissions(&mut self) -> Result<(), Error>;
     fn warn(&mut self, message: &str);
 }
 
@@ -326,6 +328,11 @@ impl App {
                 }
             }
             (None, "close") => self.close(host),
+            (None, "open-permissions") => {
+                if let Err(e) = host.open_permissions() {
+                    host.warn(&format!("could not open the plugin permissions: {e:?}"));
+                }
+            }
             (None, other) => {
                 if let Some(option) = parse_index(other, "vote-") {
                     if let Some(target) = self.shown() {
