@@ -14,6 +14,7 @@
   "button.end": "Beigt aptauju",
   "button.cancel": "Atcelt",
   "button.show_all": "Visas atbildes",
+  "button.open": "Atvērt",
   "status.frozen": "Autors aizgāja, aptauja ir iesaldēta · {{votes}}",
   "status.closed": "Aizvērta · {{votes}}",
   "status.own": "Jūsu aptauja · {{votes}}",

@@ -14,6 +14,7 @@
   "button.end": "Umfrage beenden",
   "button.cancel": "Abbrechen",
   "button.show_all": "Alle Antworten",
+  "button.open": "Öffnen",
   "status.frozen": "Ersteller ist gegangen, Umfrage eingefroren · {{votes}}",
   "status.closed": "Geschlossen · {{votes}}",
   "status.own": "Deine Umfrage · {{votes}}",

@@ -157,11 +157,15 @@ impl Fake {
 }
 
 fn collect_texts(el: &El, out: &mut Vec<String>) {
-    // An option row (its button, then its bar) also reads as "Option: n votes".
-    if let [button, meter] = el.children.as_slice()
-        && let (Component::Button(b), Component::Meter(m)) = (&button.component, &meter.component)
+    // An option row (its button or name, then its bar) also reads as "Option: n votes".
+    if let [label, meter] = el.children.as_slice()
+        && let Component::Meter(m) = &meter.component
     {
-        out.push(format!("{}: {}", b.label, m.label));
+        match &label.component {
+            Component::Button(b) => out.push(format!("{}: {}", b.label, m.label)),
+            Component::Text(t) => out.push(format!("{}: {}", t.text, m.label)),
+            _ => {}
+        }
     }
     match &el.component {
         Component::Text(t) => out.push(t.text.clone()),
@@ -441,13 +445,14 @@ fn tally_is_coalesced_to_one_per_two_seconds() {
 }
 
 #[test]
-fn creator_votes_on_own_card_without_a_message() {
+fn creator_votes_in_the_popover_without_a_message() {
     let (mut app, mut host) = creator();
-    app.on_action(&mut host, Some(&own_card_id(1000)), "vote-1", None);
+    app.on_action(&mut host, Some(&own_card_id(1000)), "open", None);
+    app.on_action(&mut host, None, "vote-1", None);
     assert!(host.sent_of(KIND_VOTE).is_empty());
     let card = host.texts(&own_card_id(1000));
-    assert!(card.contains(&"✓ Pasta: 1 vote".to_owned()));
-    assert!(card.contains(&"Pasta: Anna".to_owned()));
+    assert!(card.contains(&"✓ Pasta: 1 vote".to_owned()), "{card:?}");
+    assert!(host.texts("panel").contains(&"Pasta: Anna".to_owned()));
 }
 
 #[test]
@@ -464,7 +469,7 @@ fn close_posts_the_result_and_sends_final_tally_and_voters() {
         .encode(),
         true,
     );
-    app.on_action(&mut host, Some(&own_card_id(1000)), "close", None);
+    app.on_action(&mut host, None, "close", None);
     assert_eq!(host.chat[1], "Closed: Pizza or pasta? Pizza: 1, Pasta: 0");
     let tally = Tally::decode(&host.sent_of(KIND_TALLY)[0].1).expect("tally");
     assert!(tally.closed);
@@ -550,7 +555,8 @@ fn no_notification_without_permission_or_for_resends() {
 #[test]
 fn voting_sends_directly_to_the_creator() {
     let (mut app, mut host) = voter();
-    app.on_action(&mut host, Some(&other_card_id(1, 1000)), "vote-1", None);
+    app.on_action(&mut host, Some(&other_card_id(1, 1000)), "open", None);
+    app.on_action(&mut host, None, "vote-1", None);
     let votes = host.sent_of(KIND_VOTE);
     assert_eq!(votes.len(), 1);
     assert_eq!(votes[0].0, To::Direct(1));
@@ -608,6 +614,8 @@ fn tally_and_voters_only_count_from_the_creator() {
             name: "Ben".into(),
         }],
     );
+    // The voter list shows in the popover.
+    app.on_action(&mut host, Some(&card), "open", None);
     app.on_peer_message(
         &mut host,
         &peer(2, "Mallory", None),
@@ -615,7 +623,7 @@ fn tally_and_voters_only_count_from_the_creator() {
         &voters[0].encode(),
         false,
     );
-    assert!(!host.texts(&card).contains(&"Pasta: Ben".to_owned()));
+    assert!(!host.texts("panel").contains(&"Pasta: Ben".to_owned()));
     app.on_peer_message(
         &mut host,
         &peer(1, "Anna", None),
@@ -623,7 +631,7 @@ fn tally_and_voters_only_count_from_the_creator() {
         &voters[0].encode(),
         false,
     );
-    assert!(host.texts(&card).contains(&"Pasta: Ben".to_owned()));
+    assert!(host.texts("panel").contains(&"Pasta: Ben".to_owned()));
     app.on_peer_message(
         &mut host,
         &peer(1, "Anna", None),
@@ -633,7 +641,8 @@ fn tally_and_voters_only_count_from_the_creator() {
     );
     let texts = host.texts(&card);
     assert!(texts.iter().any(|t| t.starts_with("Closed")));
-    assert!(texts.contains(&"[vote-0] off".to_owned()));
+    // The popover keeps showing the closed poll it was opened for, without voting.
+    assert!(host.texts("panel").contains(&"[vote-0] off".to_owned()));
     assert_eq!(host.superseded.last(), Some(&(card, 1, 55)));
 }
 
@@ -656,8 +665,9 @@ fn creator_leaving_freezes_the_poll() {
             .any(|t| t.starts_with("Creator left, poll is frozen")),
         "{texts:?}"
     );
-    assert!(texts.contains(&"[vote-0] off".to_owned()));
-    app.on_action(&mut host, Some(&card), "vote-0", None);
+    app.on_action(&mut host, Some(&card), "open", None);
+    assert!(host.texts("panel").contains(&"[vote-0] off".to_owned()));
+    app.on_action(&mut host, None, "vote-0", None);
     assert!(host.sent_of(KIND_VOTE).is_empty());
 }
 
@@ -753,7 +763,7 @@ fn no_resend_without_an_open_poll() {
 fn rate_limited_messages_wait_for_the_retry_timer() {
     let (mut app, mut host) = voter();
     host.send_results = vec![Err(Error::RateLimited)];
-    app.on_action(&mut host, Some(&other_card_id(1, 1000)), "vote-0", None);
+    app.on_action(&mut host, None, "vote-0", None);
     assert!(host.sent.is_empty());
     let timer = host.timer_with(crate::app::RETRY_DELAY_MS);
     app.on_timer(&mut host, timer);
@@ -895,7 +905,7 @@ fn chat_triggers_count_once_per_person_and_can_change() {
     assert_eq!(tally.counts, vec![1, 2]);
     assert!(
         host.texts(&own_card_id(1000))
-            .contains(&"[vote-1]".to_owned())
+            .contains(&"✓ Pasta: 2 votes".to_owned())
     );
 }
 
@@ -1036,24 +1046,80 @@ fn new_poll_waits_while_my_poll_is_open() {
 }
 
 #[test]
-fn the_creators_card_hints_at_the_missing_trigger_permission() {
+fn the_creators_popover_hints_at_the_missing_trigger_permission() {
     let hint = "Turn on !poll voting in the plugin permissions".to_owned();
     let (mut app, mut host) = creator();
-    assert!(host.texts(&own_card_id(1000)).contains(&hint));
-    assert!(!host.texts("panel").contains(&hint));
-    app.set_granted(&mut host, vec!["chat.triggers".into()]);
+    assert!(
+        !host.texts("panel").contains(&hint),
+        "not in the small panel"
+    );
+    app.on_action(&mut host, Some(&own_card_id(1000)), "open", None);
+    assert!(host.texts("panel").contains(&hint));
     assert!(!host.texts(&own_card_id(1000)).contains(&hint));
+    app.set_granted(&mut host, vec!["chat.triggers".into()]);
+    assert!(!host.texts("panel").contains(&hint));
 }
 
 #[test]
 fn my_vote_is_marked_on_the_card() {
     let (mut app, mut host) = creator();
-    app.on_action(&mut host, Some(&own_card_id(1000)), "vote-1", None);
+    app.on_action(&mut host, Some(&own_card_id(1000)), "open", None);
+    app.on_action(&mut host, None, "vote-1", None);
     let card = host.texts(&own_card_id(1000));
-    assert!(
-        card.iter()
-            .any(|t| t.starts_with("[vote-1]") || t.starts_with("✓ Pasta"))
+    assert!(card.contains(&"✓ Pasta: 1 vote".to_owned()), "{card:?}");
+}
+
+#[test]
+fn the_card_shows_the_top_three_options_and_opens_the_full_poll() {
+    // Anna (creator of an open poll) gets a five-option poll from Ben.
+    let (mut app, mut host) = creator();
+    let ben = peer(2, "Ben", Some("kb"));
+    let create = Create {
+        poll_id: 7,
+        line_hash: 0,
+        question: "Game?".into(),
+        options: ["A", "B", "C", "D", "E"].map(String::from).to_vec(),
+    };
+    app.on_peer_message(&mut host, &ben, KIND_CREATE, &create.encode(), false);
+    let tally = Tally {
+        poll_id: 7,
+        closed: false,
+        close_hash: 0,
+        counts: vec![1, 0, 5, 3, 3],
+    };
+    app.on_peer_message(&mut host, &ben, KIND_TALLY, &tally.encode(), false);
+    let card_id = other_card_id(2, 7);
+    let card = host.texts(&card_id);
+    let rows: Vec<&str> = card
+        .iter()
+        .filter(|t| t.contains(": "))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        rows,
+        ["C: 5 votes", "D: 3 votes", "E: 3 votes"],
+        "most votes first, ties in order: {card:?}"
     );
+    assert!(card.contains(&"[open]".to_owned()));
+    assert!(
+        !card.iter().any(|t| t.starts_with("[vote-")),
+        "voting happens in the popover"
+    );
+
+    // "Open" shows Ben's poll in the popover, all options, although Anna's own poll is current.
+    app.on_action(&mut host, Some(&card_id), "open", None);
+    assert_eq!(host.popover, Some(true));
+    let panel = host.texts("panel");
+    assert!(panel.contains(&"Game?".to_owned()), "{panel:?}");
+    assert!(panel.contains(&"[vote-4]".to_owned()));
+    app.on_action(&mut host, None, "vote-4", None);
+    let votes = host.sent_of(KIND_VOTE);
+    assert_eq!(votes.len(), 1);
+    assert_eq!(votes[0].0, To::Direct(2));
+
+    // Closing the popover goes back to the current poll.
+    app.set_expanded(&mut host, false);
+    assert!(host.texts("panel").contains(&"Pizza or pasta?".to_owned()));
 }
 
 #[test]

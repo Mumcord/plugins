@@ -23,6 +23,14 @@ const INLINE_QUESTION_CHARS: usize = 36;
 /// An option button inline keeps room for its bar on the same line.
 const INLINE_OPTION_CHARS: usize = 12;
 
+/// Options on the chat card (440×160 px, no scrolling), the ones with the most votes; "Open"
+/// shows all of them in the popover.
+pub const CARD_OPTIONS: usize = 3;
+/// About one line of the card's heading.
+const CARD_QUESTION_CHARS: usize = 44;
+/// An option label on the card keeps room for its bar and count on the same line.
+const CARD_OPTION_CHARS: usize = 24;
+
 /// What the panel shows.
 pub struct Panel<'a> {
     pub draft: &'a Draft,
@@ -75,6 +83,11 @@ pub fn panel(s: &Strings, p: &Panel) -> El {
     if p.expanded {
         for line in voter_lines(poll) {
             column = column.child(ui::caption(&line));
+        }
+        // Without `chat.triggers` people in plain Mumble cannot vote, although the chat line
+        // says so.
+        if role == Role::Creator && !poll.closed && !p.triggers {
+            column = column.child(ui::caption(&s.t("card.hint_triggers")));
         }
     }
     let mut buttons = ui::row();
@@ -165,25 +178,55 @@ pub enum Role {
     Voter,
 }
 
-/// A poll's chat card: one full-width vote row per option, the status and the voter list.
-pub fn card(s: &Strings, poll: &Poll, role: Role, triggers: bool) -> El {
-    let mut card = ui::column()
-        .child(ui::heading(&poll.question))
-        .child(ui::caption(&status_text(s, poll, role)));
-    for i in 0..poll.options.len() {
-        card = card.child(vote_row(s, poll, i));
-    }
-    for line in voter_lines(poll) {
-        card = card.child(ui::caption(&line));
-    }
-    // Without `chat.triggers` people in plain Mumble cannot vote, although the chat line says so.
-    if role == Role::Creator && !poll.closed && !triggers {
-        card = card.child(ui::caption(&s.t("card.hint_triggers")));
-    }
-    if role == Role::Creator && !poll.closed {
-        card = card.child(ui::button("close", &s.t("button.end")).kind(ButtonKind::Danger));
+/// A poll's chat card, a summary that always fits its slot: the question, the status with
+/// "Open" (the whole poll in the popover, where people vote) and the options with the most
+/// votes as slim result rows.
+pub fn card(s: &Strings, poll: &Poll, role: Role) -> El {
+    // "Open" shares the status line, so three options still fit the 160 px.
+    let mut card = ui::stack(Direction::Column, 4, Align::Stretch)
+        .child(ui::heading(&cut_chars(&poll.question, CARD_QUESTION_CHARS)))
+        .child(
+            ui::row()
+                .child(ui::caption(&status_text(s, poll, role)))
+                .child(ui::button("open", &s.t("button.open")).kind(ButtonKind::Primary)),
+        );
+    for i in top_options(poll) {
+        card = card.child(result_row(s, poll, i));
     }
     card
+}
+
+/// The indexes of the options with the most votes, ties in the poll's order.
+fn top_options(poll: &Poll) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..poll.options.len()).collect();
+    order.sort_by_key(|&i| std::cmp::Reverse(poll.counts.get(i).copied().unwrap_or(0)));
+    order.truncate(CARD_OPTIONS);
+    order
+}
+
+/// One option on the card: its name (with a checkmark once chosen) and its bar with the count
+/// as text, so the result is never shown by colour alone.
+fn result_row(s: &Strings, poll: &Poll, i: usize) -> El {
+    let count = poll.counts.get(i).copied().unwrap_or(0);
+    let label = cut_chars(&poll.options[i], CARD_OPTION_CHARS);
+    let label = if poll.my_vote == Some(i) {
+        format!("✓ {label}")
+    } else {
+        label
+    };
+    ui::row().child(ui::text(&label)).child(ui::meter(
+        &votes_text(s, u32::from(count)),
+        share(poll, count),
+    ))
+}
+
+fn share(poll: &Poll, count: u16) -> f32 {
+    let total = poll.total();
+    if total == 0 {
+        0.0
+    } else {
+        f32::from(count) / total as f32
+    }
 }
 
 /// One option: a button with its name that votes for it (highlighted once chosen), and its bar
@@ -191,12 +234,6 @@ pub fn card(s: &Strings, poll: &Poll, role: Role, triggers: bool) -> El {
 fn option_row(s: &Strings, poll: &Poll, i: usize, label_chars: usize) -> El {
     let option = &poll.options[i];
     let count = poll.counts.get(i).copied().unwrap_or(0);
-    let total = poll.total();
-    let share = if total == 0 {
-        0.0
-    } else {
-        f32::from(count) / total as f32
-    };
     let kind = if poll.my_vote == Some(i) {
         ButtonKind::Primary
     } else {
@@ -205,38 +242,10 @@ fn option_row(s: &Strings, poll: &Poll, i: usize, label_chars: usize) -> El {
     let vote = ui::button(&format!("vote-{i}"), &cut_chars(option, label_chars))
         .kind(kind)
         .disabled(poll.closed || poll.frozen);
-    ui::row()
-        .child(vote)
-        .child(ui::meter(&votes_text(s, u32::from(count)), share))
-}
-
-/// One option on the card: a full-width button with its name (checkmark and highlight once
-/// chosen) above its bar with the count as text, so the result is never shown by colour alone.
-fn vote_row(s: &Strings, poll: &Poll, i: usize) -> El {
-    let count = poll.counts.get(i).copied().unwrap_or(0);
-    let total = poll.total();
-    let share = if total == 0 {
-        0.0
-    } else {
-        f32::from(count) / total as f32
-    };
-    let mine = poll.my_vote == Some(i);
-    let label = if mine {
-        format!("✓ {}", poll.options[i])
-    } else {
-        poll.options[i].clone()
-    };
-    let kind = if mine {
-        ButtonKind::Primary
-    } else {
-        ButtonKind::Secondary
-    };
-    let vote = ui::button(&format!("vote-{i}"), &cut_chars(&label, MAX_TEXT_CHARS))
-        .kind(kind)
-        .disabled(poll.closed || poll.frozen);
-    ui::stack(Direction::Column, 2, Align::Stretch)
-        .child(vote)
-        .child(ui::meter(&votes_text(s, u32::from(count)), share))
+    ui::row().child(vote).child(ui::meter(
+        &votes_text(s, u32::from(count)),
+        share(poll, count),
+    ))
 }
 
 fn status_text(s: &Strings, poll: &Poll, role: Role) -> String {

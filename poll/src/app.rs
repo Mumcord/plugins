@@ -231,6 +231,8 @@ pub struct App {
     creating: bool,
     /// The panel shows as the large popover rather than inline.
     expanded: bool,
+    /// The poll a card's "Open" put in the popover, instead of the current one.
+    focus: Option<Target>,
 }
 
 /// The poll a vote is for.
@@ -268,7 +270,7 @@ impl App {
 
     pub fn set_granted(&mut self, host: &mut impl Host, granted: Vec<String>) {
         self.granted = granted;
-        // The creator's card hints at a missing `chat.triggers`.
+        // The creator's popover hints at a missing `chat.triggers`.
         self.render_own(host);
     }
 
@@ -282,6 +284,7 @@ impl App {
         self.expanded = expanded;
         if !expanded {
             self.creating = false;
+            self.focus = None;
         }
         self.render_panel(host);
     }
@@ -322,10 +325,10 @@ impl App {
                     self.render_panel(host);
                 }
             }
-            (_, "close") => self.close(host),
+            (None, "close") => self.close(host),
             (None, other) => {
                 if let Some(option) = parse_index(other, "vote-") {
-                    if let Some(target) = self.current() {
+                    if let Some(target) = self.shown() {
                         self.vote(host, target, option);
                     }
                 } else if let Some(slot) =
@@ -335,14 +338,21 @@ impl App {
                     self.render_panel(host);
                 }
             }
-            (Some(card), other) => {
-                if let Some(option) = parse_index(other, "vote-")
-                    && let Some(target) = self.target_of_card(card)
-                {
-                    self.vote(host, target, option);
-                }
-            }
+            (Some(card), "open") => self.open_card(host, card),
+            (Some(_), _) => {}
         }
+    }
+
+    /// "Open" on a card: the popover shows that poll in full, with its Vote buttons.
+    fn open_card(&mut self, host: &mut impl Host, card: &str) {
+        let Some(target) = self.target_of_card(card) else {
+            return;
+        };
+        if self.open_popover(host) || self.expanded {
+            self.creating = false;
+            self.focus = Some(target);
+        }
+        self.render_panel(host);
     }
 
     /// "New poll": the form opens in the popover. While the user's own poll is open the button
@@ -353,6 +363,7 @@ impl App {
         }
         if self.open_popover(host) || self.expanded {
             self.creating = true;
+            self.focus = None;
             self.draft.error = None;
         }
         self.render_panel(host);
@@ -374,6 +385,7 @@ impl App {
     fn leave_popover(&mut self, host: &mut impl Host) {
         host.close_popover();
         self.expanded = false;
+        self.focus = None;
         self.render_panel(host);
     }
 
@@ -392,6 +404,16 @@ impl App {
             .rev()
             .find(|o| !o.poll.closed && !o.poll.frozen)
             .map(|o| Target::Other(o.session))
+    }
+
+    /// The poll the panel shows: the one a card opened while the popover is up, if it still
+    /// exists, else the current one.
+    fn shown(&self) -> Option<Target> {
+        let focused = self.focus.filter(|t| match t {
+            Target::Own => self.own.is_some(),
+            Target::Other(session) => self.others.iter().any(|o| o.session == *session),
+        });
+        focused.filter(|_| self.expanded).or_else(|| self.current())
     }
 
     fn target_of_card(&self, card: &str) -> Option<Target> {
@@ -594,7 +616,7 @@ impl App {
         // One poll per creator: an older one from the same session ends here.
         if let Some(old) = self.others.iter_mut().find(|o| o.session == sender.session) {
             old.poll.closed = true;
-            let card = view::card(&self.strings.0, &old.poll, Role::Voter, false);
+            let card = view::card(&self.strings.0, &old.poll, Role::Voter);
             host.show(
                 Slot::ChatCard(other_card_id(old.session, old.poll.id)),
                 card,
@@ -906,7 +928,7 @@ impl App {
     }
 
     fn render_panel(&self, host: &mut impl Host) {
-        let current = match self.current() {
+        let current = match self.shown() {
             Some(Target::Own) => self.own.as_ref().map(|o| (&o.poll, Role::Creator)),
             Some(Target::Other(session)) => self
                 .others
@@ -932,12 +954,7 @@ impl App {
         if let Some(own) = &self.own {
             host.show(
                 Slot::ChatCard(own_card_id(own.poll.id)),
-                view::card(
-                    &self.strings.0,
-                    &own.poll,
-                    Role::Creator,
-                    self.granted("chat.triggers"),
-                ),
+                view::card(&self.strings.0, &own.poll, Role::Creator),
             );
         }
         self.render_panel(host);
@@ -947,7 +964,7 @@ impl App {
         if let Some(other) = self.others.iter().find(|o| o.session == session) {
             host.show(
                 Slot::ChatCard(other_card_id(session, other.poll.id)),
-                view::card(&self.strings.0, &other.poll, Role::Voter, false),
+                view::card(&self.strings.0, &other.poll, Role::Voter),
             );
         }
         self.render_panel(host);

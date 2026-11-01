@@ -14,6 +14,7 @@
   "button.end": "Încheie sondajul",
   "button.cancel": "Anulează",
   "button.show_all": "Toate opțiunile",
+  "button.open": "Deschide",
   "status.frozen": "Creatorul a plecat, sondajul este înghețat · {{votes}}",
   "status.closed": "Închis · {{votes}}",
   "status.own": "Sondajul tău · {{votes}}",

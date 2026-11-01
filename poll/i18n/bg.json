@@ -14,6 +14,7 @@
   "button.end": "Приключи анкетата",
   "button.cancel": "Отказ",
   "button.show_all": "Всички отговори",
+  "button.open": "Отвори",
   "status.frozen": "Създателят си тръгна, анкетата е замразена · {{votes}}",
   "status.closed": "Затворена · {{votes}}",
   "status.own": "Вашата анкета · {{votes}}",

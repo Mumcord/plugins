@@ -14,6 +14,7 @@
   "button.end": "End poll",
   "button.cancel": "Cancel",
   "button.show_all": "All options",
+  "button.open": "Open",
   "status.frozen": "Creator left, poll is frozen · {{votes}}",
   "status.closed": "Closed · {{votes}}",
   "status.own": "Your poll · {{votes}}",

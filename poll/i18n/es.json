@@ -14,6 +14,7 @@
   "button.end": "Terminar encuesta",
   "button.cancel": "Cancelar",
   "button.show_all": "Todas las opciones",
+  "button.open": "Abrir",
   "status.frozen": "El creador se ha ido, la encuesta está congelada · {{votes}}",
   "status.closed": "Cerrada · {{votes}}",
   "status.own": "Tu encuesta · {{votes}}",

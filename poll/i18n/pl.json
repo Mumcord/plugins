@@ -14,6 +14,7 @@
   "button.end": "Zakończ ankietę",
   "button.cancel": "Anuluj",
   "button.show_all": "Wszystkie opcje",
+  "button.open": "Otwórz",
   "status.frozen": "Autor wyszedł, ankieta jest zamrożona · {{votes}}",
   "status.closed": "Zamknięta · {{votes}}",
   "status.own": "Twoja ankieta · {{votes}}",

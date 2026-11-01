@@ -14,6 +14,7 @@
   "button.end": "Končaj anketo",
   "button.cancel": "Prekliči",
   "button.show_all": "Vse možnosti",
+  "button.open": "Odpri",
   "status.frozen": "Ustvarjalec je odšel, anketa je zamrznjena · {{votes}}",
   "status.closed": "Zaprta · {{votes}}",
   "status.own": "Vaša anketa · {{votes}}",

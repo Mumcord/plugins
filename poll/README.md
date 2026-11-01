@@ -6,7 +6,7 @@ Official Mumcord plugin: ask the channel a question with up to ten options and w
 
 - The Poll panel in the plugins strip shows the current poll of your channel: the question, a live bar per option and Vote buttons. The small panel shows the first two options; "All options" opens the large view with every option and the voters. Without a poll it offers "New poll".
 - "New poll" opens the large panel view with the form: a question and 2 to 10 options. "End poll" (only for the creator) closes it.
-- Everyone in the channel who runs Poll gets a poll card in the chat and votes with one click. Votes can be changed until the poll is ended.
+- Everyone in the channel who runs Poll gets a compact poll card in the chat: the question, the three options with the most votes and **Open**, which shows the whole poll in the popover, where people vote. Votes can be changed until the poll is ended.
 - People without Poll (official Mumble client, or Mumcord without the plugin) vote by writing `!poll 1`, `!poll 2`, … in the channel chat. The creator's Poll counts these like any other vote: one per person, and a later one replaces the earlier one. This needs the optional "read trigger words in the chat" permission on the creator's side; without it the text line says to vote in Mumcord instead.
 - The creator's client counts the votes and sends the tally to the channel, at most once every 2 seconds. Votes count once per person (per user certificate, or per connection for users without one).
 - People who join the channel later get the current poll from the creator (needs the optional "who is in your channel" permission on the creator's side).
@@ -41,7 +41,7 @@ Plugin data id `mumcord.p.poll`. Payloads are binary: integers big-endian, strin
 
 Only messages from the creator's session change a poll; malformed messages are dropped.
 
-The question field in the panel holds 64 bytes (the limit of a plugin text field); the message format accepts up to 200. Votes typed as `!poll <number>` never travel as plugin messages: the creator reads them from the chat.
+The question field in the panel holds 64 bytes (the limit of a plugin text field, shown to the user as a character counter); the message format accepts up to 200. Votes typed as `!poll <number>` never travel as plugin messages: the creator reads them from the chat.
 
 ## Build and test
 

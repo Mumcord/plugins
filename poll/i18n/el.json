@@ -14,6 +14,7 @@
   "button.end": "Λήξη ψηφοφορίας",
   "button.cancel": "Ακύρωση",
   "button.show_all": "Όλες οι επιλογές",
+  "button.open": "Άνοιγμα",
   "status.frozen": "Ο δημιουργός αποχώρησε, η δημοσκόπηση είναι παγωμένη · {{votes}}",
   "status.closed": "Έκλεισε · {{votes}}",
   "status.own": "Η δημοσκόπησή σας · {{votes}}",

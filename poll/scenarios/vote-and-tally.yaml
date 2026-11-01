@@ -11,8 +11,12 @@ steps:
   - event: {peer-message: {from: 2, kind: 1, hex: "00000001 00000000 06 4c756e63683f 02 05 5069 7a7a61 05 5375736869"}}
   - expect: {tree: {slot: {chat-card: p-2-1}, text: "Poll by Bob"}}
 
+  # "Open" on the card shows the poll in the popover, where Alice votes.
+  - event: {ui-action: {action: open, slot: {chat-card: p-2-1}}}
+  - expect: {tree: {slot: panel, text: "Sushi"}}
+
   # The vote goes only to the creator.
-  - event: {ui-action: {action: vote-1, slot: {chat-card: p-2-1}}}
+  - event: {ui-action: {action: vote-1, slot: panel}}
   - expect: {message: {to: 2, kind: 2, hex: "00000001 01"}}
 
   # Tally from the creator: id, closed, closing line hash, count, counts u16.
@@ -27,6 +31,9 @@ steps:
   # Final tally closes the poll.
   - event: {peer-message: {from: 2, kind: 3, hex: "00000001 01 00000000 02 0001 0002"}}
   - expect: {tree: {slot: {chat-card: p-2-1}, text: "Closed"}}
+  # The popover keeps showing the poll it was opened for; once it closes, the panel is empty.
+  - expect: {tree: {slot: panel, text: "Closed · 3 votes"}}
+  - event: {panel-visibility: inline}
   - expect: {tree: {slot: panel, text: "No poll in this channel"}}
 
   # Malformed messages are dropped without stopping the plugin.

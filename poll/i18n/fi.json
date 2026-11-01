@@ -14,6 +14,7 @@
   "button.end": "Lopeta kysely",
   "button.cancel": "Peruuta",
   "button.show_all": "Kaikki vaihtoehdot",
+  "button.open": "Avaa",
   "status.frozen": "Luoja lähti, kysely on jäädytetty · {{votes}}",
   "status.closed": "Suljettu · {{votes}}",
   "status.own": "Oma kyselysi · {{votes}}",

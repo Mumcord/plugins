@@ -14,6 +14,7 @@
   "button.end": "Ukončit anketu",
   "button.cancel": "Zrušit",
   "button.show_all": "Všechny možnosti",
+  "button.open": "Otevřít",
   "status.frozen": "Autor odešel, anketa je zmrazena · {{votes}}",
   "status.closed": "Uzavřena · {{votes}}",
   "status.own": "Vaše anketa · {{votes}}",

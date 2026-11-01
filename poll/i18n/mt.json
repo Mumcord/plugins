@@ -14,6 +14,7 @@
   "button.end": "Agħlaq il-votazzjoni",
   "button.cancel": "Ikkanċella",
   "button.show_all": "L-għażliet kollha",
+  "button.open": "Iftaħ",
   "status.frozen": "Min ħoloq telaq, l-istħarrig huwa ffriżat · {{votes}}",
   "status.closed": "Magħluq · {{votes}}",
   "status.own": "L-istħarrig tiegħek · {{votes}}",

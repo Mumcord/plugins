@@ -14,6 +14,7 @@
   "button.end": "Baigti apklausą",
   "button.cancel": "Atšaukti",
   "button.show_all": "Visi variantai",
+  "button.open": "Atidaryti",
   "status.frozen": "Kūrėjas išėjo, apklausa užšaldyta · {{votes}}",
   "status.closed": "Uždaryta · {{votes}}",
   "status.own": "Jūsų apklausa · {{votes}}",

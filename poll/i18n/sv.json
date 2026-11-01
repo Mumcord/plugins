@@ -14,6 +14,7 @@
   "button.end": "Avsluta omröstning",
   "button.cancel": "Avbryt",
   "button.show_all": "Alla alternativ",
+  "button.open": "Öppna",
   "status.frozen": "Skaparen har lämnat, omröstningen är fryst · {{votes}}",
   "status.closed": "Stängd · {{votes}}",
   "status.own": "Din omröstning · {{votes}}",

@@ -14,6 +14,7 @@
   "button.end": "Terminer le sondage",
   "button.cancel": "Annuler",
   "button.show_all": "Tous les choix",
+  "button.open": "Ouvrir",
   "status.frozen": "Le créateur est parti, le sondage est figé · {{votes}}",
   "status.closed": "Fermé · {{votes}}",
   "status.own": "Votre sondage · {{votes}}",

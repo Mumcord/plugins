@@ -14,6 +14,7 @@
   "button.end": "Lõpeta küsitlus",
   "button.cancel": "Tühista",
   "button.show_all": "Kõik valikud",
+  "button.open": "Ava",
   "status.frozen": "Looja lahkus, küsitlus on külmutatud · {{votes}}",
   "status.closed": "Suletud · {{votes}}",
   "status.own": "Sinu küsitlus · {{votes}}",

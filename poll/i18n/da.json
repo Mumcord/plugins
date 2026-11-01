@@ -14,6 +14,7 @@
   "button.end": "Afslut afstemning",
   "button.cancel": "Annuller",
   "button.show_all": "Alle svar",
+  "button.open": "Åbn",
   "status.frozen": "Skaberen er gået, afstemningen er frosset · {{votes}}",
   "status.closed": "Lukket · {{votes}}",
   "status.own": "Din afstemning · {{votes}}",

@@ -14,6 +14,7 @@
   "button.end": "Críochnaigh an vótaíocht",
   "button.cancel": "Cealaigh",
   "button.show_all": "Gach rogha",
+  "button.open": "Oscail",
   "status.frozen": "D'imigh an cruthaitheoir, tá an phobalbhreith reoite · {{votes}}",
   "status.closed": "Dúnta · {{votes}}",
   "status.own": "Do phobalbhreith · {{votes}}",

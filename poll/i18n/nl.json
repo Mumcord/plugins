@@ -14,6 +14,7 @@
   "button.end": "Peiling beëindigen",
   "button.cancel": "Annuleren",
   "button.show_all": "Alle opties",
+  "button.open": "Openen",
   "status.frozen": "De maker is weggegaan, de peiling is bevroren · {{votes}}",
   "status.closed": "Gesloten · {{votes}}",
   "status.own": "Jouw peiling · {{votes}}",
