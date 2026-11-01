@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, odrzuć najniższą",
   "roll.drop_highest": "{{roll}}, odrzuć najwyższą",
   "dice.dropped": "{{value}} odrzucono",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "razem {{n}}",
   "status.rolling": "Rzut trwa",
   "status.verified": "Zweryfikowano",
   "status.alone": "Niezweryfikowano (rzut w pojedynkę)",
@@ -57,5 +54,8 @@
   "help.verified": "Inni gracze z wtyczką sprawdzili rzut, więc nikt nie mógł wybrać wyniku.",
   "help.alone": "Nikt inny nie mógł poświadczyć rzutu, więc nie został sprawdzony.",
   "help.not_revealed": "Rzucający nigdy nie ujawnił wyniku, więc rzut się nie liczy.",
-  "help.history": "Poniższa lista pokazuje rzuty z tej sesji na tym urządzeniu."
+  "help.history": "Poniższa lista pokazuje rzuty z tej sesji na tym urządzeniu.",
+  "history.everyone": "Wszyscy",
+  "history.only_me": "Tylko ja",
+  "history.clear": "Wyczyść historię"
 }

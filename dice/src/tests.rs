@@ -331,10 +331,6 @@ fn fallback_lines_match_the_issue_examples() {
         view::fallback_line(&parsed("d20"), &outcome(vec![3], None, 3), &Status::Alone),
         "🎲 rolled d20 = 3 (3) · unverified, rolled alone"
     );
-    assert_eq!(
-        view::spoken(&parsed("2d6+3"), &outcome(vec![4, 4], None, 11), &verified),
-        "4, 4, plus 3, total 11, verified"
-    );
 }
 
 /// All texts in a tree, depth-first.
@@ -626,10 +622,13 @@ fn two_players_see_the_same_verified_roll() {
     let witness = final_texts(&sim.clients[1].host, "roll-100-");
     assert!(roller.contains(&"Verified".to_string()), "{roller:?}");
     assert!(witness.contains(&"Verified".to_string()), "{witness:?}");
-    assert_eq!(roller[0], "You rolled 2d6+3");
-    assert_eq!(witness[0], "Player 0 rolled 2d6+3");
+    assert_eq!(roller[0], "\u{1f3b2} Dice roller \u{b7} You");
+    assert_eq!(roller[1], "Verified");
+    assert_eq!(roller[2], "You roll 2d6+3");
+    assert_eq!(witness[0], "\u{1f3b2} Dice roller \u{b7} Player 0");
+    assert_eq!(witness[2], "Player 0 rolls 2d6+3");
     // Same dice and total on both sides (everything after the heading).
-    assert_eq!(roller[1..], witness[1..]);
+    assert_eq!(roller[3..], witness[3..]);
 
     // The roller posts exactly one text line; the witness hides exactly that line.
     let lines = &sim.clients[0].host.chat;
@@ -873,7 +872,7 @@ fn a_roll_that_is_never_revealed_is_void() {
     app.on_panel_visibility(&mut host, true);
     assert!(has_text(host.card_with("roll-7-"), "Not revealed"));
     let panel = host.panel.as_ref().unwrap_or_else(|| panic!("no panel"));
-    assert!(has_text(panel, "Mallory: d20 void"));
+    assert!(has_text(panel, "Mallory"));
     // A late reveal changes nothing.
     reveal(&mut app, &mut host, SECRET, vec![]);
     assert!(has_text(host.card_with("roll-7-"), "Not revealed"));
@@ -1159,7 +1158,7 @@ fn the_help_button_opens_the_popover_and_the_popover_shows_help_and_history() {
     ] {
         assert!(has_text(panel, text), "missing {text}");
     }
-    assert_eq!(buttons(panel).len(), 2);
+    assert_eq!(buttons(panel).len(), 5);
     app.on_panel_visibility(&mut host, false);
     assert!(!has_button(panel_of(&host), "\u{25be} How to roll"));
 }
@@ -1198,4 +1197,89 @@ fn every_language_translates_the_panel_texts() {
     for key in ["panel.last", "panel.none", "help.title", "help.history"] {
         assert!(en.get(key).is_some(), "en lacks {key}");
     }
+}
+
+fn images(el: &El) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    if let Component::Image(i) = &el.component {
+        out.push((i.asset.clone(), i.alt.clone()));
+    }
+    for child in &el.children {
+        out.extend(images(child));
+    }
+    out
+}
+
+#[test]
+fn dice_are_drawn_as_faces_and_the_dropped_one_is_faded() {
+    use crate::fair::Outcome;
+    use crate::view::{Card, Status, Who};
+    let notation = crate::notation::parse("4d6 dl").expect("notation");
+    let outcome = Outcome {
+        dice: vec![6, 5, 3, 2],
+        dropped: Some(3),
+        total: 14,
+    };
+    let tree = view::card(&Card {
+        who: &Who::Me,
+        notation: &notation,
+        status: &Status::Verified { witnesses: 2 },
+        outcome: Some(&outcome),
+    });
+    let faces = images(&tree);
+    assert_eq!(faces.len(), 4);
+    assert_eq!(faces[0].0, "assets/dice/d6-6.svg");
+    assert_eq!(faces[3].0, "assets/dice/d6-2-dropped.svg");
+    assert_eq!(faces[3].1, "2 dropped");
+    assert!(has_text(&tree, "14"));
+}
+
+#[test]
+fn big_values_fall_back_to_a_chip_and_small_ones_to_hexagons() {
+    use crate::fair::Outcome;
+    use crate::view::{Card, Status, Who};
+    let d20 = crate::notation::parse("d20").expect("notation");
+    let outcome = Outcome {
+        dice: vec![17],
+        dropped: None,
+        total: 17,
+    };
+    let tree = view::card(&Card {
+        who: &Who::Me,
+        notation: &d20,
+        status: &Status::Alone,
+        outcome: Some(&outcome),
+    });
+    assert_eq!(images(&tree)[0].0, "assets/dice/hex-17.svg");
+    let d100 = crate::notation::parse("d100").expect("notation");
+    let outcome = Outcome {
+        dice: vec![62],
+        dropped: None,
+        total: 62,
+    };
+    let tree = view::card(&Card {
+        who: &Who::Me,
+        notation: &d100,
+        status: &Status::Alone,
+        outcome: Some(&outcome),
+    });
+    assert!(images(&tree).is_empty());
+    assert!(has_text(&tree, "62"));
+}
+
+#[test]
+fn the_history_filters_to_my_rolls_and_clears() {
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.set_granted(&mut host, &["ui.panel".to_string()]);
+    app.on_panel_visibility(&mut host, true);
+    assert!(has_button(panel_of(&host), "Everyone"));
+    assert!(has_button(panel_of(&host), "Only me"));
+    app.on_panel_action(&mut host, "filter:me");
+    assert!(has_text(
+        panel_of(&host),
+        "No rolls yet. Type /roll d20 in the chat."
+    ));
+    app.on_panel_action(&mut host, "history:clear");
+    assert!(!has_button(panel_of(&host), "Clear history"));
 }

@@ -2,8 +2,8 @@
   "manifest.name": "Kauliukų metimas",
   "manifest.description": "Mesk kauliukus pokalbyje komanda /roll. Visi su papildiniu tikrina kiekvieną metimą, todėl niekas negali suklastoti rezultato.",
   "you": "Tu",
-  "card.title": "{{who}} metė {{roll}}",
-  "card.title_me": "Metei {{roll}}",
+  "card.title": "{{who}} meta {{roll}}",
+  "card.title_me": "Tu metei {{roll}}",
   "card.tumbling": "Kauliukai ritasi",
   "card.waiting": "Laukiama liudininkų",
   "roll.advantage": "{{roll}} su pranašumu",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, mažiausias iškrenta",
   "roll.drop_highest": "{{roll}}, didžiausias iškrenta",
   "dice.dropped": "{{value}} atmesta",
-  "spoken.plus": "plius {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "iš viso {{n}}",
   "status.rolling": "Metama",
   "status.verified": "Patvirtinta",
   "status.alone": "Nepatvirtinta (mesta vienam)",
@@ -57,5 +54,8 @@
   "help.verified": "Kiti žaidėjai su šiuo papildiniu patikrino metimą, todėl niekas negalėjo pasirinkti rezultato.",
   "help.alone": "Niekas kitas negalėjo paliudyti metimo, todėl jis nebuvo patikrintas.",
   "help.not_revealed": "Metęs žaidėjas niekada neatskleidė rezultato, todėl metimas neskaičiuojamas.",
-  "help.history": "Žemiau esančiame sąraše rodomi šios sesijos metimai šiame įrenginyje."
+  "help.history": "Žemiau esančiame sąraše rodomi šios sesijos metimai šiame įrenginyje.",
+  "history.everyone": "Visi",
+  "history.only_me": "Tik aš",
+  "history.clear": "Išvalyti istoriją"
 }

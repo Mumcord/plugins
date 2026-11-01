@@ -10,6 +10,7 @@ use crate::text::{t, t_with, tn};
 /// Six die faces side by side, played as a tumbling die while the roll waits for witnesses.
 pub const DIE_SPRITE: &str = "assets/die-faces.svg";
 const DIE_SIZE: u16 = 48;
+const FACE_SIZE: u16 = 44;
 const HISTORY_ROWS: usize = 20;
 /// Names are untrusted server text; long ones are cut so the card stays readable.
 const MAX_NAME_CHARS: usize = 32;
@@ -137,6 +138,41 @@ pub struct Card<'a> {
     pub outcome: Option<&'a Outcome>,
 }
 
+/// Faces with pips for a d6 and hexagons with the number for other small dice; both come in a
+/// faded, struck-through variant for the die that does not count.
+const HEX_MAX_VALUE: u16 = 20;
+
+/// The picture of one die, or `None` when the value is too big for a drawn face.
+fn die_face(sides: u16, value: u16, dropped_die: bool) -> Option<El> {
+    let kind = match sides {
+        6 if (1..=6).contains(&value) => "d6",
+        _ if sides != 6 && value <= HEX_MAX_VALUE => "hex",
+        _ => return None,
+    };
+    let suffix = if dropped_die { "-dropped" } else { "" };
+    let alt = if dropped_die {
+        dropped(value)
+    } else {
+        value.to_string()
+    };
+    Some(ui::image(
+        &format!("assets/dice/{kind}-{value}{suffix}.svg"),
+        &alt,
+        FACE_SIZE,
+        FACE_SIZE,
+    ))
+}
+
+fn die(sides: u16, value: u16, dropped_die: bool) -> El {
+    die_face(sides, value, dropped_die).unwrap_or_else(|| {
+        if dropped_die {
+            ui::chip(&dropped(value)).color("text-muted")
+        } else {
+            ui::chip(&value.to_string())
+        }
+    })
+}
+
 pub fn card(card: &Card<'_>) -> El {
     let title = match card.who {
         Who::Me => t_with("card.title_me", &[("roll", &describe(card.notation))]),
@@ -148,70 +184,61 @@ pub fn card(card: &Card<'_>) -> El {
             ],
         ),
     };
-    let mut root = ui::column().child(ui::heading(&title));
+    let source = format!(
+        "\u{1f3b2} {} \u{b7} {}",
+        t("manifest.name"),
+        card.who.subject()
+    );
+    let mut root = ui::column()
+        .child(
+            ui::row()
+                .child(ui::caption(&source))
+                .child(ui::chip(&card.status.label()).color(card.status.color())),
+        )
+        .child(ui::heading(&title));
     match (card.status, card.outcome) {
         (Status::Rolling, _) => {
-            root = root.child(
-                ui::row()
-                    .child(ui::sprite(Sprite {
-                        asset: DIE_SPRITE.to_string(),
-                        alt: t("card.tumbling"),
-                        frame_width: DIE_SIZE,
-                        frame_height: DIE_SIZE,
-                        frames: 6,
-                        fps: 10,
-                        still_frame: 4,
-                    }))
-                    .child(ui::progress(&t("card.waiting"), None)),
-            );
+            root = root
+                .child(
+                    ui::row()
+                        .child(ui::sprite(Sprite {
+                            asset: DIE_SPRITE.to_string(),
+                            alt: t("card.tumbling"),
+                            frame_width: DIE_SIZE,
+                            frame_height: DIE_SIZE,
+                            frames: 6,
+                            fps: 10,
+                            still_frame: 4,
+                        }))
+                        .child(ui::heading("= ??").color("text-muted")),
+                )
+                .child(ui::progress(&t("card.waiting"), None));
         }
         (_, Some(outcome)) => {
             let mut dice = ui::row();
             for (i, value) in outcome.dice.iter().enumerate() {
-                dice = if outcome.dropped == Some(i) {
-                    dice.child(ui::chip(&dropped(*value)).color("text-muted"))
-                } else {
-                    dice.child(ui::chip(&value.to_string()))
-                };
+                dice = dice.child(die(card.notation.sides, *value, outcome.dropped == Some(i)));
             }
-            root = root
-                .child(dice.child(ui::heading(&format!("= {}", outcome.total))))
-                .child(ui::caption(&spoken(card.notation, outcome, card.status)));
+            if card.notation.modifier != 0 {
+                dice = dice.child(ui::text(&format!("{:+}", card.notation.modifier)));
+            }
+            // Advantage keeps one of two throws, so an arrow reads better than a sum.
+            let joiner = match card.notation.mode {
+                Mode::Advantage | Mode::Disadvantage => "\u{2192}",
+                _ => "=",
+            };
+            root = root.child(
+                dice.child(ui::text(joiner).color("text-muted"))
+                    .child(ui::heading(&outcome.total.to_string()).color("accent")),
+            );
         }
         _ => {}
     }
-    root.child(ui::chip(&card.status.label()).color(card.status.color()))
-        .child(ui::caption(&card.status.explanation()))
+    root.child(ui::caption(&card.status.explanation()))
 }
 
 fn dropped(value: u16) -> String {
     t_with("dice.dropped", &[("value", &value.to_string())])
-}
-
-/// Text alternative for the dice: "4, 4, plus 3, total 11, verified".
-pub fn spoken(notation: &Notation, outcome: &Outcome, status: &Status) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    for (i, value) in outcome.dice.iter().enumerate() {
-        if outcome.dropped == Some(i) {
-            parts.push(dropped(*value));
-        } else {
-            parts.push(value.to_string());
-        }
-    }
-    if notation.modifier > 0 {
-        parts.push(t_with(
-            "spoken.plus",
-            &[("n", &notation.modifier.to_string())],
-        ));
-    } else if notation.modifier < 0 {
-        parts.push(t_with(
-            "spoken.minus",
-            &[("n", &notation.modifier.unsigned_abs().to_string())],
-        ));
-    }
-    parts.push(t_with("spoken.total", &[("n", &outcome.total.to_string())]));
-    parts.push(status.label().to_lowercase());
-    parts.join(", ")
 }
 
 /// The plain-text line for people without the plugin (always English: other people read it), sent once after the reveal. Mumcord adds
@@ -258,15 +285,25 @@ pub fn error_card(problem: Problem) -> El {
 pub struct Entry {
     pub who: Who,
     pub notation: Notation,
-    pub total: Option<i32>,
+    pub outcome: Option<Outcome>,
     pub status: Status,
 }
 
-/// "Mallory: d20 = 14" or "You: d20 void"; void rolls never show a total.
+impl Entry {
+    /// Void rolls never show a total.
+    fn total(&self) -> Option<i32> {
+        match (&self.outcome, &self.status) {
+            (Some(outcome), Status::Verified { .. } | Status::Alone) => Some(outcome.total),
+            _ => None,
+        }
+    }
+}
+
+/// "Mallory: d20 = 14" or "You: d20 void".
 fn entry_text(entry: &Entry) -> String {
-    let result = match (entry.total, &entry.status) {
-        (Some(total), Status::Verified { .. } | Status::Alone) => format!("= {total}"),
-        _ => t("history.void"),
+    let result = match entry.total() {
+        Some(total) => format!("= {total}"),
+        None => t("history.void"),
     };
     t_with(
         "history.row",
@@ -278,22 +315,74 @@ fn entry_text(entry: &Entry) -> String {
     )
 }
 
+/// "Mira \u{b7} 4, 4, +3": who rolled, the dice and the modifier.
+fn entry_detail(entry: &Entry) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(outcome) = entry.outcome.as_ref().filter(|_| entry.total().is_some()) {
+        for (i, value) in outcome.dice.iter().enumerate() {
+            parts.push(if outcome.dropped == Some(i) {
+                dropped(*value)
+            } else {
+                value.to_string()
+            });
+        }
+        if entry.notation.modifier != 0 {
+            parts.push(format!("{:+}", entry.notation.modifier));
+        }
+    }
+    let who = entry.who.subject();
+    if parts.is_empty() {
+        who
+    } else {
+        format!("{who} \u{b7} {}", parts.join(", "))
+    }
+}
+
+/// Action ids of the history filter and the clear button.
+pub const FILTER_ALL_ACTION: &str = "filter:all";
+pub const FILTER_ME_ACTION: &str = "filter:me";
+pub const CLEAR_ACTION: &str = "history:clear";
+
 /// The history list: rolls of this session on this device, newest first.
-fn history_list(entries: &[Entry]) -> El {
-    let mut root = ui::column().child(ui::heading(&t("history.title")));
-    if entries.is_empty() {
+fn history_list(entries: &[Entry], only_me: bool) -> El {
+    let (all, me) = if only_me {
+        (ButtonKind::Secondary, ButtonKind::Primary)
+    } else {
+        (ButtonKind::Primary, ButtonKind::Secondary)
+    };
+    let root = ui::column().child(ui::heading(&t("history.title"))).child(
+        ui::row()
+            .child(ui::button(FILTER_ALL_ACTION, &t("history.everyone")).kind(all))
+            .child(ui::button(FILTER_ME_ACTION, &t("history.only_me")).kind(me)),
+    );
+    let shown: Vec<&Entry> = entries
+        .iter()
+        .rev()
+        .filter(|entry| !only_me || entry.who == Who::Me)
+        .take(HISTORY_ROWS)
+        .collect();
+    if shown.is_empty() {
         return root.child(ui::caption(&t("history.empty")));
     }
     let mut list = ui::list(&t("history.list"));
-    for entry in entries.iter().rev().take(HISTORY_ROWS) {
+    for entry in shown {
+        let total = match entry.total() {
+            Some(total) => ui::heading(&total.to_string()),
+            None => ui::text("\u{2013}").color("text-muted"),
+        };
         list = list.child(
             ui::row()
-                .child(ui::text(&entry_text(entry)))
+                .child(
+                    ui::column()
+                        .child(ui::text(&describe(&entry.notation)))
+                        .child(ui::caption(&entry_detail(entry))),
+                )
+                .child(total)
                 .child(ui::chip(&entry.status.label()).color(entry.status.color())),
         );
     }
-    root = root.child(list);
-    root
+    root.child(list)
+        .child(ui::button(CLEAR_ACTION, &t("history.clear")).kind(ButtonKind::Secondary))
 }
 
 /// Action id of the help icon button.
@@ -359,7 +448,7 @@ pub struct Sections {
 }
 
 /// The panel in the large popover: the collapsible help and the history.
-pub fn panel_expanded(entries: &[Entry], open: Sections) -> El {
+pub fn panel_expanded(entries: &[Entry], open: Sections, only_me: bool) -> El {
     let mut root = ui::column().child(section_header(
         TOGGLE_HELP_ACTION,
         &t("help.title"),
@@ -390,5 +479,5 @@ pub fn panel_expanded(entries: &[Entry], open: Sections) -> El {
         }
     }
     root.child(ui::caption(&t("help.history")))
-        .child(history_list(entries))
+        .child(history_list(entries, only_me))
 }

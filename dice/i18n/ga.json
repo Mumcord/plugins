@@ -2,8 +2,8 @@
   "manifest.name": "Rolladh dísle",
   "manifest.description": "Caith dísle sa chomhrá le /roll. Seiceálann gach duine leis an bhforlíontán gach caitheamh, mar sin ní féidir le héinne toradh a dhéanamh suas.",
   "you": "Tú",
-  "card.title": "Chaith {{who}} {{roll}}",
-  "card.title_me": "Chaith tú {{roll}}",
+  "card.title": "Caitheann {{who}} {{roll}}",
+  "card.title_me": "Caitheann tú {{roll}}",
   "card.tumbling": "Dísle ag rolladh",
   "card.waiting": "Ag fanacht le finnéithe",
   "roll.advantage": "{{roll}} le buntáiste",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, an ceann is ísle a chaitheamh amach",
   "roll.drop_highest": "{{roll}}, an ceann is airde a chaitheamh amach",
   "dice.dropped": "{{value}} caite amach",
-  "spoken.plus": "móide {{n}}",
-  "spoken.minus": "lúide {{n}}",
-  "spoken.total": "iomlán {{n}}",
   "status.rolling": "Ag caitheamh",
   "status.verified": "Fíoraithe",
   "status.alone": "Gan fíorú (caite ina aonar)",
@@ -58,5 +55,8 @@
   "help.verified": "Rinne imreoirí eile leis an bpluigin seiceáil ar an gcaitheamh, mar sin ní raibh aon duine in ann an toradh a roghnú.",
   "help.alone": "Ní raibh aon duine eile in ann finné a thabhairt ar an gcaitheamh, mar sin níor seiceáladh é.",
   "help.not_revealed": "Níor nocht an caitheoir an toradh riamh, mar sin ní chuirtear an caitheamh san áireamh.",
-  "help.history": "Taispeánann an liosta thíos caithimh na seisiúin seo ar an ngléas seo."
+  "help.history": "Taispeánann an liosta thíos caithimh na seisiúin seo ar an ngléas seo.",
+  "history.everyone": "Gach duine",
+  "history.only_me": "Mise amháin",
+  "history.clear": "Glan an stair"
 }

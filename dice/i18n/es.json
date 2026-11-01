@@ -2,8 +2,8 @@
   "manifest.name": "Lanzador de dados",
   "manifest.description": "Lanza dados en el chat con /roll. Todos los que tienen el plugin comprueban cada tirada, así que nadie puede falsear un resultado.",
   "you": "Tú",
-  "card.title": "{{who}} ha lanzado {{roll}}",
-  "card.title_me": "Has lanzado {{roll}}",
+  "card.title": "{{who}} tira {{roll}}",
+  "card.title_me": "Tiras {{roll}}",
   "card.tumbling": "Dados rodando",
   "card.waiting": "Esperando testigos",
   "roll.advantage": "{{roll}} con ventaja",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, descartar el más bajo",
   "roll.drop_highest": "{{roll}}, descartar el más alto",
   "dice.dropped": "{{value}} descartado",
-  "spoken.plus": "más {{n}}",
-  "spoken.minus": "menos {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "Lanzando",
   "status.verified": "Verificada",
   "status.alone": "Sin verificar (lanzada a solas)",
@@ -57,5 +54,8 @@
   "help.verified": "Otros jugadores con el plugin comprobaron la tirada, así que nadie pudo elegir el resultado.",
   "help.alone": "Nadie más pudo presenciar la tirada, así que no se comprobó.",
   "help.not_revealed": "Quien tiró nunca reveló el resultado, así que la tirada no cuenta.",
-  "help.history": "La lista de abajo muestra las tiradas de esta sesión en este dispositivo."
+  "help.history": "La lista de abajo muestra las tiradas de esta sesión en este dispositivo.",
+  "history.everyone": "Todos",
+  "history.only_me": "Solo yo",
+  "history.clear": "Borrar historial"
 }

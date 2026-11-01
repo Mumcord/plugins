@@ -2,8 +2,8 @@
   "manifest.name": "Aruncător de zaruri",
   "manifest.description": "Aruncă zaruri în chat cu /roll. Toți cei cu pluginul verifică fiecare aruncare, așa că nimeni nu poate falsifica un rezultat.",
   "you": "Tu",
-  "card.title": "{{who}} a aruncat {{roll}}",
-  "card.title_me": "Ai aruncat {{roll}}",
+  "card.title": "{{who}} aruncă {{roll}}",
+  "card.title_me": "Tu arunci {{roll}}",
   "card.tumbling": "Zarurile se rostogolesc",
   "card.waiting": "Se așteaptă martori",
   "roll.advantage": "{{roll}} cu avantaj",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, se elimină cel mai mic",
   "roll.drop_highest": "{{roll}}, se elimină cel mai mare",
   "dice.dropped": "{{value}} eliminat",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "Se aruncă",
   "status.verified": "Verificat",
   "status.alone": "Neverificat (aruncat singur)",
@@ -57,5 +54,8 @@
   "help.verified": "Alți jucători cu pluginul au verificat aruncarea, deci nimeni nu a putut alege rezultatul.",
   "help.alone": "Nimeni altcineva nu a putut martoriza aruncarea, deci nu a fost verificată.",
   "help.not_revealed": "Cel care a aruncat nu a dezvăluit niciodată rezultatul, deci aruncarea nu contează.",
-  "help.history": "Lista de mai jos arată aruncările din această sesiune pe acest dispozitiv."
+  "help.history": "Lista de mai jos arată aruncările din această sesiune pe acest dispozitiv.",
+  "history.everyone": "Toți",
+  "history.only_me": "Doar eu",
+  "history.clear": "Șterge istoricul"
 }

@@ -3,7 +3,7 @@
   "manifest.description": "Mečite kocke v klepetu z ukazom /roll. Vsi z dodatkom preverijo vsak met, zato nihče ne more ponarediti rezultata.",
   "you": "Vi",
   "card.title": "{{who}} meče {{roll}}",
-  "card.title_me": "Mečete {{roll}}",
+  "card.title_me": "Ti mečeš {{roll}}",
   "card.tumbling": "Kocke se kotalijo",
   "card.waiting": "Čakanje na priče",
   "roll.advantage": "{{roll}} s prednostjo",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, najnižja izpade",
   "roll.drop_highest": "{{roll}}, najvišja izpade",
   "dice.dropped": "{{value}} izpadlo",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "skupaj {{n}}",
   "status.rolling": "Meta se",
   "status.verified": "Preverjeno",
   "status.alone": "Nepreverjeno (vrženo samostojno)",
@@ -57,5 +54,8 @@
   "help.verified": "Drugi igralci z vtičnikom so met preverili, zato nihče ni mogel izbrati rezultata.",
   "help.alone": "Nihče drug ni mogel pričati o metu, zato ni bil preverjen.",
   "help.not_revealed": "Metalec nikoli ni razkril rezultata, zato met ne šteje.",
-  "help.history": "Spodnji seznam prikazuje mete te seje na tej napravi."
+  "help.history": "Spodnji seznam prikazuje mete te seje na tej napravi.",
+  "history.everyone": "Vsi",
+  "history.only_me": "Samo jaz",
+  "history.clear": "Počisti zgodovino"
 }

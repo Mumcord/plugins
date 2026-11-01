@@ -2,8 +2,8 @@
   "manifest.name": "Lançador de dados",
   "manifest.description": "Lance dados no chat com /roll. Todos com o plugin verificam cada lançamento, por isso ninguém pode falsificar um resultado.",
   "you": "Você",
-  "card.title": "{{who}} lançou {{roll}}",
-  "card.title_me": "Você lançou {{roll}}",
+  "card.title": "{{who}} lança {{roll}}",
+  "card.title_me": "Tu lanças {{roll}}",
   "card.tumbling": "Dados a rolar",
   "card.waiting": "À espera de testemunhas",
   "roll.advantage": "{{roll}} com vantagem",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, descartar o mais baixo",
   "roll.drop_highest": "{{roll}}, descartar o mais alto",
   "dice.dropped": "{{value}} descartado",
-  "spoken.plus": "mais {{n}}",
-  "spoken.minus": "menos {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "A lançar",
   "status.verified": "Verificado",
   "status.alone": "Não verificado (lançado sozinho)",
@@ -57,5 +54,8 @@
   "help.verified": "Outros jogadores com o plugin verificaram o lançamento, por isso ninguém pôde escolher o resultado.",
   "help.alone": "Mais ninguém pôde testemunhar o lançamento, por isso não foi verificado.",
   "help.not_revealed": "Quem lançou nunca revelou o resultado, por isso o lançamento não conta.",
-  "help.history": "A lista abaixo mostra os lançamentos desta sessão neste dispositivo."
+  "help.history": "A lista abaixo mostra os lançamentos desta sessão neste dispositivo.",
+  "history.everyone": "Todos",
+  "history.only_me": "Só eu",
+  "history.clear": "Limpar histórico"
 }

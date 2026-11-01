@@ -3,7 +3,7 @@
   "manifest.description": "Házejte kostkami v chatu příkazem /roll. Všichni s doplňkem každý hod kontrolují, takže nikdo nemůže výsledek zfalšovat.",
   "you": "Vy",
   "card.title": "{{who}} hází {{roll}}",
-  "card.title_me": "Házíte {{roll}}",
+  "card.title_me": "Hodíš {{roll}}",
   "card.tumbling": "Kostky se kutálejí",
   "card.waiting": "Čekání na svědky",
   "roll.advantage": "{{roll}} s výhodou",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, nejnižší vypadne",
   "roll.drop_highest": "{{roll}}, nejvyšší vypadne",
   "dice.dropped": "{{value}} vyřazeno",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "celkem {{n}}",
   "status.rolling": "Hází se",
   "status.verified": "Ověřeno",
   "status.alone": "Neověřeno (hozeno samostatně)",
@@ -57,5 +54,8 @@
   "help.verified": "Ostatní hráči s tímto pluginem hod ověřili, takže nikdo nemohl výsledek vybrat.",
   "help.alone": "Nikdo jiný hod nemohl dosvědčit, proto nebyl ověřen.",
   "help.not_revealed": "Hráč výsledek nikdy neodhalil, takže hod se nepočítá.",
-  "help.history": "Seznam níže ukazuje hody z této relace na tomto zařízení."
+  "help.history": "Seznam níže ukazuje hody z této relace na tomto zařízení.",
+  "history.everyone": "Všichni",
+  "history.only_me": "Jen já",
+  "history.clear": "Vymazat historii"
 }

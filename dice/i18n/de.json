@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, niedrigsten streichen",
   "roll.drop_highest": "{{roll}}, höchsten streichen",
   "dice.dropped": "{{value}} gestrichen",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "Summe {{n}}",
   "status.rolling": "Würfelt",
   "status.verified": "Bestätigt",
   "status.alone": "Nicht bestätigt (allein gewürfelt)",
@@ -57,5 +54,8 @@
   "help.verified": "Andere Spieler mit dem Würfel-Plugin haben den Wurf geprüft, also konnte niemand das Ergebnis wählen.",
   "help.alone": "Niemand sonst konnte den Wurf bezeugen, er wurde also nicht geprüft.",
   "help.not_revealed": "Der Würfelnde hat das Ergebnis nie aufgedeckt, der Wurf zählt also nicht.",
-  "help.history": "Die Liste unten zeigt die Würfe dieser Sitzung auf diesem Gerät."
+  "help.history": "Die Liste unten zeigt die Würfe dieser Sitzung auf diesem Gerät.",
+  "history.everyone": "Alle",
+  "history.only_me": "Nur ich",
+  "history.clear": "Verlauf löschen"
 }

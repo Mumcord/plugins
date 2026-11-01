@@ -2,8 +2,8 @@
   "manifest.name": "Lanciadadi",
   "manifest.description": "Lancia i dadi in chat con /roll. Tutti quelli con il plugin controllano ogni lancio, quindi nessuno può falsificare un risultato.",
   "you": "Tu",
-  "card.title": "{{who}} ha lanciato {{roll}}",
-  "card.title_me": "Hai lanciato {{roll}}",
+  "card.title": "{{who}} tira {{roll}}",
+  "card.title_me": "Tu tiri {{roll}}",
   "card.tumbling": "Dadi che rotolano",
   "card.waiting": "In attesa di testimoni",
   "roll.advantage": "{{roll}} con vantaggio",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, scarta il più basso",
   "roll.drop_highest": "{{roll}}, scarta il più alto",
   "dice.dropped": "{{value}} scartato",
-  "spoken.plus": "più {{n}}",
-  "spoken.minus": "meno {{n}}",
-  "spoken.total": "totale {{n}}",
   "status.rolling": "Lancio in corso",
   "status.verified": "Verificato",
   "status.alone": "Non verificato (lanciato da solo)",
@@ -57,5 +54,8 @@
   "help.verified": "Altri giocatori con il plugin hanno controllato il lancio, quindi nessuno poteva scegliere il risultato.",
   "help.alone": "Nessun altro ha potuto testimoniare il lancio, quindi non è stato controllato.",
   "help.not_revealed": "Chi ha lanciato non ha mai rivelato il risultato, quindi il lancio non conta.",
-  "help.history": "L'elenco qui sotto mostra i lanci di questa sessione su questo dispositivo."
+  "help.history": "L'elenco qui sotto mostra i lanci di questa sessione su questo dispositivo.",
+  "history.everyone": "Tutti",
+  "history.only_me": "Solo io",
+  "history.clear": "Cancella cronologia"
 }

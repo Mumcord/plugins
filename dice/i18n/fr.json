@@ -2,8 +2,8 @@
   "manifest.name": "Lanceur de dés",
   "manifest.description": "Lancez des dés dans le chat avec /roll. Toutes les personnes ayant le plugin vérifient chaque lancer, personne ne peut donc truquer un résultat.",
   "you": "Vous",
-  "card.title": "{{who}} a lancé {{roll}}",
-  "card.title_me": "Vous avez lancé {{roll}}",
+  "card.title": "{{who}} lance {{roll}}",
+  "card.title_me": "Tu lances {{roll}}",
   "card.tumbling": "Dés en train de rouler",
   "card.waiting": "En attente de témoins",
   "roll.advantage": "{{roll}} avec avantage",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, retirer le plus bas",
   "roll.drop_highest": "{{roll}}, retirer le plus haut",
   "dice.dropped": "{{value}} retiré",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "moins {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "Lancer en cours",
   "status.verified": "Vérifié",
   "status.alone": "Non vérifié (lancé seul)",
@@ -57,5 +54,8 @@
   "help.verified": "D'autres joueurs avec le plugin ont vérifié le lancer, donc personne n'a pu choisir le résultat.",
   "help.alone": "Personne d'autre n'a pu témoigner du lancer, il n'a donc pas été vérifié.",
   "help.not_revealed": "Le lanceur n'a jamais révélé le résultat, le lancer ne compte donc pas.",
-  "help.history": "La liste ci-dessous montre les lancers de cette session sur cet appareil."
+  "help.history": "La liste ci-dessous montre les lancers de cette session sur cet appareil.",
+  "history.everyone": "Tout le monde",
+  "history.only_me": "Moi seulement",
+  "history.clear": "Effacer l’historique"
 }

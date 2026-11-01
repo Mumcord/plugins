@@ -2,8 +2,8 @@
   "manifest.name": "Dice roller",
   "manifest.description": "Roll dice in chat with /roll. Everyone with the plugin checks each roll, so nobody can fake a result.",
   "you": "You",
-  "card.title": "{{who}} rolled {{roll}}",
-  "card.title_me": "You rolled {{roll}}",
+  "card.title": "{{who}} rolls {{roll}}",
+  "card.title_me": "You roll {{roll}}",
   "card.tumbling": "Dice tumbling",
   "card.waiting": "Waiting for witnesses",
   "roll.advantage": "{{roll}} with advantage",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}} drop lowest",
   "roll.drop_highest": "{{roll}} drop highest",
   "dice.dropped": "{{value}} dropped",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "Rolling",
   "status.verified": "Verified",
   "status.alone": "Unverified (rolled alone)",
@@ -57,5 +54,8 @@
   "help.verified": "Other players with Dice roller checked the roll, so nobody could pick the result.",
   "help.alone": "Nobody else could witness the roll, so it was not checked.",
   "help.not_revealed": "The roller never revealed the result, so the roll does not count.",
-  "help.history": "The list below shows the rolls of this session on this device."
+  "help.history": "The list below shows the rolls of this session on this device.",
+  "history.everyone": "Everyone",
+  "history.only_me": "Only me",
+  "history.clear": "Clear history"
 }

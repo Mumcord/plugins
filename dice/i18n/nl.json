@@ -2,8 +2,8 @@
   "manifest.name": "Dobbelsteenroller",
   "manifest.description": "Gooi dobbelstenen in de chat met /roll. Iedereen met de plugin controleert elke worp, dus niemand kan een uitslag vervalsen.",
   "you": "Jij",
-  "card.title": "{{who}} gooide {{roll}}",
-  "card.title_me": "Jij gooide {{roll}}",
+  "card.title": "{{who}} gooit {{roll}}",
+  "card.title_me": "Jij gooit {{roll}}",
   "card.tumbling": "Dobbelstenen rollen",
   "card.waiting": "Wachten op getuigen",
   "roll.advantage": "{{roll}} met voordeel",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, laagste laten vallen",
   "roll.drop_highest": "{{roll}}, hoogste laten vallen",
   "dice.dropped": "{{value}} laten vallen",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "min {{n}}",
-  "spoken.total": "totaal {{n}}",
   "status.rolling": "Gooit",
   "status.verified": "Gecontroleerd",
   "status.alone": "Niet gecontroleerd (alleen gegooid)",
@@ -57,5 +54,8 @@
   "help.verified": "Andere spelers met de plug-in hebben de worp gecontroleerd, dus niemand kon de uitkomst kiezen.",
   "help.alone": "Niemand anders kon de worp bevestigen, dus hij is niet gecontroleerd.",
   "help.not_revealed": "De werper heeft de uitkomst nooit onthuld, dus de worp telt niet.",
-  "help.history": "De lijst hieronder toont de worpen van deze sessie op dit apparaat."
+  "help.history": "De lijst hieronder toont de worpen van deze sessie op dit apparaat.",
+  "history.everyone": "Iedereen",
+  "history.only_me": "Alleen ik",
+  "history.clear": "Geschiedenis wissen"
 }

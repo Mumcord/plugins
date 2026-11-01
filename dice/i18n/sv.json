@@ -2,8 +2,8 @@
   "manifest.name": "Tärningskastare",
   "manifest.description": "Kasta tärningar i chatten med /roll. Alla med pluginet kontrollerar varje kast, så ingen kan fuska med ett resultat.",
   "you": "Du",
-  "card.title": "{{who}} kastade {{roll}}",
-  "card.title_me": "Du kastade {{roll}}",
+  "card.title": "{{who}} slår {{roll}}",
+  "card.title_me": "Du slår {{roll}}",
   "card.tumbling": "Tärningar rullar",
   "card.waiting": "Väntar på vittnen",
   "roll.advantage": "{{roll}} med fördel",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, släng den lägsta",
   "roll.drop_highest": "{{roll}}, släng den högsta",
   "dice.dropped": "{{value}} slängd",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "summa {{n}}",
   "status.rolling": "Kastar",
   "status.verified": "Verifierat",
   "status.alone": "Overifierat (kastat ensam)",
@@ -57,5 +54,8 @@
   "help.verified": "Andra spelare med tillägget kontrollerade kastet, så ingen kunde välja resultatet.",
   "help.alone": "Ingen annan kunde vittna om kastet, så det kontrollerades inte.",
   "help.not_revealed": "Den som slog avslöjade aldrig resultatet, så kastet räknas inte.",
-  "help.history": "Listan nedan visar kasten från den här sessionen på den här enheten."
+  "help.history": "Listan nedan visar kasten från den här sessionen på den här enheten.",
+  "history.everyone": "Alla",
+  "history.only_me": "Bara jag",
+  "history.clear": "Rensa historiken"
 }

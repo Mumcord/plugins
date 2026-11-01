@@ -2,8 +2,8 @@
   "manifest.name": "Kauliņu metiens",
   "manifest.description": "Met kauliņus tērzēšanā ar /roll. Visi ar spraudni pārbauda katru metienu, tāpēc neviens nevar viltot rezultātu.",
   "you": "Tu",
-  "card.title": "{{who}} meta {{roll}}",
-  "card.title_me": "Tu metī {{roll}}",
+  "card.title": "{{who}} met {{roll}}",
+  "card.title_me": "Tu met {{roll}}",
   "card.tumbling": "Kauliņi ripo",
   "card.waiting": "Gaida lieciniekus",
   "roll.advantage": "{{roll}} ar priekšrocību",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, zemākais izkrīt",
   "roll.drop_highest": "{{roll}}, augstākais izkrīt",
   "dice.dropped": "{{value}} atmests",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "mīnus {{n}}",
-  "spoken.total": "kopā {{n}}",
   "status.rolling": "Met",
   "status.verified": "Pārbaudīts",
   "status.alone": "Nepārbaudīts (mests vienatnē)",
@@ -58,5 +55,8 @@
   "help.verified": "Citi spēlētāji ar šo spraudni pārbaudīja metienu, tāpēc neviens nevarēja izvēlēties rezultātu.",
   "help.alone": "Neviens cits nevarēja apliecināt metienu, tāpēc tas netika pārbaudīts.",
   "help.not_revealed": "Metējs nekad neatklāja rezultātu, tāpēc metiens netiek ieskaitīts.",
-  "help.history": "Zemāk redzamajā sarakstā ir šīs sesijas metieni šajā ierīcē."
+  "help.history": "Zemāk redzamajā sarakstā ir šīs sesijas metieni šajā ierīcē.",
+  "history.everyone": "Visi",
+  "history.only_me": "Tikai es",
+  "history.clear": "Notīrīt vēsturi"
 }

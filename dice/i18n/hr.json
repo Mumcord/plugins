@@ -3,7 +3,7 @@
   "manifest.description": "Bacajte kockice u chatu naredbom /roll. Svi s dodatkom provjeravaju svako bacanje pa nitko ne može lažirati rezultat.",
   "you": "Vi",
   "card.title": "{{who}} baca {{roll}}",
-  "card.title_me": "Bacate {{roll}}",
+  "card.title_me": "Ti bacaš {{roll}}",
   "card.tumbling": "Kockice se kotrljaju",
   "card.waiting": "Čekanje svjedoka",
   "roll.advantage": "{{roll}} s prednošću",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, najniža otpada",
   "roll.drop_highest": "{{roll}}, najviša otpada",
   "dice.dropped": "{{value}} odbačeno",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "ukupno {{n}}",
   "status.rolling": "Bacanje u tijeku",
   "status.verified": "Provjereno",
   "status.alone": "Neprovjereno (bačeno samostalno)",
@@ -57,5 +54,8 @@
   "help.verified": "Drugi igrači s dodatkom provjerili su bacanje pa nitko nije mogao odabrati rezultat.",
   "help.alone": "Nitko drugi nije mogao posvjedočiti bacanju pa nije provjereno.",
   "help.not_revealed": "Bacač nikada nije otkrio rezultat pa se bacanje ne računa.",
-  "help.history": "Popis ispod prikazuje bacanja ove sesije na ovom uređaju."
+  "help.history": "Popis ispod prikazuje bacanja ove sesije na ovom uređaju.",
+  "history.everyone": "Svi",
+  "history.only_me": "Samo ja",
+  "history.clear": "Očisti povijest"
 }

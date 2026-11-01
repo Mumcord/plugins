@@ -2,8 +2,8 @@
   "manifest.name": "Kockadobó",
   "manifest.description": "Dobj kockával a csevegésben a /roll paranccsal. A bővítményt használók mind ellenőrzik a dobásokat, így senki sem hamisíthat eredményt.",
   "you": "Te",
-  "card.title": "{{who}} dobott: {{roll}}",
-  "card.title_me": "Dobtál: {{roll}}",
+  "card.title": "{{who}} dob: {{roll}}",
+  "card.title_me": "Te dobsz: {{roll}}",
   "card.tumbling": "Gurulnak a kockák",
   "card.waiting": "Tanúkra várunk",
   "roll.advantage": "{{roll}} előnnyel",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, a legalacsonyabb kiesik",
   "roll.drop_highest": "{{roll}}, a legmagasabb kiesik",
   "dice.dropped": "{{value}} kiesett",
-  "spoken.plus": "plusz {{n}}",
-  "spoken.minus": "mínusz {{n}}",
-  "spoken.total": "összesen {{n}}",
   "status.rolling": "Dobás folyamatban",
   "status.verified": "Ellenőrizve",
   "status.alone": "Nem ellenőrzött (egyedül dobott)",
@@ -57,5 +54,8 @@
   "help.verified": "A bővítménnyel rendelkező többi játékos ellenőrizte a dobást, így senki sem választhatta meg az eredményt.",
   "help.alone": "Senki más nem tudta tanúsítani a dobást, ezért nem ellenőrizték.",
   "help.not_revealed": "A dobó sosem fedte fel az eredményt, ezért a dobás nem számít.",
-  "help.history": "Az alábbi lista az ezen az eszközön, ebben a munkamenetben történt dobásokat mutatja."
+  "help.history": "Az alábbi lista az ezen az eszközön, ebben a munkamenetben történt dobásokat mutatja.",
+  "history.everyone": "Mindenki",
+  "history.only_me": "Csak én",
+  "history.clear": "Előzmények törlése"
 }

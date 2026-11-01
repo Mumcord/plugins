@@ -126,6 +126,8 @@ pub struct App {
     expanded: bool,
     /// Unfolded help sections; in memory only, so they start collapsed every session.
     sections: view::Sections,
+    /// The history filter; in memory only.
+    only_me: bool,
     error_cards: u32,
 }
 
@@ -466,7 +468,7 @@ impl App {
         if let Err(e) = host.chat_send(&view::fallback_line(&roll.notation, &outcome, &status)) {
             host.warn(&format!("could not post the text line: {e:?}"));
         }
-        self.record(host, Who::Me, roll.notation, Some(outcome.total), status);
+        self.record(host, Who::Me, roll.notation, Some(outcome), status);
     }
 
     fn settle_other(
@@ -478,7 +480,7 @@ impl App {
     ) {
         let who = Who::Peer(roll.name.clone());
         self.show_card(host, &roll.card, &who, &roll.notation, &status, outcome);
-        self.record(host, who, roll.notation, outcome.map(|o| o.total), status);
+        self.record(host, who, roll.notation, outcome.cloned(), status);
     }
 
     fn record(
@@ -486,7 +488,7 @@ impl App {
         host: &mut impl Host,
         who: Who,
         notation: Notation,
-        total: Option<i32>,
+        outcome: Option<Outcome>,
         status: Status,
     ) {
         if self.history.len() >= HISTORY_LIMIT {
@@ -495,7 +497,7 @@ impl App {
         self.history.push(Entry {
             who,
             notation,
-            total,
+            outcome,
             status,
         });
         if self.panel {
@@ -505,7 +507,7 @@ impl App {
 
     fn show_history(&self, host: &mut impl Host) {
         let tree = if self.expanded {
-            view::panel_expanded(&self.history, self.sections)
+            view::panel_expanded(&self.history, self.sections, self.only_me)
         } else {
             view::panel_inline(&self.history)
         };
@@ -528,6 +530,12 @@ impl App {
             host.open_popover();
         } else if action == view::TOGGLE_HELP_ACTION {
             self.sections.help = !self.sections.help;
+            self.show_history(host);
+        } else if action == view::FILTER_ALL_ACTION || action == view::FILTER_ME_ACTION {
+            self.only_me = action == view::FILTER_ME_ACTION;
+            self.show_history(host);
+        } else if action == view::CLEAR_ACTION {
+            self.history.clear();
             self.show_history(host);
         } else if action == view::TOGGLE_MARKS_ACTION {
             self.sections.marks = !self.sections.marks;

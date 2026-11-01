@@ -3,7 +3,7 @@
   "manifest.description": "Hádžte kockami v chate príkazom /roll. Všetci s doplnkom každý hod kontrolujú, takže nikto nemôže výsledok sfalšovať.",
   "you": "Vy",
   "card.title": "{{who}} hádže {{roll}}",
-  "card.title_me": "Hádžete {{roll}}",
+  "card.title_me": "Hádžeš {{roll}}",
   "card.tumbling": "Kocky sa kotúľajú",
   "card.waiting": "Čaká sa na svedkov",
   "roll.advantage": "{{roll}} s výhodou",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, najnižšia vypadne",
   "roll.drop_highest": "{{roll}}, najvyššia vypadne",
   "dice.dropped": "{{value}} vyradené",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "mínus {{n}}",
-  "spoken.total": "spolu {{n}}",
   "status.rolling": "Hádže sa",
   "status.verified": "Overené",
   "status.alone": "Neoverené (hodené samostatne)",
@@ -57,5 +54,8 @@
   "help.verified": "Ostatní hráči s týmto pluginom hod overili, takže nikto nemohol výsledok vybrať.",
   "help.alone": "Nikto iný hod nemohol dosvedčiť, preto nebol overený.",
   "help.not_revealed": "Hráč výsledok nikdy neodhalil, takže hod sa nepočíta.",
-  "help.history": "Zoznam nižšie ukazuje hody z tejto relácie na tomto zariadení."
+  "help.history": "Zoznam nižšie ukazuje hody z tejto relácie na tomto zariadení.",
+  "history.everyone": "Všetci",
+  "history.only_me": "Len ja",
+  "history.clear": "Vymazať históriu"
 }

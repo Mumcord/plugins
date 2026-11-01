@@ -2,8 +2,8 @@
   "manifest.name": "Terningekaster",
   "manifest.description": "Slå med terninger i chatten med /roll. Alle med pluginet kontrollerer hvert slag, så ingen kan snyde med et resultat.",
   "you": "Du",
-  "card.title": "{{who}} slog {{roll}}",
-  "card.title_me": "Du slog {{roll}}",
+  "card.title": "{{who}} kaster {{roll}}",
+  "card.title_me": "Du kaster {{roll}}",
   "card.tumbling": "Terninger ruller",
   "card.waiting": "Venter på vidner",
   "roll.advantage": "{{roll}} med fordel",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, fjern den laveste",
   "roll.drop_highest": "{{roll}}, fjern den højeste",
   "dice.dropped": "{{value}} fjernet",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "minus {{n}}",
-  "spoken.total": "i alt {{n}}",
   "status.rolling": "Slår",
   "status.verified": "Bekræftet",
   "status.alone": "Ubekræftet (slået alene)",
@@ -57,5 +54,8 @@
   "help.verified": "Andre spillere med pluginnet har tjekket slaget, så ingen kunne vælge resultatet.",
   "help.alone": "Ingen andre kunne vidne om slaget, så det blev ikke tjekket.",
   "help.not_revealed": "Slåeren afslørede aldrig resultatet, så slaget tæller ikke.",
-  "help.history": "Listen nedenfor viser slagene fra denne session på denne enhed."
+  "help.history": "Listen nedenfor viser slagene fra denne session på denne enhed.",
+  "history.everyone": "Alle",
+  "history.only_me": "Kun mig",
+  "history.clear": "Ryd historik"
 }

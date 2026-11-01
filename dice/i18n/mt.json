@@ -2,8 +2,8 @@
   "manifest.name": "Tfigħ ta' dadi",
   "manifest.description": "Armi d-dadi fiċ-chat bil-/roll. Kulħadd bil-plagin jiċċekkja kull tefgħa, allura ħadd ma jista' jħawwad riżultat.",
   "you": "Int",
-  "card.title": "{{who}} arma {{roll}}",
-  "card.title_me": "Armejt {{roll}}",
+  "card.title": "{{who}} jarmi {{roll}}",
+  "card.title_me": "Inti tarmi {{roll}}",
   "card.tumbling": "Id-dadi qed jgħaddu",
   "card.waiting": "Nistennew xhieda",
   "roll.advantage": "{{roll}} b'vantaġġ",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, l-inqas wieħed jiġi skartat",
   "roll.drop_highest": "{{roll}}, l-ogħla wieħed jiġi skartat",
   "dice.dropped": "{{value}} skartat",
-  "spoken.plus": "iżjed {{n}}",
-  "spoken.minus": "inqas {{n}}",
-  "spoken.total": "total {{n}}",
   "status.rolling": "Qed jarmi",
   "status.verified": "Ivverifikat",
   "status.alone": "Mhux ivverifikat (mormi waħdu)",
@@ -58,5 +55,8 @@
   "help.verified": "Plejers oħra bil-plagin iċċekkjaw it-tlugħ, għalhekk ħadd ma seta' jagħżel ir-riżultat.",
   "help.alone": "Ħadd ieħor ma seta' jixhed it-tlugħ, għalhekk ma ġiex iċċekkjat.",
   "help.not_revealed": "Min armah qatt ma żvela r-riżultat, għalhekk it-tlugħ ma jgħoddx.",
-  "help.history": "Il-lista hawn taħt turi t-tluġħ ta' din is-sessjoni fuq dan l-apparat."
+  "help.history": "Il-lista hawn taħt turi t-tluġħ ta' din is-sessjoni fuq dan l-apparat.",
+  "history.everyone": "Kulħadd",
+  "history.only_me": "Jien biss",
+  "history.clear": "Ħassar l-istorja"
 }

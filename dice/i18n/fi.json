@@ -2,8 +2,8 @@
   "manifest.name": "Nopanheitto",
   "manifest.description": "Heitä noppaa chatissa komennolla /roll. Kaikki lisäosan käyttäjät tarkistavat jokaisen heiton, joten kukaan ei voi väärentää tulosta.",
   "you": "Sinä",
-  "card.title": "{{who}} heitti {{roll}}",
-  "card.title_me": "Heitit {{roll}}",
+  "card.title": "{{who}} heittää {{roll}}",
+  "card.title_me": "Heität {{roll}}",
   "card.tumbling": "Nopat vierivät",
   "card.waiting": "Odotetaan todistajia",
   "roll.advantage": "{{roll}} etuna",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, pienin pois",
   "roll.drop_highest": "{{roll}}, suurin pois",
   "dice.dropped": "{{value}} pois",
-  "spoken.plus": "plus {{n}}",
-  "spoken.minus": "miinus {{n}}",
-  "spoken.total": "yhteensä {{n}}",
   "status.rolling": "Heitetään",
   "status.verified": "Vahvistettu",
   "status.alone": "Vahvistamaton (heitetty yksin)",
@@ -57,5 +54,8 @@
   "help.verified": "Muut lisäosaa käyttävät pelaajat tarkistivat heiton, joten kukaan ei voinut valita tulosta.",
   "help.alone": "Kukaan muu ei voinut todistaa heittoa, joten sitä ei tarkistettu.",
   "help.not_revealed": "Heittäjä ei koskaan paljastanut tulosta, joten heitto ei lasketa.",
-  "help.history": "Alla oleva luettelo näyttää tämän istunnon heitot tällä laitteella."
+  "help.history": "Alla oleva luettelo näyttää tämän istunnon heitot tällä laitteella.",
+  "history.everyone": "Kaikki",
+  "history.only_me": "Vain minä",
+  "history.clear": "Tyhjennä historia"
 }

@@ -2,8 +2,8 @@
   "manifest.name": "Täringuveeretaja",
   "manifest.description": "Veereta chatis täringuid käsuga /roll. Kõik pluginaga kasutajad kontrollivad iga viset, nii et keegi ei saa tulemust võltsida.",
   "you": "Sina",
-  "card.title": "{{who}} veeretas {{roll}}",
-  "card.title_me": "Veeretasid {{roll}}",
+  "card.title": "{{who}} veeretab {{roll}}",
+  "card.title_me": "Sina veeretad {{roll}}",
   "card.tumbling": "Täringud veerevad",
   "card.waiting": "Ootan tunnistajaid",
   "roll.advantage": "{{roll}} eelisega",
@@ -11,9 +11,6 @@
   "roll.drop_lowest": "{{roll}}, madalaim kõrvale",
   "roll.drop_highest": "{{roll}}, kõrgeim kõrvale",
   "dice.dropped": "{{value}} kõrvale jäetud",
-  "spoken.plus": "pluss {{n}}",
-  "spoken.minus": "miinus {{n}}",
-  "spoken.total": "kokku {{n}}",
   "status.rolling": "Veeretab",
   "status.verified": "Kinnitatud",
   "status.alone": "Kinnitamata (veeretatud üksi)",
@@ -57,5 +54,8 @@
   "help.verified": "Teised pluginaga mängijad kontrollisid veeretust, nii et keegi ei saanud tulemust valida.",
   "help.alone": "Keegi teine ei saanud veeretust tunnistada, seega seda ei kontrollitud.",
   "help.not_revealed": "Veeretaja ei avaldanud tulemust kunagi, seega veeretus ei lähe arvesse.",
-  "help.history": "Allolev loend näitab selle seansi veeretusi sellel seadmel."
+  "help.history": "Allolev loend näitab selle seansi veeretusi sellel seadmel.",
+  "history.everyone": "Kõik",
+  "history.only_me": "Ainult mina",
+  "history.clear": "Tühjenda ajalugu"
 }
