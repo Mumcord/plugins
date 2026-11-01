@@ -425,6 +425,9 @@ impl App {
         };
         match host.send(&message) {
             Ok(()) => self.settle_own(host, roll, true),
+            // Everyone who could check the roll turned Dice off or left: nobody waits for the
+            // reveal, so the roll counts as rolled alone.
+            Err(Error::NoRecipients | Error::Hidden) => self.settle_own(host, roll, false),
             Err(e) => {
                 // The others will show "Not revealed"; the roller must not claim a result.
                 host.warn(&format!("could not send the reveal: {e:?}"));

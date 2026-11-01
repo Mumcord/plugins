@@ -933,6 +933,27 @@ fn a_failed_reveal_posts_no_result() {
 }
 
 #[test]
+fn a_reveal_with_nobody_left_is_unverified_rolled_alone() {
+    // The only other Dice user turned it off after the commit went out.
+    let mut host = MockHost::seeded(1);
+    let mut app = App::default();
+    app.on_command(&mut host, "d20");
+    host.send_error = Some(Error::NoRecipients);
+    let reveal_timer = host.new_timers[0].0;
+    app.on_timer(&mut host, reveal_timer);
+    assert!(has_text(
+        host.card_with("roll-me-"),
+        "Unverified (rolled alone)"
+    ));
+    assert_eq!(host.chat.len(), 1);
+    assert!(
+        host.chat[0].contains("unverified, rolled alone"),
+        "{}",
+        host.chat[0]
+    );
+}
+
+#[test]
 fn history_needs_the_optional_panel_permission() {
     let mut host = MockHost::seeded(1);
     host.send_error = Some(Error::NoRecipients);
