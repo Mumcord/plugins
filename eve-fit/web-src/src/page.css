@@ -29,15 +29,36 @@ main {
   width: 100%;
 }
 
+/*
+ * The wheel's drawing reaches past its box, which is 572 of EVE's units wide: the rings by 34
+ * units on every side, the implant and booster arcs by up to 52 units on the left and right. So
+ * the wheel gets that much padding, and its size is chosen so that box plus padding fits the
+ * frame's width and, minus room for the page padding and the first footer line, its height.
+ */
 .wheel {
-  --esf-wheel-size: max(280px, min(560px, calc(100vw - 24px)));
-  flex: 0 1 auto;
+  --wheel-size: max(
+    240px,
+    min(560px, calc((100vw - 24px) * 572 / 684), calc((100vh - 64px) * 572 / 640))
+  );
+  --esf-wheel-size: var(--wheel-size);
+  flex: 0 0 auto;
+  padding: calc(var(--wheel-size) * 34 / 572) calc(var(--wheel-size) * 56 / 572);
+}
+
+/* Wide enough for the statistics beside the wheel (280px, plus the 16px gap and page padding). */
+@media (min-width: 820px) {
+  .wheel {
+    --wheel-size: max(
+      240px,
+      min(560px, calc((100vw - 320px) * 572 / 684), calc((100vh - 64px) * 572 / 640))
+    );
+  }
 }
 
 .stats {
-  flex: 1 1 260px;
+  flex: 1 1 280px;
   max-width: 320px;
-  min-width: 240px;
+  min-width: 280px;
 }
 
 .status {
