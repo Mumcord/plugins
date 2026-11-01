@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mumcord/plugins/schemas/version.schema.json",
+  "title": "plugins/<id>/versions/<version>.toml",
+  "description": "One published plugin version. Reference: docs/plugin-registry-format.md (Registry source) in Mumcord/mumcord.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "api", "size", "sha256", "permissions", "published", "signature", "source"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "api": { "type": "integer", "const": 1 },
+    "size": { "type": "integer", "minimum": 1, "maximum": 67108864 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z]+(\\.[a-z-]+)+$" }
+    },
+    "published": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "signature": {
+      "description": "Detached minisign signature over the package (text of the .minisig file).",
+      "type": "string",
+      "pattern": "^untrusted comment: "
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit"],
+      "properties": {
+        "repository": { "type": "string", "pattern": "^https://" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "path": { "type": "string", "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).*$" }
+      }
+    }
+  }
+}
