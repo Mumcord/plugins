@@ -346,7 +346,9 @@ pub const TOGGLE_MARKS_ACTION: &str = "toggle:marks";
 /// A full-width header button; the arrow shows whether the section below is open.
 fn section_header(action: &str, title: &str, open: bool) -> El {
     let arrow = if open { "\u{25be}" } else { "\u{25b8}" };
-    ui::button(action, &format!("{arrow} {title}")).kind(ButtonKind::Secondary)
+    ui::button(action, &format!("{arrow} {title}"))
+        .kind(ButtonKind::Secondary)
+        .expanded(open)
 }
 
 /// Which help sections of the large popover are unfolded.
