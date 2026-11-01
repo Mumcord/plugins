@@ -6,10 +6,8 @@
   "no_certificate": "Níl teastas ag an úsáideoir seo, mar sin ní féidir le Mumcord é a aithint arís mar bhot.",
   "bot_kept": "Coinnítear a shocruithe. Fillfidh na rialuithe nuair a fhillfidh an bot.",
   "edit_address_key": "Cuir an seoladh / eochair in eagar",
-  "set_up_bot": "Socraigh an bot seo",
   "key_label_edit": "Eochair API nua (fág folamh chun an eochair reatha a choinneáil)",
   "key_label": "Eochair API",
-  "address": "Seoladh",
   "address_placeholder": "192.168.1.20:8081 nó https://bot.example.org",
   "testing": "Ag tástáil an cheangail",
   "test_ok": "Oibríonn an nasc",
@@ -58,5 +56,13 @@
   "not_mumbot": "Ní fhreagraíonn an seoladh sin cosúil le mumbot",
   "save_failed": "Níorbh fhéidir an bot a shábháil",
   "went_offline": "Chuaigh {{name}} as líne",
-  "refused": "Dhiúltaigh Mumcord don iarratas ({{reason}})"
+  "refused": "Dhiúltaigh Mumcord don iarratas ({{reason}})",
+  "address_label": "Seoladh an bhota (IP nó fearann, le port)",
+  "setup_intro": "Níl an bot seo socraithe fós. Cuir isteach seoladh a API ceoil agus eochair API ó úinéir an bhota.",
+  "setup_intro_edit": "Athraigh seoladh nó eochair API an bhota seo.",
+  "address_note_http": "http:// chuig seoladh príobháideach. Níl an trácht criptithe.",
+  "setup_footer": "Sábháilte don bhot seo amháin. Téann an eochair isteach i do eochairshlabhra córais agus ní thaispeántar arís í go deo.",
+  "status_test_passed": "Triail rite",
+  "status_not_saved": "Gan sábháil",
+  "status_connected": "Ceangailte"
 }

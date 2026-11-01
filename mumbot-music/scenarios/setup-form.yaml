@@ -7,4 +7,4 @@ peers:
 steps:
   - event: {user-menu-requested: 2}
   - expect: {dialog: {title: Configure bot}}
-  - expect: {tree: {slot: dialog, text: "Set up this bot"}}
+  - expect: {tree: {slot: dialog, text: "This bot is not set up yet"}}

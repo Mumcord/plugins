@@ -6,10 +6,8 @@
   "no_certificate": "Tento uživatel nemá certifikát, takže ho Mumcord nemůže znovu poznat jako bota.",
   "bot_kept": "Jeho nastavení zůstává uloženo. Ovládání se vrátí, až se bot vrátí.",
   "edit_address_key": "Upravit adresu / klíč",
-  "set_up_bot": "Nastavit tohoto bota",
   "key_label_edit": "Nový klíč API (nechte prázdné pro ponechání stávajícího)",
   "key_label": "Klíč API",
-  "address": "Adresa",
   "address_placeholder": "192.168.1.20:8081 nebo https://bot.example.org",
   "testing": "Testování připojení",
   "test_ok": "Připojení funguje",
@@ -58,5 +56,13 @@
   "not_mumbot": "Tato adresa neodpovídá jako mumbot",
   "save_failed": "Bota se nepodařilo uložit",
   "went_offline": "{{name}} přešel do režimu offline",
-  "refused": "Mumcord odmítl požadavek ({{reason}})"
+  "refused": "Mumcord odmítl požadavek ({{reason}})",
+  "address_label": "Adresa bota (IP nebo doména, s portem)",
+  "setup_intro": "Tento bot ještě není nastavený. Zadejte adresu jeho hudebního API a klíč API od vlastníka bota.",
+  "setup_intro_edit": "Změňte adresu nebo klíč API tohoto bota.",
+  "address_note_http": "http:// na soukromou adresu. Provoz není šifrovaný.",
+  "setup_footer": "Uloženo jen pro tohoto bota. Klíč se uloží do systémové klíčenky a už se nikdy nezobrazí.",
+  "status_test_passed": "Test prošel",
+  "status_not_saved": "Neuloženo",
+  "status_connected": "Připojeno"
 }

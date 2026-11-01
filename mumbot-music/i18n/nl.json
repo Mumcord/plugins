@@ -6,10 +6,8 @@
   "no_certificate": "Deze gebruiker heeft geen certificaat, dus Mumcord kan hem niet opnieuw als bot herkennen.",
   "bot_kept": "De instellingen blijven bewaard. De bediening komt terug zodra de bot terug is.",
   "edit_address_key": "Adres / sleutel bewerken",
-  "set_up_bot": "Deze bot instellen",
   "key_label_edit": "Nieuwe API-sleutel (leeg laten om de huidige te behouden)",
   "key_label": "API-sleutel",
-  "address": "Adres",
   "address_placeholder": "192.168.1.20:8081 of https://bot.example.org",
   "testing": "Verbinding testen",
   "test_ok": "Verbinding werkt",
@@ -58,5 +56,13 @@
   "not_mumbot": "Dat adres antwoordt niet als een mumbot",
   "save_failed": "De bot kon niet worden opgeslagen",
   "went_offline": "{{name}} is offline gegaan",
-  "refused": "Mumcord weigerde het verzoek ({{reason}})"
+  "refused": "Mumcord weigerde het verzoek ({{reason}})",
+  "address_label": "Botadres (IP of domein, met poort)",
+  "setup_intro": "Deze bot is nog niet ingesteld. Voer het adres van de muziek-API in en een API-sleutel van de eigenaar van de bot.",
+  "setup_intro_edit": "Wijzig het adres of de API-sleutel van deze bot.",
+  "address_note_http": "http:// naar een privéadres. Het verkeer is niet versleuteld.",
+  "setup_footer": "Alleen voor deze bot opgeslagen. De sleutel gaat naar de sleutelhanger van je systeem en wordt nooit meer getoond.",
+  "status_test_passed": "Test geslaagd",
+  "status_not_saved": "Niet opgeslagen",
+  "status_connected": "Verbonden"
 }

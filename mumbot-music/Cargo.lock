@@ -106,7 +106,7 @@ dependencies = [
 [[package]]
 name = "mumcord-plugin-sdk"
 version = "0.5.0"
-source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#487ad6dbdc08071ae3cd2e56892b38a173adac18"
+source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#7c7808a96c1120d3392b898dc4fa21e03991ee15"
 dependencies = [
  "serde",
  "serde_json",

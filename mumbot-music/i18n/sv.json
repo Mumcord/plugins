@@ -6,10 +6,8 @@
   "no_certificate": "Den här användaren har inget certifikat, så Mumcord kan inte känna igen den som en bot igen.",
   "bot_kept": "Inställningarna sparas. Kontrollerna kommer tillbaka när boten återvänder.",
   "edit_address_key": "Redigera adress / nyckel",
-  "set_up_bot": "Konfigurera den här boten",
   "key_label_edit": "Ny API-nyckel (lämna tomt för att behålla den nuvarande)",
   "key_label": "API-nyckel",
-  "address": "Adress",
   "address_placeholder": "192.168.1.20:8081 eller https://bot.example.org",
   "testing": "Testar anslutningen",
   "test_ok": "Anslutningen fungerar",
@@ -58,5 +56,13 @@
   "not_mumbot": "Den adressen svarar inte som en mumbot",
   "save_failed": "Det gick inte att spara boten",
   "went_offline": "{{name}} gick offline",
-  "refused": "Mumcord avvisade förfrågan ({{reason}})"
+  "refused": "Mumcord avvisade förfrågan ({{reason}})",
+  "address_label": "Botens adress (IP eller domän, med port)",
+  "setup_intro": "Den här boten är inte konfigurerad än. Ange adressen till dess musik-API och en API-nyckel från botens ägare.",
+  "setup_intro_edit": "Ändra adressen eller API-nyckeln för den här boten.",
+  "address_note_http": "http:// till en privat adress. Trafiken är inte krypterad.",
+  "setup_footer": "Sparas bara för den här boten. Nyckeln läggs i systemets nyckelring och visas aldrig igen.",
+  "status_test_passed": "Testet lyckades",
+  "status_not_saved": "Inte sparad",
+  "status_connected": "Ansluten"
 }

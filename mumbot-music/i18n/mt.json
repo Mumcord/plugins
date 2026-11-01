@@ -6,10 +6,8 @@
   "no_certificate": "Dan l-utent m'għandux ċertifikat, għalhekk Mumcord ma jistax jagħrfu mill-ġdid bħala bot.",
   "bot_kept": "L-issettjar tiegħu jinżamm. Il-kontrolli jirritornaw meta l-bot jirritorna.",
   "edit_address_key": "Editja l-indirizz / iċ-ċavetta",
-  "set_up_bot": "Issettja dan il-bot",
   "key_label_edit": "Ċavetta API ġdida (halliha vojta biex iżżomm l-attwali)",
   "key_label": "Ċavetta API",
-  "address": "Indirizz",
   "address_placeholder": "192.168.1.20:8081 jew https://bot.example.org",
   "testing": "Qed jiġi ttestjat il-konnessjoni",
   "test_ok": "Il-konnessjoni taħdem",
@@ -58,5 +56,13 @@
   "not_mumbot": "Dak l-indirizz ma jwiegebx bħal mumbot",
   "save_failed": "Il-bot ma setax jiġi salvat",
   "went_offline": "{{name}} sar offline",
-  "refused": "Mumcord irrifjuta t-talba ({{reason}})"
+  "refused": "Mumcord irrifjuta t-talba ({{reason}})",
+  "address_label": "Indirizz tal-bot (IP jew dominju, bil-port)",
+  "setup_intro": "Dan il-bot għadu mhux issettjat. Daħħal l-indirizz tal-API tal-mużika tiegħu u ċavetta API mingħand is-sid tal-bot.",
+  "setup_intro_edit": "Biddel l-indirizz jew iċ-ċavetta API ta' dan il-bot.",
+  "address_note_http": "http:// lejn indirizz privat. It-traffiku mhuwiex ikkriptat.",
+  "setup_footer": "Maħżun għal dan il-bot biss. Iċ-ċavetta tmur fil-keychain tas-sistema tiegħek u qatt ma tintwera mill-ġdid.",
+  "status_test_passed": "It-test għadda",
+  "status_not_saved": "Mhux maħżun",
+  "status_connected": "Konness"
 }

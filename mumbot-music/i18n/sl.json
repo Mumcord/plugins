@@ -6,10 +6,8 @@
   "no_certificate": "Ta uporabnik nima potrdila, zato ga Mumcord ne more znova prepoznati kot bota.",
   "bot_kept": "Njegove nastavitve so ohranjene. Upravljanje se vrne, ko se bot vrne.",
   "edit_address_key": "Uredi naslov / ključ",
-  "set_up_bot": "Nastavi tega bota",
   "key_label_edit": "Nov ključ API (pustite prazno, da obdržite trenutnega)",
   "key_label": "Ključ API",
-  "address": "Naslov",
   "address_placeholder": "192.168.1.20:8081 ali https://bot.example.org",
   "testing": "Preizkušanje povezave",
   "test_ok": "Povezava deluje",
@@ -58,5 +56,13 @@
   "not_mumbot": "Ta naslov ne odgovarja kot mumbot",
   "save_failed": "Bota ni bilo mogoče shraniti",
   "went_offline": "{{name}} je šel brez povezave",
-  "refused": "Mumcord je zavrnil zahtevo ({{reason}})"
+  "refused": "Mumcord je zavrnil zahtevo ({{reason}})",
+  "address_label": "Naslov bota (IP ali domena, z vrati)",
+  "setup_intro": "Ta bot še ni nastavljen. Vnesite naslov njegovega glasbenega API-ja in ključ API od lastnika bota.",
+  "setup_intro_edit": "Spremenite naslov ali ključ API tega bota.",
+  "address_note_http": "http:// na zasebni naslov. Promet ni šifriran.",
+  "setup_footer": "Shranjeno samo za tega bota. Ključ gre v sistemsko zbirko ključev in se nikoli več ne prikaže.",
+  "status_test_passed": "Preizkus uspel",
+  "status_not_saved": "Ni shranjeno",
+  "status_connected": "Povezano"
 }

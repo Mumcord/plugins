@@ -6,10 +6,8 @@
   "no_certificate": "This user has no certificate, so Mumcord can't recognise it as a bot again.",
   "bot_kept": "Its settings are kept. The controls come back when the bot returns.",
   "edit_address_key": "Edit address / key",
-  "set_up_bot": "Set up this bot",
   "key_label_edit": "New API key (leave empty to keep the current one)",
   "key_label": "API key",
-  "address": "Address",
   "address_placeholder": "192.168.1.20:8081 or https://bot.example.org",
   "testing": "Testing the connection",
   "test_ok": "Connection works",
@@ -58,5 +56,13 @@
   "not_mumbot": "That address does not answer like a mumbot",
   "save_failed": "Could not save the bot",
   "went_offline": "{{name}} went offline",
-  "refused": "Mumcord refused the request ({{reason}})"
+  "refused": "Mumcord refused the request ({{reason}})",
+  "address_label": "Bot address (IP or domain, with port)",
+  "setup_intro": "This bot is not set up yet. Enter the address of its music API and an API key from the bot owner.",
+  "setup_intro_edit": "Change the address or the API key of this bot.",
+  "address_note_http": "http:// to a private address. Traffic is not encrypted.",
+  "setup_footer": "Saved for this bot only. The key goes into your system keychain and is never shown again.",
+  "status_test_passed": "Test passed",
+  "status_not_saved": "Not saved",
+  "status_connected": "Connected"
 }

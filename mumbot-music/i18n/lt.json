@@ -6,10 +6,8 @@
   "no_certificate": "Šis naudotojas neturi sertifikato, todėl „Mumcord“ negali jo vėl atpažinti kaip boto.",
   "bot_kept": "Jo nustatymai išsaugomi. Valdikliai grįš, kai botas sugrįš.",
   "edit_address_key": "Redaguoti adresą / raktą",
-  "set_up_bot": "Nustatyti šį botą",
   "key_label_edit": "Naujas API raktas (palikite tuščią, jei norite išlaikyti dabartinį)",
   "key_label": "API raktas",
-  "address": "Adresas",
   "address_placeholder": "192.168.1.20:8081 arba https://bot.example.org",
   "testing": "Tikrinamas ryšys",
   "test_ok": "Ryšys veikia",
@@ -58,5 +56,13 @@
   "not_mumbot": "Šis adresas neatsako kaip mumbotas",
   "save_failed": "Nepavyko išsaugoti boto",
   "went_offline": "{{name}} atsijungė",
-  "refused": "„Mumcord“ atmetė užklausą ({{reason}})"
+  "refused": "„Mumcord“ atmetė užklausą ({{reason}})",
+  "address_label": "Boto adresas (IP arba domenas, su prievadu)",
+  "setup_intro": "Šis botas dar nesukonfigūruotas. Įveskite jo muzikos API adresą ir boto savininko API raktą.",
+  "setup_intro_edit": "Pakeiskite šio boto adresą arba API raktą.",
+  "address_note_http": "http:// į privatų adresą. Srautas nešifruojamas.",
+  "setup_footer": "Išsaugoma tik šiam botui. Raktas patenka į sistemos raktų pakabuką ir daugiau niekada nerodomas.",
+  "status_test_passed": "Testas sėkmingas",
+  "status_not_saved": "Neišsaugota",
+  "status_connected": "Prisijungta"
 }

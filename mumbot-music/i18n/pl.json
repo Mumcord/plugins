@@ -6,10 +6,8 @@
   "no_certificate": "Ten użytkownik nie ma certyfikatu, więc Mumcord nie może ponownie rozpoznać go jako bota.",
   "bot_kept": "Jego ustawienia są zachowane. Sterowanie wróci, gdy bot wróci.",
   "edit_address_key": "Edytuj adres / klucz",
-  "set_up_bot": "Skonfiguruj tego bota",
   "key_label_edit": "Nowy klucz API (zostaw puste, aby zachować obecny)",
   "key_label": "Klucz API",
-  "address": "Adres",
   "address_placeholder": "192.168.1.20:8081 lub https://bot.example.org",
   "testing": "Testowanie połączenia",
   "test_ok": "Połączenie działa",
@@ -58,5 +56,13 @@
   "not_mumbot": "Ten adres nie odpowiada jak mumbot",
   "save_failed": "Nie udało się zapisać bota",
   "went_offline": "{{name}} przeszedł w tryb offline",
-  "refused": "Mumcord odrzucił żądanie ({{reason}})"
+  "refused": "Mumcord odrzucił żądanie ({{reason}})",
+  "address_label": "Adres bota (IP lub domena, z portem)",
+  "setup_intro": "Ten bot nie jest jeszcze skonfigurowany. Wpisz adres jego API muzyki i klucz API od właściciela bota.",
+  "setup_intro_edit": "Zmień adres lub klucz API tego bota.",
+  "address_note_http": "http:// do adresu prywatnego. Ruch nie jest szyfrowany.",
+  "setup_footer": "Zapisane tylko dla tego bota. Klucz trafia do systemowego pęku kluczy i nigdy więcej nie jest pokazywany.",
+  "status_test_passed": "Test zakończony powodzeniem",
+  "status_not_saved": "Nie zapisano",
+  "status_connected": "Połączono"
 }

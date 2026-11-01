@@ -4,9 +4,9 @@
 use mumcord_plugin_sdk::ui::{self, ButtonKind, Component, El, InputPurpose, TextInput};
 
 use crate::{
-    api::{Queue, Track},
+    api::{self, Queue, Track},
     app::{Dialog, Mode, Player, SettingsEdit, Setup, Test},
-    bots::BotConfig,
+    bots::{self, BotConfig},
     text::{t, t_with},
 };
 
@@ -28,49 +28,66 @@ pub fn dialog(dialog: &Dialog) -> El {
 
 fn setup_form(dialog: &Dialog, setup: &Setup) -> El {
     let editing = setup.saved.is_some();
-    let heading = if editing {
-        t("edit_address_key")
-    } else {
-        t("set_up_bot")
-    };
     let key_label = if editing {
         t("key_label_edit")
     } else {
         t("key_label")
     };
+    let (status, status_color) = match &setup.test {
+        Test::Passed => (t("status_test_passed"), Some("success")),
+        _ if editing => (t("status_connected"), Some("success")),
+        _ => (t("status_not_saved"), None),
+    };
+    let mut status_chip = ui::chip(&status);
+    if let Some(color) = status_color {
+        status_chip = status_chip.color(color);
+    }
+    // The key rejection belongs under the key field, every other failure under the address.
+    let key_failed = matches!(&setup.test, Test::Failed(text) if *text == api::key_rejected_text());
     let mut form = ui::column()
-        .child(ui::heading(&heading))
-        .child(ui::caption(&dialog.name))
+        .child(
+            ui::row()
+                .child(ui::caption(&dialog.name))
+                .child(status_chip),
+        )
+        .child(ui::text(&t(if editing {
+            "setup_intro_edit"
+        } else {
+            "setup_intro"
+        })))
         .child(address_input(
             "address",
             &setup.address,
             &t("address_placeholder"),
-        ))
-        .child(ui::password(
-            "key",
-            &key_label,
-            &dialog.bot.secret(setup.slot),
         ));
-    let status = match &setup.test {
-        Test::Idle => None,
-        Test::Running => Some(ui::progress(&t("testing"), None)),
-        Test::Passed => Some(ui::text(&t("test_ok")).color("success")),
-        Test::Failed(text) => Some(ui::text(text).color("danger")),
-    };
-    form = form.child(
+    if let Test::Failed(text) = &setup.test {
+        if !key_failed {
+            form = form.child(ui::caption(text).color("danger"));
+        }
+    } else if bots::base_url(&setup.address).is_some_and(|url| url.starts_with("http://")) {
+        form = form.child(ui::caption(&t("address_note_http")));
+    }
+    form = form.child(ui::password(
+        "key",
+        &key_label,
+        &dialog.bot.secret(setup.slot),
+    ));
+    match &setup.test {
+        Test::Running => form = form.child(ui::progress(&t("testing"), None)),
+        Test::Passed => form = form.child(ui::caption(&t("test_ok")).color("success")),
+        Test::Failed(text) if key_failed => form = form.child(ui::caption(text).color("danger")),
+        _ => {}
+    }
+    let mut actions = ui::row().child(
         ui::button("test", &t("test"))
             .kind(ButtonKind::Secondary)
             .disabled(setup.test == Test::Running),
     );
-    if let Some(status) = status {
-        form = form.child(status);
-    }
-    let mut actions =
-        ui::row().child(ui::button("save", &t("save")).disabled(setup.test != Test::Passed));
     if editing {
         actions = actions.child(ui::button("cancel", &t("cancel")).kind(ButtonKind::Secondary));
     }
-    form.child(actions)
+    form.child(actions.child(ui::button("save", &t("save")).disabled(setup.test != Test::Passed)))
+        .child(ui::caption(&t("setup_footer")))
 }
 
 fn player_view(dialog: &Dialog, player: &Player) -> El {
@@ -166,7 +183,7 @@ fn duration(secs: u64) -> String {
 
 fn address_input(action: &str, value: &str, placeholder: &str) -> El {
     El::new(Component::TextInput(TextInput {
-        label: t("address"),
+        label: t("address_label"),
         value: value.to_owned(),
         placeholder: placeholder.to_owned(),
         max_bytes: INPUT_BYTES,

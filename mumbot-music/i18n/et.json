@@ -6,10 +6,8 @@
   "no_certificate": "Sellel kasutajal pole sertifikaati, seega ei saa Mumcord seda uuesti botina ära tunda.",
   "bot_kept": "Selle seaded säilivad. Juhtnupud naasevad, kui bot tagasi tuleb.",
   "edit_address_key": "Muuda aadressi / võtit",
-  "set_up_bot": "Seadista see bot",
   "key_label_edit": "Uus API võti (jäta tühjaks, et praegune alles jätta)",
   "key_label": "API võti",
-  "address": "Aadress",
   "address_placeholder": "192.168.1.20:8081 või https://bot.example.org",
   "testing": "Ühenduse testimine",
   "test_ok": "Ühendus töötab",
@@ -58,5 +56,13 @@
   "not_mumbot": "See aadress ei vasta nagu mumbot",
   "save_failed": "Botti ei saanud salvestada",
   "went_offline": "{{name}} läks võrgust välja",
-  "refused": "Mumcord lükkas päringu tagasi ({{reason}})"
+  "refused": "Mumcord lükkas päringu tagasi ({{reason}})",
+  "address_label": "Boti aadress (IP või domeen, pordiga)",
+  "setup_intro": "See bot pole veel seadistatud. Sisesta tema muusika-API aadress ja boti omaniku antud API võti.",
+  "setup_intro_edit": "Muuda selle boti aadressi või API võtit.",
+  "address_note_http": "http:// privaatsele aadressile. Liiklus ei ole krüpteeritud.",
+  "setup_footer": "Salvestatakse ainult selle boti jaoks. Võti läheb süsteemi võtmehoidjasse ja seda ei näidata enam kunagi.",
+  "status_test_passed": "Test õnnestus",
+  "status_not_saved": "Salvestamata",
+  "status_connected": "Ühendatud"
 }

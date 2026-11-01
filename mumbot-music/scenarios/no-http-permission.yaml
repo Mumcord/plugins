@@ -7,7 +7,7 @@ peers:
 
 steps:
   - event: {user-menu-requested: 2}
-  - expect: {tree: {slot: dialog, text: "Set up this bot"}}
+  - expect: {tree: {slot: dialog, text: "This bot is not set up yet"}}
   - event: {ui-action: {slot: dialog, action: address, value: "http://192.168.1.5:8080"}}
   - event: {ui-action: {slot: dialog, action: key, value: "secret-key"}}
   - event: {ui-action: {slot: dialog, action: test}}

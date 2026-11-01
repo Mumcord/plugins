@@ -6,10 +6,8 @@
   "no_certificate": "Ovaj korisnik nema certifikat pa ga Mumcord ne može ponovno prepoznati kao bota.",
   "bot_kept": "Njegove postavke ostaju sačuvane. Kontrole se vraćaju kad se bot vrati.",
   "edit_address_key": "Uredi adresu / ključ",
-  "set_up_bot": "Postavi ovog bota",
   "key_label_edit": "Novi API ključ (ostavite prazno da zadržite trenutni)",
   "key_label": "API ključ",
-  "address": "Adresa",
   "address_placeholder": "192.168.1.20:8081 ili https://bot.example.org",
   "testing": "Testiranje veze",
   "test_ok": "Veza radi",
@@ -58,5 +56,13 @@
   "not_mumbot": "Ta adresa ne odgovara kao mumbot",
   "save_failed": "Bota nije bilo moguće spremiti",
   "went_offline": "{{name}} je prešao izvan mreže",
-  "refused": "Mumcord je odbio zahtjev ({{reason}})"
+  "refused": "Mumcord je odbio zahtjev ({{reason}})",
+  "address_label": "Adresa bota (IP ili domena, s portom)",
+  "setup_intro": "Ovaj bot još nije postavljen. Unesite adresu njegova glazbenog API-ja i API ključ vlasnika bota.",
+  "setup_intro_edit": "Promijenite adresu ili API ključ ovog bota.",
+  "address_note_http": "http:// na privatnu adresu. Promet nije šifriran.",
+  "setup_footer": "Spremljeno samo za ovog bota. Ključ ide u sistemski privjesak ključeva i nikad se više ne prikazuje.",
+  "status_test_passed": "Test je prošao",
+  "status_not_saved": "Nije spremljeno",
+  "status_connected": "Povezano"
 }

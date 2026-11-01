@@ -6,10 +6,8 @@
   "no_certificate": "Denne bruger har intet certifikat, så Mumcord kan ikke genkende den som en bot igen.",
   "bot_kept": "Dens indstillinger gemmes. Betjeningen vender tilbage, når botten kommer tilbage.",
   "edit_address_key": "Rediger adresse / nøgle",
-  "set_up_bot": "Opsæt denne bot",
   "key_label_edit": "Ny API-nøgle (lad feltet stå tomt for at beholde den nuværende)",
   "key_label": "API-nøgle",
-  "address": "Adresse",
   "address_placeholder": "192.168.1.20:8081 eller https://bot.example.org",
   "testing": "Tester forbindelsen",
   "test_ok": "Forbindelsen virker",
@@ -58,5 +56,13 @@
   "not_mumbot": "Den adresse svarer ikke som en mumbot",
   "save_failed": "Botten kunne ikke gemmes",
   "went_offline": "{{name}} gik offline",
-  "refused": "Mumcord afviste forespørgslen ({{reason}})"
+  "refused": "Mumcord afviste forespørgslen ({{reason}})",
+  "address_label": "Botadresse (IP eller domæne, med port)",
+  "setup_intro": "Denne bot er ikke sat op endnu. Angiv adressen på dens musik-API og en API-nøgle fra botejeren.",
+  "setup_intro_edit": "Ret adressen eller API-nøglen for denne bot.",
+  "address_note_http": "http:// til en privat adresse. Trafikken er ikke krypteret.",
+  "setup_footer": "Gemmes kun til denne bot. Nøglen lægges i systemets nøglering og vises aldrig igen.",
+  "status_test_passed": "Testen lykkedes",
+  "status_not_saved": "Ikke gemt",
+  "status_connected": "Forbundet"
 }

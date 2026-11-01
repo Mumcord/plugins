@@ -6,10 +6,8 @@
   "no_certificate": "Tällä käyttäjällä ei ole varmennetta, joten Mumcord ei voi tunnistaa sitä uudelleen botiksi.",
   "bot_kept": "Sen asetukset säilytetään. Ohjaimet palaavat, kun botti palaa.",
   "edit_address_key": "Muokkaa osoitetta / avainta",
-  "set_up_bot": "Määritä tämä botti",
   "key_label_edit": "Uusi API-avain (jätä tyhjäksi, jos haluat säilyttää nykyisen)",
   "key_label": "API-avain",
-  "address": "Osoite",
   "address_placeholder": "192.168.1.20:8081 tai https://bot.example.org",
   "testing": "Testataan yhteyttä",
   "test_ok": "Yhteys toimii",
@@ -58,5 +56,13 @@
   "not_mumbot": "Tuo osoite ei vastaa kuin mumbot",
   "save_failed": "Bottia ei voitu tallentaa",
   "went_offline": "{{name}} siirtyi offline-tilaan",
-  "refused": "Mumcord hylkäsi pyynnön ({{reason}})"
+  "refused": "Mumcord hylkäsi pyynnön ({{reason}})",
+  "address_label": "Botin osoite (IP tai verkkotunnus, portin kanssa)",
+  "setup_intro": "Tätä bottia ei ole vielä otettu käyttöön. Anna sen musiikki-API:n osoite ja botin omistajalta saatu API-avain.",
+  "setup_intro_edit": "Muuta tämän botin osoitetta tai API-avainta.",
+  "address_note_http": "http:// yksityiseen osoitteeseen. Liikennettä ei salata.",
+  "setup_footer": "Tallennetaan vain tälle botille. Avain tallennetaan järjestelmän avainnippuun, eikä sitä näytetä enää koskaan.",
+  "status_test_passed": "Testi onnistui",
+  "status_not_saved": "Ei tallennettu",
+  "status_connected": "Yhdistetty"
 }

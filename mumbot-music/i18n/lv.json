@@ -6,10 +6,8 @@
   "no_certificate": "Šim lietotājam nav sertifikāta, tāpēc Mumcord nevar to atkal atpazīt kā botu.",
   "bot_kept": "Tā iestatījumi tiek saglabāti. Vadīklas atgriezīsies, kad bots atgriezīsies.",
   "edit_address_key": "Rediģēt adresi / atslēgu",
-  "set_up_bot": "Iestatīt šo botu",
   "key_label_edit": "Jauna API atslēga (atstājiet tukšu, lai paturētu pašreizējo)",
   "key_label": "API atslēga",
-  "address": "Adrese",
   "address_placeholder": "192.168.1.20:8081 vai https://bot.example.org",
   "testing": "Savienojuma pārbaude",
   "test_ok": "Savienojums darbojas",
@@ -58,5 +56,13 @@
   "not_mumbot": "Šī adrese neatbild kā mumbots",
   "save_failed": "Botu neizdevās saglabāt",
   "went_offline": "{{name}} kļuva bezsaistē",
-  "refused": "Mumcord noraidīja pieprasījumu ({{reason}})"
+  "refused": "Mumcord noraidīja pieprasījumu ({{reason}})",
+  "address_label": "Bota adrese (IP vai domēns, ar portu)",
+  "setup_intro": "Šis bots vēl nav iestatīts. Ievadiet tā mūzikas API adresi un API atslēgu no bota īpašnieka.",
+  "setup_intro_edit": "Mainiet šī bota adresi vai API atslēgu.",
+  "address_note_http": "http:// uz privātu adresi. Datplūsma nav šifrēta.",
+  "setup_footer": "Saglabāts tikai šim botam. Atslēga nonāk sistēmas atslēgu saišķī un vairs nekad netiek rādīta.",
+  "status_test_passed": "Tests izdevies",
+  "status_not_saved": "Nav saglabāts",
+  "status_connected": "Savienots"
 }

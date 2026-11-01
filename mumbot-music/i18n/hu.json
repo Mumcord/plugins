@@ -6,10 +6,8 @@
   "no_certificate": "Ennek a felhasználónak nincs tanúsítványa, ezért a Mumcord nem tudja újra botként felismerni.",
   "bot_kept": "A beállításai megmaradnak. A vezérlők visszatérnek, amikor a bot visszatér.",
   "edit_address_key": "Cím / kulcs szerkesztése",
-  "set_up_bot": "A bot beállítása",
   "key_label_edit": "Új API-kulcs (hagyd üresen a jelenlegi megtartásához)",
   "key_label": "API-kulcs",
-  "address": "Cím",
   "address_placeholder": "192.168.1.20:8081 vagy https://bot.example.org",
   "testing": "Kapcsolat tesztelése",
   "test_ok": "A kapcsolat működik",
@@ -58,5 +56,13 @@
   "not_mumbot": "Ez a cím nem válaszol mumbotként",
   "save_failed": "A botot nem sikerült menteni",
   "went_offline": "{{name}} offline lett",
-  "refused": "A Mumcord elutasította a kérést ({{reason}})"
+  "refused": "A Mumcord elutasította a kérést ({{reason}})",
+  "address_label": "A bot címe (IP vagy tartomány, porttal)",
+  "setup_intro": "Ez a bot még nincs beállítva. Add meg a zenei API címét és a bot tulajdonosától kapott API-kulcsot.",
+  "setup_intro_edit": "Módosítsd a bot címét vagy API-kulcsát.",
+  "address_note_http": "http:// egy privát címre. A forgalom nincs titkosítva.",
+  "setup_footer": "Csak ehhez a bothoz mentve. A kulcs a rendszer kulcstartójába kerül, és soha többé nem jelenik meg.",
+  "status_test_passed": "A teszt sikeres",
+  "status_not_saved": "Nincs mentve",
+  "status_connected": "Csatlakoztatva"
 }
