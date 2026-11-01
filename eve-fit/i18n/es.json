@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} ranura libre",
   "item.empty_many": "{{count}} ranuras libres",
-  "item.empty_other": "{{count}} ranuras libres"
+  "item.empty_other": "{{count}} ranuras libres",
+  "web.loading": "Cargando la rueda de equipamiento…",
+  "web.error": "La rueda de equipamiento no puede mostrar este fit. Usa Copiar fit para abrirlo en EVE o Pyfa.",
+  "web.licences": "Licencias",
+  "web.wheel": "Rueda de equipamiento",
+  "web.stats": "Estadísticas de la nave"
 }

@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} ledig plats",
-  "item.empty_other": "{{count}} lediga platser"
+  "item.empty_other": "{{count}} lediga platser",
+  "web.loading": "Läser in utrustningshjulet…",
+  "web.error": "Utrustningshjulet kan inte visa den här fitten. Använd Kopiera fit för att öppna den i EVE eller Pyfa.",
+  "web.licences": "Licenser",
+  "web.wheel": "Utrustningshjul",
+  "web.stats": "Skeppsstatistik"
 }

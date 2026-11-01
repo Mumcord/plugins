@@ -25,5 +25,10 @@
   "item.empty_one": "{{count}} prosto mesto",
   "item.empty_two": "{{count}} prosti mesti",
   "item.empty_few": "{{count}} prosta mesta",
-  "item.empty_other": "{{count}} prostih mest"
+  "item.empty_other": "{{count}} prostih mest",
+  "web.loading": "Nalaganje kolesa opreme…",
+  "web.error": "Kolo opreme ne more prikazati tega fita. Uporabite Kopiraj fit, da ga odprete v EVE ali Pyfi.",
+  "web.licences": "Licence",
+  "web.wheel": "Kolo opreme",
+  "web.stats": "Statistika ladje"
 }

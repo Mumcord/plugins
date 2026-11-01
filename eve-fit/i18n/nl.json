@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} vrij slot",
-  "item.empty_other": "{{count}} vrije slots"
+  "item.empty_other": "{{count}} vrije slots",
+  "web.loading": "Fittingwiel laden…",
+  "web.error": "Het fittingwiel kan deze fit niet tonen. Gebruik Fit kopiëren om hem in EVE of Pyfa te openen.",
+  "web.licences": "Licenties",
+  "web.wheel": "Fittingwiel",
+  "web.stats": "Scheepsstatistieken"
 }

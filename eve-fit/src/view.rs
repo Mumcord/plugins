@@ -108,6 +108,44 @@ pub fn dialog(s: &Strings, p: &Pasted) -> El {
 
 /// Copies the fit exactly as it was pasted, ready to import into EVE or Pyfa; the host does the
 /// copying when the user clicks, so the plugin needs no clipboard access.
+/// The page's texts, as `(key in the message, i18n key)`.
+const WEBVIEW_STRINGS: &[(&str, &str)] = &[
+    ("loading", "web.loading"),
+    ("error", "web.error"),
+    ("licences", "web.licences"),
+    ("wheel", "web.wheel"),
+    ("stats", "web.stats"),
+];
+
+/// The message for the fitting wheel page (web-src/src/message.ts): the fit as pasted, and the
+/// page's texts in the user's language, as JSON.
+pub fn webview_message(s: &Strings, language: &str, fit: &str) -> String {
+    let mut strings = format!("\"lang\":{}", json_string(language));
+    for (key, i18n_key) in WEBVIEW_STRINGS {
+        strings.push_str(&format!(",\"{key}\":{}", json_string(&s.t(i18n_key))));
+    }
+    format!("{{\"fit\":{},\"strings\":{{{strings}}}}}", json_string(fit))
+}
+
+/// `text` as a JSON string literal.
+fn json_string(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for c in text.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if u32::from(c) < 0x20 => out.push_str(&format!("\\u{:04x}", u32::from(c))),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 fn copy_button(s: &Strings, p: &Pasted) -> El {
     ui::copy_button(&s.t("button.copy"), &p.text)
 }

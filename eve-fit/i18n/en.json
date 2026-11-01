@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} empty slot",
-  "item.empty_other": "{{count}} empty slots"
+  "item.empty_other": "{{count}} empty slots",
+  "web.loading": "Loading the fitting wheel…",
+  "web.error": "The fitting wheel cannot show this fit. Use Copy fitting to open it in EVE or Pyfa.",
+  "web.licences": "Licences",
+  "web.wheel": "Fitting wheel",
+  "web.stats": "Ship statistics"
 }

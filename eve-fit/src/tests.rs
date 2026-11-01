@@ -7,7 +7,7 @@ use mumcord_plugin_sdk::{
     ui::{Component, El},
 };
 
-use crate::app::{App, Host, KEPT_FITS, card_id};
+use crate::app::{App, Host, KEPT_FITS, WEBVIEW_READY, card_id};
 use crate::eft::{self, Item, MAX_LINES, MAX_TEXT_BYTES, Section};
 use crate::view;
 
@@ -264,6 +264,10 @@ struct Fake {
     dialog_titles: Vec<(String, Option<String>)>,
     open_refused: bool,
     warnings: Vec<String>,
+    /// Whether the host shows web views; off by default, like a host without `ui.webview`.
+    webview: bool,
+    webview_shown: usize,
+    posted: Vec<String>,
 }
 
 impl Host for Fake {
@@ -281,6 +285,19 @@ impl Host for Fake {
         }
         self.dialog_titles
             .push((title.to_owned(), subtitle.map(str::to_owned)));
+        Ok(())
+    }
+
+    fn show_webview(&mut self) -> Result<(), Error> {
+        if !self.webview {
+            return Err(Error::NotPermitted);
+        }
+        self.webview_shown += 1;
+        Ok(())
+    }
+
+    fn post_webview(&mut self, message: &str) -> Result<(), Error> {
+        self.posted.push(message.to_owned());
         Ok(())
     }
 
@@ -489,4 +506,94 @@ fn all_languages_have_every_key() {
             assert!(line.contains(&count.to_string()), "{tag} {count}: {line}");
         }
     }
+}
+
+// --- Fitting wheel web view -------------------------------------------------------------------
+
+fn web_host() -> Fake {
+    Fake {
+        webview: true,
+        ..Fake::default()
+    }
+}
+
+fn posted(host: &Fake) -> serde_json::Value {
+    serde_json::from_str(host.posted.last().expect("a message to the page")).expect("valid JSON")
+}
+
+#[test]
+fn open_shows_the_fitting_wheel_and_sends_the_fit_when_the_page_is_ready() {
+    let mut app = App::default();
+    let mut host = web_host();
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    assert_eq!(host.webview_shown, 1);
+    assert_eq!(host.dialog_titles.len(), 1);
+    // The native list is only the fallback; nothing goes to the page before it asks.
+    assert!(host.dialog.is_none());
+    assert!(host.posted.is_empty());
+
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    let message = posted(&host);
+    assert_eq!(message["fit"], RIFTER);
+    assert_eq!(message["strings"]["lang"], "en");
+    assert_eq!(message["strings"]["loading"], "Loading the fitting wheel…");
+    assert_eq!(message["strings"]["wheel"], "Fitting wheel");
+}
+
+#[test]
+fn without_a_web_view_the_dialog_shows_the_list() {
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    assert!(host.dialog.is_some());
+    assert_eq!(host.warnings.len(), 1);
+    // A page that is not there cannot ask for the fit.
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    assert!(host.posted.is_empty());
+}
+
+#[test]
+fn the_page_gets_nothing_for_other_messages_or_after_the_dialog_closed() {
+    let mut app = App::default();
+    let mut host = web_host();
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    app.on_webview_message(&mut host, "copy");
+    app.on_webview_message(&mut host, "{\"fit\":\"x\"}");
+    assert!(host.posted.is_empty());
+    app.on_dialog_closed();
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    assert!(host.posted.is_empty());
+}
+
+#[test]
+fn a_language_change_sends_the_page_its_new_texts() {
+    let mut app = App::default();
+    let mut host = web_host();
+    app.on_chat_match(&mut host, "Bob", RIFTER);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    app.on_event(&mut host, &Event::LanguageChanged("de".into()));
+    let message = posted(&host);
+    assert_eq!(message["strings"]["lang"], "de");
+    assert_eq!(message["strings"]["licences"], "Lizenzen");
+    assert_eq!(message["fit"], RIFTER);
+    // The page stays; only the title is set again.
+    assert_eq!(host.webview_shown, 1);
+    assert_eq!(host.dialog_titles.len(), 2);
+    assert!(host.dialog.is_none());
+}
+
+#[test]
+fn the_page_message_escapes_the_pasted_text_and_fits_the_bridge() {
+    let strings = Strings::new(mumcord_plugin_sdk::i18n_all!());
+    let odd = "[Rifter, \"Q\\uote\"]\r\n\tDamage Control II\u{1}\u{7f} é 漢";
+    let message = view::webview_message(&strings, "en", odd);
+    let value: serde_json::Value = serde_json::from_str(&message).expect("valid JSON");
+    assert_eq!(value["fit"], odd);
+    // A fit is at most 4 KiB; even all newlines stay well within the 16 KiB bridge limit.
+    let long = "\n".repeat(4096);
+    assert!(view::webview_message(&strings, "en", &long).len() < 16 * 1024);
 }

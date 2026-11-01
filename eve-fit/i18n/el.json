@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} κενή υποδοχή",
-  "item.empty_other": "{{count}} κενές υποδοχές"
+  "item.empty_other": "{{count}} κενές υποδοχές",
+  "web.loading": "Φόρτωση του τροχού εξοπλισμού…",
+  "web.error": "Ο τροχός εξοπλισμού δεν μπορεί να εμφανίσει αυτό το fit. Χρησιμοποιήστε την Αντιγραφή fit για να το ανοίξετε στο EVE ή στο Pyfa.",
+  "web.licences": "Άδειες",
+  "web.wheel": "Τροχός εξοπλισμού",
+  "web.stats": "Στατιστικά πλοίου"
 }

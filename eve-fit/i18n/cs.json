@@ -25,5 +25,10 @@
   "item.empty_one": "{{count}} volný slot",
   "item.empty_few": "{{count}} volné sloty",
   "item.empty_many": "{{count}} volného slotu",
-  "item.empty_other": "{{count}} volných slotů"
+  "item.empty_other": "{{count}} volných slotů",
+  "web.loading": "Načítání kola vybavení…",
+  "web.error": "Kolo vybavení tento fit nedokáže zobrazit. Pomocí Kopírovat fit ho otevřete v EVE nebo Pyfa.",
+  "web.licences": "Licence",
+  "web.wheel": "Kolo vybavení",
+  "web.stats": "Statistiky lodi"
 }

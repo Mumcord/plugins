@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} slot liber",
   "item.empty_few": "{{count}} sloturi libere",
-  "item.empty_other": "{{count}} de sloturi libere"
+  "item.empty_other": "{{count}} de sloturi libere",
+  "web.loading": "Se încarcă roata de echipare…",
+  "web.error": "Roata de echipare nu poate afișa acest fit. Folosește Copiază fitul pentru a-l deschide în EVE sau Pyfa.",
+  "web.licences": "Licențe",
+  "web.wheel": "Roată de echipare",
+  "web.stats": "Statisticile navei"
 }

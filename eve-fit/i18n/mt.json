@@ -26,5 +26,10 @@
   "item.empty_two": "{{count}} slots vojta",
   "item.empty_few": "{{count}} slots vojta",
   "item.empty_many": "{{count}} slot vojt",
-  "item.empty_other": "{{count}} slot vojt"
+  "item.empty_other": "{{count}} slot vojt",
+  "web.loading": "Qed jitgħabba r-rota tal-armar…",
+  "web.error": "Ir-rota tal-armar ma tistax turi dan il-fit. Uża Ikkopja l-fit biex tiftħu f’EVE jew Pyfa.",
+  "web.licences": "Liċenzji",
+  "web.wheel": "Rota tal-armar",
+  "web.stats": "Statistika tal-vapur"
 }

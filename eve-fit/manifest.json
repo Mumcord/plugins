@@ -10,7 +10,7 @@
   "categories": ["chat", "games"],
   "icon": "assets/icon.svg",
   "permissions": {
-    "required": ["ui.chat-card", "ui.dialog", "chat.patterns"]
+    "required": ["ui.chat-card", "ui.dialog", "ui.webview", "chat.patterns"]
   },
   "chat_patterns": [
     {

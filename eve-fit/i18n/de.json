@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} freier Slot",
-  "item.empty_other": "{{count}} freie Slots"
+  "item.empty_other": "{{count}} freie Slots",
+  "web.loading": "Fitting-Rad wird geladen…",
+  "web.error": "Das Fitting-Rad kann diesen Fit nicht anzeigen. Mit „Fitting kopieren“ kannst du ihn in EVE oder Pyfa öffnen.",
+  "web.licences": "Lizenzen",
+  "web.wheel": "Fitting-Rad",
+  "web.stats": "Schiffswerte"
 }

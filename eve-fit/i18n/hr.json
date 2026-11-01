@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} slobodno mjesto",
   "item.empty_few": "{{count}} slobodna mjesta",
-  "item.empty_other": "{{count}} slobodnih mjesta"
+  "item.empty_other": "{{count}} slobodnih mjesta",
+  "web.loading": "Učitavanje kotača opreme…",
+  "web.error": "Kotač opreme ne može prikazati ovaj fit. Upotrijebite Kopiraj fit da ga otvorite u EVE-u ili Pyfi.",
+  "web.licences": "Licence",
+  "web.wheel": "Kotač opreme",
+  "web.stats": "Statistika broda"
 }

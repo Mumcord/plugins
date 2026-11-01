@@ -26,5 +26,10 @@
   "item.empty_two": "{{count}} shliotán fholmha",
   "item.empty_few": "{{count}} shliotán fholmha",
   "item.empty_many": "{{count}} sliotán folmha",
-  "item.empty_other": "{{count}} sliotán folamh"
+  "item.empty_other": "{{count}} sliotán folamh",
+  "web.loading": "Roth feistis á lódáil…",
+  "web.error": "Ní féidir leis an roth feistis an feistiú seo a thaispeáint. Úsáid Cóipeáil an fit chun é a oscailt in EVE nó Pyfa.",
+  "web.licences": "Ceadúnais",
+  "web.wheel": "Roth feistis",
+  "web.stats": "Staitisticí na loinge"
 }

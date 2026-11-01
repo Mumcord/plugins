@@ -25,5 +25,10 @@
   "item.empty_one": "{{count}} voľný slot",
   "item.empty_few": "{{count}} voľné sloty",
   "item.empty_many": "{{count}} voľného slotu",
-  "item.empty_other": "{{count}} voľných slotov"
+  "item.empty_other": "{{count}} voľných slotov",
+  "web.loading": "Načítava sa koleso vybavenia…",
+  "web.error": "Koleso vybavenia nedokáže zobraziť tento fit. Pomocou Kopírovať fit ho otvoríte v EVE alebo Pyfa.",
+  "web.licences": "Licencie",
+  "web.wheel": "Koleso vybavenia",
+  "web.stats": "Štatistiky lode"
 }

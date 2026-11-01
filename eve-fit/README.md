@@ -1,6 +1,6 @@
 # EVE fit
 
-Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy card, with the full fit one click away.
+Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy card, and **Open** shows the fit on the [EVEShip.fit](https://eveship.fit) fitting wheel with its full statistics.
 
 ## How it works
 
@@ -29,15 +29,17 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
   ```
 
 - Below the message, Mumcord shows a card with the ship, the fit name and who pasted it, a slot summary (for example "Low 2/3 · Mid 2/2 · High 2/3 · Rigs 1/1 · Drones 3") and the most common modules.
-- **Open** shows the full fit in a dialog: every section with its modules and counts, loaded charges, offline modules, empty slots, drones and cargo.
-- **Copy fitting**, on the card and in the dialog, copies the fit exactly as it was pasted, ready to import into EVE (Fittings → Import from clipboard) or Pyfa. Mumcord does the copying when you click; the plugin never touches your clipboard.
+- **Open** shows the fit in a dialog the way EVEShip.fit does: the ship render inside the fitting wheel with every module icon in its slot, hardpoints, CPU and power grid, and the statistics for capacitor, offence, defence, targeting, navigation and drones (calculated with all skills at level V). The view is read-only.
+- If Mumcord cannot show the fitting wheel (for example when the web view permission is turned off), **Open** shows the fit as a list instead: every section with its modules and counts, loaded charges, offline modules, empty slots, drones and cargo.
+- **Copy fitting**, on the card and in the list, copies the fit exactly as it was pasted, ready to import into EVE (Fittings → Import from clipboard) or Pyfa. Mumcord does the copying when you click; the plugin never touches your clipboard.
 - The pasted text stays in the chat as it is, so people on the official Mumble client, or on Mumcord without the plugin, see the plain fit.
 - The plugin keeps the last 30 fits. An older card stays in the chat but loses its Open button; paste the fit again to open it.
 
 ## Good to know
 
-- **Text only.** The plugin ships no EVE data and no EVE images, and it never goes online. Everything on the card comes from the pasted text.
-- **Drones or cargo?** Without EVE data, drones and cargo look the same in a fit (both are "name x count"). When a fit has two such blocks, the first is shown as drones and the second as cargo; a single block is shown as "Drones / cargo".
+- **Offline.** The plugin never goes online. The card comes from the pasted text alone. The fitting wheel runs in Mumcord's sealed web view, which has no internet access: EVE's data, icons and ship renders are bundled in the plugin (`web/`), so a new EVE release needs a plugin update before new ships and modules show up.
+- **English item names.** The fitting wheel reads fits with English item names, as Pyfa and EVE in English export them. A fit it cannot read shows a short message; the card and Copy fitting still work.
+- **Drones or cargo?** On the card, drones and cargo look the same (both are "name x count"). When a fit has two such blocks, the first is shown as drones and the second as cargo; a single block is shown as "Drones / cargo".
 - **Sections** follow the EFT order: low, mid, high, rigs, subsystems. An `[Empty Mid slot]` style line places a section when the fit skips one.
 - **Only what you paste.** The plugin only receives chat messages that start with a fit header such as `[Rifter, Tackle]` (the "read chat messages that look like an EVE fit" permission). It never sees any other chat.
 
@@ -48,23 +50,42 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
 | `chat.patterns` | Receive channel messages that start with an EVE fit header, and nothing else. |
 | `ui.chat-card` | Show the fit card in the chat. |
 | `ui.dialog` | Show the full fit when you choose Open. |
+| `ui.webview` | Show the fitting wheel in the dialog, in a sealed web view without internet access. |
 
 ## Build and test
 
 ```sh
+web-src/build.sh                                       # rebuild web/ (Node 24+, see below)
 cargo test                                             # parser and card logic, natively
 cargo build --release --target wasm32-unknown-unknown  # the plugin module
 mumcord-plugin test                                    # the scenarios in scenarios/
 ```
 
+## The fitting wheel (`web/`)
+
+`web/` is built by `web-src/build.sh` and committed, so the package builds reproducibly from the source. The script:
+
+- installs the exact npm packages pinned in `web-src/package-lock.json` (npm checks their SHA-512 hashes): EVEShip.fit's `@eveshipfit/ui-ingame`, `react-hooks`, `fitting`, `sde-loader` and `dogma-engine`, EVE's data `@eveshipfit/sde` and icons `@eveshipfit/images`, and React;
+- bundles the page into `web/app.js` and `web/app.css` as classic scripts (the sealed frame cannot load modules);
+- wraps EVE's data and the calculator (WebAssembly) as base64 in `web/data/*.js`, because the page cannot fetch files;
+- downloads the 512 px ship renders from CCP's image server, checks them against `web-src/renders.lock` and converts them to WebP in `web/renders/`.
+
+`web-src/build.sh --check` rebuilds into a temporary folder and fails if `web/` differs. To update to a new EVE release, bump `@eveshipfit/sde` and `@eveshipfit/images` in `web-src/package.json`, run `npm install` there, then `web-src/build.sh --update-renders` (it records new or changed renders in `renders.lock`).
+
+The page gets the fit from the plugin over the web view bridge: it sends `ready`, and the plugin answers with `{"fit": "<EFT text>", "strings": {…}}`, the page's texts in the user's language.
+
 ## Translations
 
 All texts live in `i18n/<language>.json`, one file for each of Mumcord's 24 languages.
 
-## Trademarks
+## EVE Online data and trademarks
 
-EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. This plugin is not affiliated with or endorsed by CCP hf. It contains no EVE game data, names or images of its own; it only displays the fit text that users paste into the chat.
+© CCP hf. All rights reserved. "EVE", "EVE Online", "CCP", and all related logos and images are trademarks or registered trademarks of CCP hf.
+
+The fitting wheel bundles EVE Online game data (`@eveshipfit/sde`), icons (`@eveshipfit/images`) and ship renders from CCP's image server. They belong to CCP hf. and are used under CCP's [Developer License Agreement](https://developers.eveonline.com/license-agreement), which allows non-commercial use only: this plugin and Mumcord are free, without payment or advertising. The plugin is not affiliated with or endorsed by CCP hf. The fitting wheel page shows this notice below every fit.
 
 ## Licence
 
-AGPL-3.0-or-later, see [LICENSE](LICENSE).
+The plugin is AGPL-3.0-or-later, see [LICENSE](LICENSE).
+
+The fitting wheel bundles third-party code: EVEShip.fit's packages (MIT, © EVEShip.fit Team), React (MIT, © Meta Platforms, Inc. and affiliates) and FlatBuffers (Apache-2.0, © Google Inc.). Their licence texts and CCP's licence are in `web/licences.html` and under "Licences" on the page.

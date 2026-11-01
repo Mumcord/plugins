@@ -25,5 +25,10 @@
   "item.empty_one": "{{count}} wolny slot",
   "item.empty_few": "{{count}} wolne sloty",
   "item.empty_many": "{{count}} wolnych slotów",
-  "item.empty_other": "{{count}} wolnego slotu"
+  "item.empty_other": "{{count}} wolnego slotu",
+  "web.loading": "Ładowanie koła wyposażenia…",
+  "web.error": "Koło wyposażenia nie może wyświetlić tego fitu. Użyj Kopiuj fit, aby otworzyć go w EVE lub Pyfie.",
+  "web.licences": "Licencje",
+  "web.wheel": "Koło wyposażenia",
+  "web.stats": "Statystyki statku"
 }

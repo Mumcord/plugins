@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} slot livre",
   "item.empty_many": "{{count}} slots livres",
-  "item.empty_other": "{{count}} slots livres"
+  "item.empty_other": "{{count}} slots livres",
+  "web.loading": "A carregar a roda de equipamento…",
+  "web.error": "A roda de equipamento não consegue mostrar este fit. Use Copiar fit para o abrir no EVE ou no Pyfa.",
+  "web.licences": "Licenças",
+  "web.wheel": "Roda de equipamento",
+  "web.stats": "Estatísticas da nave"
 }

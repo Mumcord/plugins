@@ -25,5 +25,10 @@
   "item.empty_one": "{{count}} laisvas lizdas",
   "item.empty_few": "{{count}} laisvi lizdai",
   "item.empty_many": "{{count}} laisvo lizdo",
-  "item.empty_other": "{{count}} laisvų lizdų"
+  "item.empty_other": "{{count}} laisvų lizdų",
+  "web.loading": "Įkeliamas įrangos ratas…",
+  "web.error": "Įrangos ratas negali parodyti šio fito. Naudokite „Kopijuoti fitą“, kad atidarytumėte jį EVE arba Pyfa.",
+  "web.licences": "Licencijos",
+  "web.wheel": "Įrangos ratas",
+  "web.stats": "Laivo statistika"
 }

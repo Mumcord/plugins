@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} vapaa paikka",
-  "item.empty_other": "{{count}} vapaata paikkaa"
+  "item.empty_other": "{{count}} vapaata paikkaa",
+  "web.loading": "Varusteympyrää ladataan…",
+  "web.error": "Varusteympyrä ei voi näyttää tätä fittiä. Avaa se EVEssä tai Pyfassa Kopioi fitti -painikkeella.",
+  "web.licences": "Lisenssit",
+  "web.wheel": "Varusteympyrä",
+  "web.stats": "Aluksen tilastot"
 }

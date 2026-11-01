@@ -17,6 +17,7 @@ use mumcord_plugin_sdk::{
     log,
     types::{Error, StartInfo},
     ui::{self, El, Slot},
+    webview::{self, Place},
 };
 
 use app::{App, Host};
@@ -44,6 +45,14 @@ impl Host for Mumcord {
 
     fn open_dialog(&mut self, title: &str, subtitle: Option<&str>) -> Result<(), Error> {
         ui::open_dialog_with(title, subtitle)
+    }
+
+    fn show_webview(&mut self) -> Result<(), Error> {
+        webview::show(Place::Dialog, "index.html")
+    }
+
+    fn post_webview(&mut self, message: &str) -> Result<(), Error> {
+        webview::post(message)
     }
 
     fn warn(&mut self, message: &str) {
@@ -76,6 +85,7 @@ fn handle(app: &mut App, event: Event) {
             }
         }
         Event::DialogClosed => app.on_dialog_closed(),
+        Event::WebviewMessage(message) => app.on_webview_message(host, &message),
         _ => {}
     }
 }

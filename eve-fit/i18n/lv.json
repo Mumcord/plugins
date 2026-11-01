@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_zero": "{{count}} brīvu vietu",
   "item.empty_one": "{{count}} brīva vieta",
-  "item.empty_other": "{{count}} brīvas vietas"
+  "item.empty_other": "{{count}} brīvas vietas",
+  "web.loading": "Ielādē aprīkojuma ratu…",
+  "web.error": "Aprīkojuma rats nevar parādīt šo fitu. Izmantojiet “Kopēt fitu”, lai to atvērtu EVE vai Pyfa.",
+  "web.licences": "Licences",
+  "web.wheel": "Aprīkojuma rats",
+  "web.stats": "Kuģa statistika"
 }

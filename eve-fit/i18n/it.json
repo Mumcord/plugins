@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} slot libero",
   "item.empty_many": "{{count}} slot liberi",
-  "item.empty_other": "{{count}} slot liberi"
+  "item.empty_other": "{{count}} slot liberi",
+  "web.loading": "Caricamento della ruota di equipaggiamento…",
+  "web.error": "La ruota di equipaggiamento non può mostrare questo fit. Usa Copia fit per aprirlo in EVE o Pyfa.",
+  "web.licences": "Licenze",
+  "web.wheel": "Ruota di equipaggiamento",
+  "web.stats": "Statistiche della nave"
 }

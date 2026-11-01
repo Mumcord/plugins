@@ -24,5 +24,10 @@
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} emplacement libre",
   "item.empty_many": "{{count}} emplacements libres",
-  "item.empty_other": "{{count}} emplacements libres"
+  "item.empty_other": "{{count}} emplacements libres",
+  "web.loading": "Chargement de la roue d’équipement…",
+  "web.error": "La roue d’équipement ne peut pas afficher ce fit. Utilisez Copier le fit pour l’ouvrir dans EVE ou Pyfa.",
+  "web.licences": "Licences",
+  "web.wheel": "Roue d’équipement",
+  "web.stats": "Statistiques du vaisseau"
 }

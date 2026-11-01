@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} üres hely",
-  "item.empty_other": "{{count}} üres hely"
+  "item.empty_other": "{{count}} üres hely",
+  "web.loading": "Felszereléskerék betöltése…",
+  "web.error": "A felszereléskerék nem tudja megjeleníteni ezt a fitet. A Fit másolása gombbal megnyithatod EVE-ben vagy Pyfában.",
+  "web.licences": "Licencek",
+  "web.wheel": "Felszereléskerék",
+  "web.stats": "Hajóstatisztika"
 }

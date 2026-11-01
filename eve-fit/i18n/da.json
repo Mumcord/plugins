@@ -23,5 +23,10 @@
   "item.line": "{{count}}× {{name}}",
   "item.with_charge": "{{line}} · {{charge}}",
   "item.empty_one": "{{count}} ledig plads",
-  "item.empty_other": "{{count}} ledige pladser"
+  "item.empty_other": "{{count}} ledige pladser",
+  "web.loading": "Indlæser fitting-hjulet…",
+  "web.error": "Fitting-hjulet kan ikke vise dette fit. Brug Kopiér fit for at åbne det i EVE eller Pyfa.",
+  "web.licences": "Licenser",
+  "web.wheel": "Fitting-hjul",
+  "web.stats": "Skibsstatistik"
 }
