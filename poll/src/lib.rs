@@ -162,6 +162,7 @@ fn handle(app: &mut App, event: Event) {
             message.direct,
         ),
         Event::Joined(peer) => app.on_joined(host, &peer),
+        Event::PeerReady(peer) => app.on_peer_ready(host, &peer),
         Event::Left(peer) => app.on_left(host, &peer),
         Event::Timer(id) => app.on_timer(host, id),
         Event::SettingsChanged(settings) => app.set_granted(host, settings.granted),

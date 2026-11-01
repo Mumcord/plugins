@@ -768,6 +768,7 @@ fn no_resend_without_an_open_poll() {
     let mut app = App::default();
     let mut host = Fake::default();
     app.on_joined(&mut host, &peer(7, "Cy", None));
+    app.on_peer_ready(&mut host, &peer(7, "Cy", None));
     assert!(host.sent.is_empty());
 }
 

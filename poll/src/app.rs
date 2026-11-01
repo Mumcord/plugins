@@ -821,6 +821,12 @@ impl App {
         self.resend(host, peer.session, true);
     }
 
+    /// `peers.messages`: someone in the channel just started running Poll (e.g. installed it),
+    /// so the open poll sent earlier never reached them.
+    pub fn on_peer_ready(&mut self, host: &mut impl Host, peer: &Peer) {
+        self.resend(host, peer.session, true);
+    }
+
     /// `events.presence`: someone left. If it was a creator, their poll freezes.
     pub fn on_left(&mut self, host: &mut impl Host, peer: &Peer) {
         self.resend_timers.retain(|&(_, s)| s != peer.session);

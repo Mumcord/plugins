@@ -35,6 +35,10 @@ steps:
   - event: {joined: 3}
   - expect: {message: {to: 3, kind: 1}}
 
+  # Bob installs Poll after the poll was created: once his Mumcord announces it, he gets it too.
+  - event: {peer-ready: 2}
+  - expect: {message: {to: 2, kind: 1}}
+
   # Ending posts the result line and sends the final tally and the voter list.
   - event: {ui-action: {action: close}}
   - expect: {chat: {text: "Closed: Lunch?"}}
