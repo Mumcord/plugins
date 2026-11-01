@@ -39,7 +39,8 @@ Plugin logic is written in Rust and compiled to WebAssembly.
 
 - **Template:** [`template/`](template/) is the starting point that `mumcord-plugin new` copies.
 - **CLI:** `mumcord-plugin` creates, builds (reproducibly), checks and tests a plugin, and can serve a local registry to try it in the client.
-- **Docs:** [`docs/`](docs/) is the author documentation.
+- **Docs:** [`docs/`](docs/) holds the user guides and the author documentation, published at
+  [mumcord.github.io/plugins/docs](https://mumcord.github.io/plugins/docs/).
 
 ## Submitting a plugin
 
@@ -51,7 +52,8 @@ Propose your plugin with a pull request that adds its registry entry under `plug
 - `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `eve-fit/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
 - `policy/REVIEW.md`: review policy
 - `revoked.toml`: revoked plugin versions and keys
-- `docs/`: author documentation (Apache-2.0)
+- `docs/`: user guides and author documentation (Apache-2.0); `mkdocs.yml` and `docs-site/` build the
+  documentation site
 - `schemas/`: registry file schemas
 - `template/`: plugin template (Apache-2.0)
 - `assets/brand/`: banner and icon; `render.sh` rebuilds every PNG from the SVG masters
