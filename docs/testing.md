@@ -88,17 +88,47 @@ A step is one of:
   for a typed slash command, `value`), `peer-message` (`from`, `kind`, `text` or `hex`, optional
   `direct`), `joined`, `left`, `talking` (`session`, `talking`), `screen-share-started`,
   `chat-activity`, `mentioned`, `profile-card-opened`, `user-menu-requested` (each with a session
-  number), `panel-visibility` (`hidden`, `inline` or `expanded`), `dialog-closed` and `language`.
+  number), `chat-trigger` (`sender`, `trigger`, `args`) and `chat-match` (`sender`, `text`), both
+  with the chat options described [below](#chat-messages-in-scenarios), `panel-visibility` (`hidden`, `inline` or `expanded`), `dialog-closed` and `language`.
 - `wait:` pauses for the given milliseconds, for example to let a timer fire.
 - `expect:` checks the next output. It waits up to 1 s for a match after the previous one. Kinds:
   `tree` (`slot`, optional `text`, `nodes`), `cleared` (a slot), `message` (`to`: `channel` or a
   session number, `kind`, `text` or `hex`), `chat` (`text`), `notification` (`title`, `body`),
-  `dialog` (`title`), `menu-entry` (`label`), `log` (`contains`), `stopped` (optional `error`) and
+  `dialog` (`title`), `menu-entry` (`label`), `replaced` and `hidden` (see below), `log` (`contains`), `stopped` (optional `error`) and
   `nothing` (no output for a moment).
 
 Slots are written `panel`, `settings`, `dialog`, or with an argument: `member-badge: 2`,
 `profile-card: 2`, `chat-decoration: 2`, `chat-card: <id>`. Text fields match as substrings;
 message payloads match exactly.
+
+### Chat messages in scenarios
+
+`chat-trigger` and `chat-match` steps stand in for a user's chat line. The trigger word must be one
+of the manifest `triggers`, and for `chat-match` the first manifest pattern that matches `text`
+sets the pattern index.
+
+| Option | Meaning |
+|---|---|
+| `message: N` | Which chat message the line is. Defaults to the next unused number (1, 2, ...). The same number twice is the same message. `expect` steps use it to name the message. |
+| `replay: true` | The line comes from stored history, so `chat.is-replay` is true. As in the real host, only plugins that import `is-replay` get it. |
+| `own: true` | (`chat-match` only) Your plugin's own `[Name] ` line replayed from history, delivered with pattern index 255. Needs `chat.send` in the granted permissions; the step is refused without it. `sender` is not used. |
+
+Two more `expect` kinds check what the plugin did to a message:
+
+- `replaced: {message: N, card: ID}` the plugin called `chat.replace` for message N (`card` is
+  optional: any card matches when left out).
+- `hidden: {message: N}` the plugin called `chat.hide` for message N.
+
+```yaml
+steps:
+  - event: { chat-trigger: { sender: 2, trigger: "!poll", args: "2", message: 4 } }
+  - expect: { hidden: { message: 4 } }
+  # The same line again, now from history: nothing is counted twice
+  - event: { chat-trigger: { sender: 2, trigger: "!poll", args: "2", message: 4, replay: true } }
+  - expect: { hidden: { message: 4 } }
+  - event: { chat-match: { text: "[Poll] Lunch?", own: true, message: 5, replay: true } }
+  - expect: { replaced: { message: 5, card: poll } }
+```
 
 ### Preview the UI
 
