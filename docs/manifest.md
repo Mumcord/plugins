@@ -18,7 +18,7 @@ but `_other` is required everywhere. CI fails and lists missing languages and ke
 | `assets/**` | no | Images for `ui::image`, the plugin icon. At most 512 KiB each. SVGs are sanitised on install. |
 | `README.md`, `LICENSE` | official plugins | Recommended for every plugin. |
 
-Limits: the package is at most 5 MiB, unpacks to at most 8 MiB and holds at most 200 files.
+Limits: the package is at most 5 MiB, unpacks to at most 8 MiB and holds at most 200 files (official plugins: 400).
 Because SVGs are sanitised on install, the installed bytes can differ from the package bytes.
 
 ## `manifest.json`
