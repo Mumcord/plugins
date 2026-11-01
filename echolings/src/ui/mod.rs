@@ -39,7 +39,7 @@ pub struct Motion {
 
 impl Motion {
     /// Full plays everything, Subtle only the calm talking bob and nap, Still nothing.
-    fn allow(self, animation: Animation) -> Option<Animation> {
+    pub(crate) fn allow(self, animation: Animation) -> Option<Animation> {
         match self.level {
             _ if self.reduced => None,
             AnimationLevel::Still => None,
@@ -427,11 +427,11 @@ fn colour_select(
     ui::select(action, label, &options, Some(&selected.to_string()))
 }
 
-fn fraction(meter: u8) -> f32 {
+pub(crate) fn fraction(meter: u8) -> f32 {
     f32::from(meter) / f32::from(balance::METER_MAX)
 }
 
-fn species_key(species: Species) -> &'static str {
+pub(crate) fn species_key(species: Species) -> &'static str {
     match species {
         Species::Fizzle => "species.fizzle",
         Species::Burrble => "species.burrble",
@@ -451,11 +451,11 @@ fn trait_key(species: Species) -> &'static str {
     }
 }
 
-fn stage_key(stage: &str) -> String {
+pub(crate) fn stage_key(stage: &str) -> String {
     format!("stage.{stage}")
 }
 
-fn mood_key(mood: Mood) -> &'static str {
+pub(crate) fn mood_key(mood: Mood) -> &'static str {
     match mood {
         Mood::Sleeping => "mood.sleeping",
         Mood::Sleepy => "mood.sleepy",
