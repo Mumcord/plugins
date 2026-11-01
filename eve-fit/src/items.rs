@@ -6,15 +6,21 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use crate::eft::Section;
+use crate::names;
 
 const ITEMS: &str = include_str!("items.txt");
 
-/// The section an item with this English name belongs to: a slot for modules, `Drones` for
-/// drones and fighters, `Other` for implants and boosters. `None` for anything else (charges,
-/// deployables, …) and for names the data does not know.
+/// The section an item with this name, in English or another language EVE supports (see
+/// [`names`]), belongs to: a slot for modules, `Drones` for drones and fighters, `Other` for
+/// implants and boosters. `None` for anything else (charges, deployables, …) and for names the
+/// data does not know.
 pub fn section(name: &str) -> Option<Section> {
     static TABLE: OnceLock<HashMap<&'static str, Section>> = OnceLock::new();
-    TABLE.get_or_init(table).get(name).copied()
+    let table = TABLE.get_or_init(table);
+    table
+        .get(name)
+        .or_else(|| names::english(name).and_then(|english| table.get(english)))
+        .copied()
 }
 
 fn table() -> HashMap<&'static str, Section> {

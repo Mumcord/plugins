@@ -6,6 +6,7 @@ mod app;
 mod eft;
 mod history;
 mod items;
+mod names;
 mod view;
 
 #[cfg(test)]

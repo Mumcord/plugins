@@ -1,0 +1,29 @@
+# A fit copied from EVE's Japanese client names the ship and items in Japanese: the card sorts
+# them into their slots all the same, even with the blank lines lost, and Copy fitting keeps the
+# Japanese text.
+name: A fit from a non-English EVE client shows a card
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Kenji}
+
+steps:
+  - event:
+      chat-match:
+        sender: 2
+        text: &fit |
+          [リフター, タックル]
+          ダメージ制御II
+          回転制御機II
+          5MNマイクロワープドライブII
+          ワープスクランブラーII
+          200mmオートキャノンII, 共和国海軍仕様EMP弾S
+          200mmオートキャノンII, 共和国海軍仕様EMP弾S
+          小型プロジェクタイルバーストエアレーターI
+          ウォリアーII x3
+          ナノマシンリペアペイスト x50
+  # Without blank lines only EVE's data can tell the rig from the high slot modules.
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Rigs 1/1"}}
+
+  - copy: {label: Copy fitting, slot: {chat-card: fit-1}}
+  - expect: {copied: {text: *fit}}
+  - expect: nothing

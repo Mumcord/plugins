@@ -10,6 +10,7 @@ use mumcord_plugin_sdk::{
 use crate::app::{App, Host, KEPT_FITS, WEBVIEW_READY, card_id};
 use crate::eft::{self, Item, MAX_LINES, MAX_TEXT_BYTES, Section};
 use crate::history::{self, INDEX_KEY, MAX_ENTRIES, Store};
+use crate::names;
 use crate::view;
 
 /// The game's own "Copy to clipboard" export: empty slots, charges, drones and cargo.
@@ -1047,4 +1048,111 @@ fn a_replayed_fit_gets_a_card_but_stays_out_of_the_history() {
         ["fit-1", "fit-2", "fit-3", "fit-4"]
     );
     assert!(texts(host.last_card("fit-4")).contains(&"Old · pasted by Carol".to_owned()));
+}
+
+// --- Fits from non-English EVE clients ---------------------------------------------------------
+
+/// `MAMBA_WITHOUT_BLANK_LINES` as EVE's Japanese client names the items, from EVE's data.
+const MAMBA_JAPANESE: &str = "[マンバ, *Mamba Class 2/3]
+ドローンダメージ増幅器II
+ドローンダメージ増幅器II
+ピソムCタイプ中型シールドブースター
+ピソムC型EMシールド増幅器
+小型キャパシタブースターII
+ピスX型エクスプローシブ・シールドハードナー
+ロケットランチャーII
+ロケットランチャーII
+ロケットランチャーII
+ロケットランチャーII
+ロケットランチャーII
+小型EMシールドレインフォーサーII
+小型エクスプローシブ・シールドレインフォーサーII
+小型サーマル・シールドレインフォーサーII
+連邦海軍仕様ホブゴブリン x2
+「強化型」ホブゴブリン x2
+インフェルノレイジロケット x5000
+海軍仕様キャップブースター400 x16
+インフェルノジャベリンロケット x5000
+ピスX型エクスプローシブ・シールドハードナー x1
+移動式貯蔵所 x1";
+
+#[test]
+fn a_german_fit_uses_the_english_names() {
+    // EVE's German (and Russian) client names ships and modules in English, so the German export
+    // of the Mamba is the English one and goes to the page unchanged.
+    let fit = eft::parse(MAMBA_WITHOUT_BLANK_LINES).expect("a fit");
+    assert_eq!(fit.groups.len(), 6);
+    assert!(matches!(
+        names::canonical(MAMBA_WITHOUT_BLANK_LINES),
+        std::borrow::Cow::Borrowed(_)
+    ));
+    assert!(matches!(
+        names::canonical(LEGION),
+        std::borrow::Cow::Borrowed(_)
+    ));
+}
+
+#[test]
+fn a_japanese_fit_is_sorted_like_the_english_one() {
+    let japanese = eft::parse(MAMBA_JAPANESE).expect("a fit");
+    let english = eft::parse(MAMBA_WITHOUT_BLANK_LINES).expect("a fit");
+    let sections = |fit: &eft::Fit| -> Vec<(Section, u32)> {
+        fit.groups.iter().map(|g| (g.section, g.filled())).collect()
+    };
+    assert_eq!(sections(&japanese), sections(&english));
+    // The card shows the names as pasted.
+    assert_eq!(japanese.ship, "マンバ");
+    assert_eq!(
+        group(&japanese, Section::High).items,
+        [item("ロケットランチャーII", None, 5)]
+    );
+}
+
+#[test]
+fn a_localized_fit_reaches_the_page_in_english() {
+    assert_eq!(names::canonical(MAMBA_JAPANESE), MAMBA_WITHOUT_BLANK_LINES);
+    let french = "[Legion, Armor HAM]\r
+Dissipateur thermique II\r
+\r
+Générateur de stase II /OFFLINE\r
+\r
+Lance-missiles d'assaut lourd II, Missile d'assaut lourd Scourge Rage\r
+Pompe de blindage Trimark intermédiaire I [1]\r
+Legion Nucléus – Réacteur à antimatière augmenté\r
+\r
+Hammerhead II x5\r
+Inconnu, Unbekannt\r
+";
+    let english = "[Legion, Armor HAM]\r
+Heat Sink II\r
+\r
+Stasis Webifier II /OFFLINE\r
+\r
+Heavy Assault Missile Launcher II, Scourge Rage Heavy Assault Missile\r
+Medium Trimark Armor Pump I [1]\r
+Legion Core - Augmented Antimatter Reactor\r
+\r
+Hammerhead II x5\r
+Inconnu, Unbekannt\r
+";
+    assert_eq!(names::canonical(french), english);
+    // Korean and Chinese, with the no-break spaces chat clients sometimes put in.
+    assert_eq!(names::canonical("[리프터, 태클]"), "[Rifter, 태클]");
+    assert_eq!(
+        names::canonical("损伤控制\u{a0}II x2"),
+        "Damage Control II x2"
+    );
+    assert_eq!(names::english("ninguno"), None);
+    assert_eq!(names::english("Damage Control II"), None);
+}
+
+#[test]
+fn the_page_gets_a_japanese_fit_in_english_and_copy_keeps_the_original() {
+    let mut app = App::default();
+    let mut host = web_host();
+    app.on_chat_match(&mut host, "Kenji", MAMBA_JAPANESE);
+    assert_eq!(copy_text(host.last_card(&card_id(1))), Some(MAMBA_JAPANESE));
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    assert_eq!(posted(&host)["fit"], MAMBA_WITHOUT_BLANK_LINES);
 }

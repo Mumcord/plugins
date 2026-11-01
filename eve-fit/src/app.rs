@@ -7,6 +7,7 @@ use mumcord_plugin_sdk::{events::Event, i18n::Strings, types::Error, ui::El};
 
 use crate::eft::{self, Fit};
 use crate::history::{History, Store};
+use crate::names;
 use crate::view;
 
 /// Fits kept for their Open button; older cards lose the button. A fit is at most 4 KiB.
@@ -291,7 +292,9 @@ impl App {
         let Some(pasted) = &self.open else {
             return;
         };
-        let message = view::webview_message(&self.strings, &self.language, &pasted.text);
+        // The page reads English names only; Copy fitting keeps the text as pasted.
+        let fit = names::canonical(&pasted.text);
+        let message = view::webview_message(&self.strings, &self.language, &fit);
         if let Err(e) = host.post_webview(&message) {
             host.warn(&format!(
                 "could not send the fit to the fitting wheel: {e:?}"

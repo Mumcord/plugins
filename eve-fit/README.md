@@ -38,8 +38,8 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
 
 ## Good to know
 
-- **Offline.** The plugin never goes online. The card comes from the pasted text and a list of EVE's item names bundled in the plugin. The fitting wheel runs in Mumcord's sealed web view, which has no internet access: EVE's data, icons and ship renders are bundled in the plugin (`web/`), so a new EVE release needs a plugin update before new ships and modules show up.
-- **English item names.** The fitting wheel reads fits with English item names, as Pyfa and EVE in English export them. A fit it cannot read shows a short message; the card and Copy fitting still work.
+- **Offline.** The plugin never goes online. The card comes from the pasted text and the lists of EVE's item names bundled in the plugin. The fitting wheel runs in Mumcord's sealed web view, which has no internet access: EVE's data, icons and ship renders are bundled in the plugin (`web/`), so a new EVE release needs a plugin update before new ships and modules show up.
+- **Any EVE language.** Fits copied from EVE in another language (French, Spanish, Japanese, Chinese, Korean; the German and Russian clients use the English item names) work too: the plugin bundles the item names in every language EVE supports, sorts the items by them and hands the fitting wheel the fit with English names. The card and Copy fitting keep the fit as it was pasted. A fit the fitting wheel still cannot read shows a short message; the card and Copy fitting still work.
 - **Sections.** Each item goes where EVE's data says it goes (low, mid, high, rigs, subsystems, drones, cargo, implants), so a fit still comes out right when its blank lines got lost on the way through the chat. Items the data does not know follow the EFT layout: blank-line separated sections in the order low, mid, high, rigs, subsystems, with an `[Empty Mid slot]` style line placing a section when the fit skips one. Of two "name x count" blocks the first is drones and the second cargo; a single block of unknown items is shown as "Drones / cargo".
 - **Only what you paste.** The plugin only receives chat messages that start with a fit header such as `[Rifter, Tackle]` (the "read chat messages that look like an EVE fit" permission). It never sees any other chat.
 
@@ -68,6 +68,7 @@ mumcord-plugin test                                    # the scenarios in scenar
 
 - installs the exact npm packages pinned in `web-src/package-lock.json` (npm checks their SHA-512 hashes): EVEShip.fit's `@eveshipfit/ui-ingame`, `react-hooks`, `fitting`, `sde-loader` and `dogma-engine`, EVE's data `@eveshipfit/sde` and icons `@eveshipfit/images`, and React;
 - bundles the page into `web/app.js` and `web/app.css` as classic scripts (the sealed frame cannot load modules);
+- writes `src/items.txt` (where each module goes) and `src/names.txt` (item names in EVE's other languages) from EVE's data, which the plugin embeds;
 - wraps EVE's data and the calculator (WebAssembly) as base64 in `web/data/*.js`, because the page cannot fetch files;
 - downloads the 512 px ship renders from CCP's image server, checks them against `web-src/renders.lock` and converts them to WebP in `web/renders/`.
 
