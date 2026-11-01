@@ -32,7 +32,7 @@ struct Mock {
     deleted_secrets: Vec<String>,
     trees: BTreeMap<String, El>,
     dialogs: Vec<String>,
-    menu: Option<Option<String>>,
+    menu: Option<(String, Vec<u32>)>,
     channel: Vec<Peer>,
     notes: Vec<String>,
     refuse_http: Option<Error>,
@@ -81,8 +81,8 @@ impl Host for Mock {
     fn open_dialog(&mut self, title: &str) {
         self.dialogs.push(title.into());
     }
-    fn set_menu_entry(&mut self, label: Option<&str>) {
-        self.menu = Some(label.map(str::to_owned));
+    fn set_menu_entry(&mut self, label: &str, sessions: &[u32]) {
+        self.menu = Some((label.to_owned(), sessions.to_vec()));
     }
     fn presence(&mut self) -> Vec<Peer> {
         self.channel.clone()
@@ -216,7 +216,7 @@ fn configured() -> (App, Mock) {
 #[test]
 fn start_adds_the_menu_entry_and_an_empty_settings_list() {
     let (_, host) = setup();
-    assert_eq!(host.menu, Some(Some(t("configure_bot"))));
+    assert_eq!(host.menu, Some((t("configure_bot"), vec![])));
     assert!(
         host.texts(Slot::Settings)
             .iter()
@@ -710,6 +710,27 @@ fn language_change_sets_the_menu_entry_again() {
     let (mut app, mut host) = setup();
     crate::text::set_language("de");
     app.language_changed(&mut host);
-    assert_eq!(host.menu, Some(Some("Bot konfigurieren".into())));
+    assert_eq!(host.menu.map(|m| m.0), Some("Bot konfigurieren".into()));
     crate::text::set_language("en");
+}
+
+#[test]
+fn saving_and_removing_a_bot_updates_the_menu_sessions() {
+    let (mut app, mut host) = configured();
+    assert_eq!(host.menu, Some((t("configure_bot"), vec![7])));
+    app.settings_action(
+        &mut host,
+        &format!("remove:{STORAGE_KEY}"),
+        ActionValue::None,
+    );
+    assert_eq!(host.menu, Some((t("configure_bot"), vec![])));
+}
+
+#[test]
+fn a_saved_bot_joining_with_a_new_session_is_listed_and_leaving_drops_it() {
+    let (mut app, mut host) = configured();
+    app.joined(&mut host, bot(9));
+    assert_eq!(host.menu, Some((t("configure_bot"), vec![7, 9])));
+    app.left(&mut host, &bot(7));
+    assert_eq!(host.menu, Some((t("configure_bot"), vec![9])));
 }

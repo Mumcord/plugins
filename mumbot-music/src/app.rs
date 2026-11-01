@@ -40,7 +40,7 @@ pub trait Host {
     fn delete_secret(&mut self, name: &str);
     fn show(&mut self, slot: Slot, tree: El);
     fn open_dialog(&mut self, title: &str);
-    fn set_menu_entry(&mut self, label: Option<&str>);
+    fn set_menu_entry(&mut self, label: &str, sessions: &[u32]);
     /// The users in the user's channel, the user first.
     fn presence(&mut self) -> Vec<Peer>;
     fn notify(&mut self, title: &str, body: &str);
@@ -159,13 +159,13 @@ pub struct App {
 impl App {
     pub fn start(&mut self, host: &mut impl Host) {
         self.interval = POLL_MS;
-        host.set_menu_entry(Some(&t("configure_bot")));
+        self.refresh_menu_entry(host);
         self.render_settings(host);
     }
 
-    /// The menu entry label is set once, so it has to be set again in the new language.
+    /// The menu entry label is translated, so it has to be set again in the new language.
     pub fn language_changed(&mut self, host: &mut impl Host) {
-        host.set_menu_entry(Some(&t("configure_bot")));
+        self.refresh_menu_entry(host);
         self.update(host);
         self.render_settings(host);
     }
@@ -313,6 +313,7 @@ impl App {
                         forget_bot(host, &bot);
                         dialog.mode = Mode::Setup(Setup::new(None));
                         self.generation += 1;
+                        self.refresh_menu_entry(host);
                         self.render_settings(host);
                         None
                     }
@@ -364,6 +365,7 @@ impl App {
                 }
                 "remove" => {
                     forget_bot(host, &bot);
+                    self.refresh_menu_entry(host);
                     if self.settings_edit.as_ref().is_some_and(|e| e.bot == bot) {
                         self.settings_edit = None;
                     }
@@ -507,6 +509,7 @@ impl App {
         }
         dialog.mode = Mode::Player(new_player(config));
         self.generation += 1;
+        self.refresh_menu_entry(host);
         self.render_settings(host);
     }
 
@@ -572,7 +575,29 @@ impl App {
             .any(|p| bot.matches(self.server.as_deref(), p.key.as_deref()))
     }
 
+    /// Offers "Configure bot" on mumbot music bots (announced in their hello) and on users in
+    /// my channel that are already saved bots; the host re-checks the list on every change.
+    fn refresh_menu_entry(&mut self, host: &mut impl Host) {
+        let saved: Vec<BotId> = host
+            .keys(bots::PREFIX)
+            .iter()
+            .filter_map(|key| BotId::from_storage_key(key))
+            .collect();
+        let sessions: Vec<u32> = self
+            .members
+            .iter()
+            .filter(|p| {
+                saved
+                    .iter()
+                    .any(|bot| bot.matches(self.server.as_deref(), p.key.as_deref()))
+            })
+            .map(|p| p.session)
+            .collect();
+        host.set_menu_entry(&t("configure_bot"), &sessions);
+    }
+
     fn presence_changed(&mut self, host: &mut impl Host) {
+        self.refresh_menu_entry(host);
         let Some(bot) = self.dialog.as_ref().map(|d| d.bot.clone()) else {
             return;
         };

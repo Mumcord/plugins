@@ -21,7 +21,7 @@ use mumcord_plugin_sdk::{
     storage::{self, Scope},
     timers,
     types::{Error, Peer, StartInfo},
-    ui::{self, El, Slot},
+    ui::{self, El, Slot, UserMenuFilter},
 };
 
 use app::{App, Host};
@@ -91,8 +91,13 @@ impl Host for Mumcord {
         }
     }
 
-    fn set_menu_entry(&mut self, label: Option<&str>) {
-        if let Err(e) = ui::set_user_menu_entry(label) {
+    fn set_menu_entry(&mut self, label: &str, sessions: &[u32]) {
+        let filter = UserMenuFilter {
+            bot_name: Some("mumbot".into()),
+            bot_module: Some("music".into()),
+            sessions: sessions.to_vec(),
+        };
+        if let Err(e) = ui::set_user_menu_entry_for(label, &filter) {
             log::error(&format!("could not add the menu entry: {e:?}"));
         }
     }
