@@ -333,12 +333,13 @@ impl Pet {
     }
 
     /// Asset path of the pet's picture; `small` is the tight crop with thick outlines for badges.
-    pub fn asset(&self, small: bool) -> String {
+    pub fn asset(&self, small: bool, asleep: bool) -> String {
         asset_path(
             self.species.id(),
             self.stage().id(),
             self.colour_id(),
             small,
+            asleep,
         )
     }
 
@@ -615,7 +616,8 @@ impl Pet {
 pub const SMALL_MAX: u16 = 32;
 
 /// Shared by the user's own pet and other people's cards so both use the same files.
-pub fn asset_path(species: &str, stage: &str, colour: &str, small: bool) -> String {
+pub fn asset_path(species: &str, stage: &str, colour: &str, small: bool, asleep: bool) -> String {
+    let sleep = if asleep { "-sleep" } else { "" };
     let size = if small { "-small" } else { "" };
-    format!("assets/pets/{species}-{stage}-{colour}{size}.svg")
+    format!("assets/pets/{species}-{stage}-{colour}{sleep}{size}.svg")
 }

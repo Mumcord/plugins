@@ -55,8 +55,9 @@ fn species_ids_round_trip_and_assets_exist() {
                 let mut pet = Pet::hatch("A".into(), species, 0, at(T0));
                 pet.bond = bond;
                 pet.colour = colour;
-                for small in [false, true] {
-                    let file = pet.asset(small);
+                for (small, asleep) in [(false, false), (true, false), (false, true), (true, true)]
+                {
+                    let file = pet.asset(small, asleep);
                     let name = file.strip_prefix("assets/pets/").unwrap();
                     assert!(assets.join(name).is_file(), "missing {file}");
                 }

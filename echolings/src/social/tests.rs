@@ -42,8 +42,22 @@ fn card_round_trips_and_stays_under_100_bytes() {
     assert_eq!(Card::decode(&bytes), Some(longest));
     let c = card("Biscuit");
     assert_eq!(c.stage(), Stage::Echo);
-    assert_eq!(c.asset(false), "assets/pets/hushmoth-echo-aurora.svg");
-    assert_eq!(c.asset(true), "assets/pets/hushmoth-echo-aurora-small.svg");
+    assert_eq!(
+        c.asset(false, false),
+        "assets/pets/hushmoth-echo-aurora.svg"
+    );
+    assert_eq!(
+        c.asset(true, false),
+        "assets/pets/hushmoth-echo-aurora-small.svg"
+    );
+    assert_eq!(
+        c.asset(false, true),
+        "assets/pets/hushmoth-echo-aurora-sleep.svg"
+    );
+    assert_eq!(
+        c.asset(true, true),
+        "assets/pets/hushmoth-echo-aurora-sleep-small.svg"
+    );
 }
 
 #[test]

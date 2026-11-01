@@ -43,20 +43,16 @@ impl OtherView<'_> {
     }
 
     fn picture(&self, size: u16) -> El {
+        let asleep = self.pet.card.mood == Mood::Sleeping;
         let image = ui::image(
-            &self.pet.card.asset(size <= SMALL_MAX),
+            &self.pet.card.asset(size <= SMALL_MAX, asleep),
             &self.label(),
             size,
             size,
         );
-        let image = match self.animation() {
+        match self.animation() {
             Some(animation) => image.animate(animation),
             None => image,
-        };
-        if self.pet.card.mood == Mood::Sleeping {
-            crate::ui::with_zzz(image, size, &self.t.t("mood.sleeping"))
-        } else {
-            image
         }
     }
 

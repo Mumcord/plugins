@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the Echoling pet art: one SVG per species, stage and colour, plus a small variant.
+"""Generates the Echoling pet art: one SVG per species, stage and colour, plus a small variant and closed-eye sleeping variants of both.
 
 Usage: python3 art/generate.py  (run from the echolings folder; writes assets/pets/*.svg)
 
@@ -68,9 +68,10 @@ SW_SMALL = 6.0  # Thicker outline so the badge keeps its shape at 16 px.
 class Pen:
     """Drawing settings for one file: palette, outline width and whether it is the small variant."""
 
-    def __init__(self, p, small):
+    def __init__(self, p, small, sleep=False):
         self.p = p
         self.small = small
+        self.sleep = sleep
         self.sw = SW_SMALL if small else SW
 
     def outline(self, factor=1.0):
@@ -89,6 +90,8 @@ def sparkle(x, y, r, colour):
 def eyes(pen, cx, cy, spread, kind):
     big = 1.35 if pen.small else 1.0
     out = ""
+    if pen.sleep and kind != "sleepy":
+        kind = "sleepy"
     for x in (cx - spread, cx + spread):
         if kind == "open":
             out += f'<ellipse cx="{x}" cy="{cy}" rx="{4.4 * big:.1f}" ry="{5.3 * big:.1f}" fill="{INK}"/>'
@@ -343,8 +346,20 @@ def aura(pen):
     return ring + sparkle(20, 22, 8, GOLD) + sparkle(108, 18, 5, "#ff8fc4") + sparkle(114, 100, 4.5, GOLD) + sparkle(12, 96, 3.5, "#ff8fc4")
 
 
-def svg(species, stage, p, small):
-    pen = Pen(p, small)
+def zzz(pen, stage):
+    """The "z z" of a sleeping pet, top right, inside the crop of every stage."""
+    x, y, k = (84, 22, 0.85) if pen.small and stage == "hum" else (92, 4, 1.0)
+    big = f"M{x} {y + 14 * k:.1f}h{11 * k:.1f}l{-11 * k:.1f} {11 * k:.1f}h{11 * k:.1f}"
+    small = f"M{x + 15 * k:.1f} {y:.1f}h{8 * k:.1f}l{-8 * k:.1f} {8 * k:.1f}h{8 * k:.1f}"
+    out = ""
+    for d, w in ((big, 2.0), (small, 1.6)):
+        out += f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{w * 2.6:.1f}" stroke-linejoin="round" stroke-linecap="round"/>'
+        out += f'<path d="{d}" fill="none" stroke="{WHITE}" stroke-width="{w:.1f}" stroke-linejoin="round" stroke-linecap="round"/>'
+    return out
+
+
+def svg(species, stage, p, small, sleep=False):
+    pen = Pen(p, small, sleep)
     defs = body_gradient(p)
     if not small:
         defs += (
@@ -369,6 +384,8 @@ def svg(species, stage, p, small):
     else:
         x, y, s = SMALL_VIEW[stage]
         view = f"{x} {y} {s} {s}"
+    if sleep:
+        inner += zzz(pen, stage)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view}" width="128" height="128">'
         f"<defs>{defs}</defs>{inner}</svg>\n"
@@ -382,6 +399,8 @@ def main():
             for stage in STAGES:
                 (OUT / f"{species}-{stage}-{colour}.svg").write_text(svg(species, stage, p, False))
                 (OUT / f"{species}-{stage}-{colour}-small.svg").write_text(svg(species, stage, p, True))
+                (OUT / f"{species}-{stage}-{colour}-sleep.svg").write_text(svg(species, stage, p, False, True))
+                (OUT / f"{species}-{stage}-{colour}-sleep-small.svg").write_text(svg(species, stage, p, True, True))
 
 
 if __name__ == "__main__":

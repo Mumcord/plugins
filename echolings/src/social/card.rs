@@ -54,13 +54,14 @@ impl Card {
     }
 
     /// Asset path of the pet's picture, the same files the user's own pet uses.
-    pub fn asset(&self, small: bool) -> String {
+    pub fn asset(&self, small: bool, asleep: bool) -> String {
         let colours = self.species.colours();
         crate::pet::asset_path(
             self.species.id(),
             self.stage().id(),
             colours[usize::from(self.colour).min(colours.len() - 1)],
             small,
+            asleep,
         )
     }
 
