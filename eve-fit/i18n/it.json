@@ -30,6 +30,8 @@
   "web.licences": "Licenze",
   "web.wheel": "Ruota di equipaggiamento",
   "web.stats": "Statistiche della nave",
+  "web.drone_bay": "Stiva droni",
+  "web.cargo_hold": "Stiva",
   "panel.last": "Ultimo fit: {{fit}}",
   "panel.none": "Ancora nessun fit. I fit incollati nella chat appaiono qui.",
   "panel.history": "Cronologia dei fit",

@@ -29,6 +29,8 @@
   "web.licences": "Litsentsid",
   "web.wheel": "Varustusratas",
   "web.stats": "Laeva statistika",
+  "web.drone_bay": "Droonilaht",
+  "web.cargo_hold": "Lastiruum",
   "panel.last": "Viimane fit: {{fit}}",
   "panel.none": "Fitte veel pole. Vestlusse kleebitud fitid ilmuvad siia.",
   "panel.history": "Fittide ajalugu",

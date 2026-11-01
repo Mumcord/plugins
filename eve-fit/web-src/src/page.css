@@ -41,7 +41,6 @@ main {
     min(560px, calc((100vw - 24px) * 572 / 684), calc((100vh - 64px) * 572 / 640))
   );
   --esf-wheel-size: var(--wheel-size);
-  flex: 0 0 auto;
   padding: calc(var(--wheel-size) * 34 / 572) calc(var(--wheel-size) * 56 / 572);
 }
 
@@ -59,6 +58,50 @@ main {
   flex: 1 1 280px;
   max-width: 320px;
   min-width: 280px;
+}
+
+.fitting {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/*
+ * The drone bay and cargo below the wheel, side by side when there is room, as wide as the
+ * statistics; one item per row, its quantity on the right. The sections bring their own top margin.
+ */
+.bays {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 16px;
+}
+
+.bays > * {
+  flex: 0 1 280px;
+  min-width: 0;
+}
+
+.bay {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bay li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.bay-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bay-quantity {
+  font-variant-numeric: tabular-nums;
 }
 
 .status {

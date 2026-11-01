@@ -29,7 +29,7 @@ Official Mumcord plugin: EVE Online ship fits pasted into the chat become a tidy
   ```
 
 - Below the message, Mumcord shows a card with the ship, the fit name and who pasted it, a slot summary (for example "Low 2/3 · Mid 2/2 · High 2/3 · Rigs 1/1 · Drones 3") and the most common modules.
-- **Open** shows the fit in a dialog the way EVEShip.fit does: the ship render inside the fitting wheel with every module icon in its slot, hardpoints, CPU and power grid, and the statistics for capacitor, offence, defence, targeting, navigation and drones (calculated with all skills at level V). The view is read-only.
+- **Open** shows the fit in a dialog the way EVEShip.fit does: the ship render inside the fitting wheel with every module icon in its slot, hardpoints, CPU and power grid, and the statistics for capacitor, offence, defence, targeting, navigation and drones (calculated with all skills at level V). Below the wheel, the drone bay and the cargo hold list their items with icons and counts. The view is read-only.
 - If Mumcord cannot show the fitting wheel (for example when the web view permission is turned off), **Open** shows the fit as a list instead: every section with its modules and counts, loaded charges, offline modules, empty slots, drones and cargo.
 - **Copy fitting**, on the card and in the list, copies the fit exactly as it was pasted, ready to import into EVE (Fittings → Import from clipboard) or Pyfa. Mumcord does the copying when you click; the plugin never touches your clipboard.
 - The pasted text stays in the chat as it is, so people on the official Mumble client, or on Mumcord without the plugin, see the plain fit.
@@ -74,7 +74,7 @@ mumcord-plugin test                                    # the scenarios in scenar
 
 `web-src/build.sh --check` rebuilds into a temporary folder and fails if `web/` differs. To update to a new EVE release, bump `@eveshipfit/sde` and `@eveshipfit/images` in `web-src/package.json`, run `npm install` there, then `web-src/build.sh --update-renders` (it records new or changed renders in `renders.lock`).
 
-The page gets the fit from the plugin over the web view bridge: it sends `ready`, and the plugin answers with `{"fit": "<EFT text>", "strings": {…}}`, the page's texts in the user's language.
+The page gets the fit from the plugin over the web view bridge: it sends `ready`, and the plugin answers with `{"fit": "<EFT text>", "strings": {…}}`, the page's texts in the user's language. The fit goes with English item names, and drones that share a block with cargo get a block of their own, because EVEShip.fit puts such a mixed block into the cargo.
 
 ## Translations
 

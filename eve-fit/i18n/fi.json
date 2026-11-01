@@ -29,6 +29,8 @@
   "web.licences": "Lisenssit",
   "web.wheel": "Varusteympyrä",
   "web.stats": "Aluksen tilastot",
+  "web.drone_bay": "Lennokkitila",
+  "web.cargo_hold": "Lastiruuma",
   "panel.last": "Viimeisin fitti: {{fit}}",
   "panel.none": "Ei vielä fittejä. Chattiin liitetyt fitit näkyvät tässä.",
   "panel.history": "Fittihistoria",

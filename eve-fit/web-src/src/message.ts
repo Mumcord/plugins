@@ -7,6 +7,8 @@ export interface Strings {
   readonly licences: string;
   readonly wheel: string;
   readonly stats: string;
+  readonly drones: string;
+  readonly cargo: string;
 }
 
 export interface ViewMessage {
@@ -14,7 +16,7 @@ export interface ViewMessage {
   readonly strings: Strings;
 }
 
-const STRING_KEYS = ["lang", "loading", "error", "licences", "wheel", "stats"] as const;
+const STRING_KEYS = ["lang", "loading", "error", "licences", "wheel", "stats", "drones", "cargo"] as const;
 
 /** The message, or undefined for anything that is not one (bridge data is untrusted). */
 export function parseMessage(data: unknown): ViewMessage | undefined {

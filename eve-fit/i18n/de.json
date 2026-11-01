@@ -29,6 +29,8 @@
   "web.licences": "Lizenzen",
   "web.wheel": "Fitting-Rad",
   "web.stats": "Schiffswerte",
+  "web.drone_bay": "Drohnenhangar",
+  "web.cargo_hold": "Frachtraum",
   "panel.last": "Letztes Fitting: {{fit}}",
   "panel.none": "Noch keine Fittings. Im Chat gepostete Fittings erscheinen hier.",
   "panel.history": "Fitting-Verlauf",

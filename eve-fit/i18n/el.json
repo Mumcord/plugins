@@ -29,6 +29,8 @@
   "web.licences": "Άδειες",
   "web.wheel": "Τροχός εξοπλισμού",
   "web.stats": "Στατιστικά πλοίου",
+  "web.drone_bay": "Χώρος drones",
+  "web.cargo_hold": "Αμπάρι φορτίου",
   "panel.last": "Τελευταίο fit: {{fit}}",
   "panel.none": "Δεν υπάρχουν ακόμη fits. Τα fits που επικολλώνται στη συνομιλία εμφανίζονται εδώ.",
   "panel.history": "Ιστορικό fits",

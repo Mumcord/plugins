@@ -30,6 +30,8 @@
   "web.licences": "Licences",
   "web.wheel": "Roue d’équipement",
   "web.stats": "Statistiques du vaisseau",
+  "web.drone_bay": "Baie de drones",
+  "web.cargo_hold": "Soute",
   "panel.last": "Dernier fit : {{fit}}",
   "panel.none": "Aucun fit pour l'instant. Les fits collés dans le chat apparaissent ici.",
   "panel.history": "Historique des fits",

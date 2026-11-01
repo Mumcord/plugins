@@ -1,5 +1,7 @@
 //! Native tests of the EFT parser and the card/dialog logic against a recording fake host.
 
+use std::borrow::Cow;
+
 use mumcord_plugin_sdk::{
     events::Event,
     i18n::Strings,
@@ -69,6 +71,33 @@ High-grade Slave Alpha\r
 \r
 Scourge Rage Heavy Assault Missile x2000\r
 ";
+
+/// A user's Algos fit: one block for drones and cargo together, and loaded charges.
+const ALGOS: &str = "[Algos, Alpha FW Drones]
+Light Neutron Blaster II, Antimatter Charge S
+Light Neutron Blaster II, Antimatter Charge S
+Light Neutron Blaster II, Antimatter Charge S
+Light Neutron Blaster II, Antimatter Charge S
+Light Neutron Blaster II, Antimatter Charge S
+
+5MN Y-T8 Compact Microwarpdrive
+Initiated Compact Warp Scrambler
+Fleeting Compact Stasis Webifier
+
+IFFA Compact Damage Control
+Drone Damage Amplifier II
+Small Ancillary Armor Repairer, Nanite Repair Paste
+
+Small Trimark Armor Pump I
+Small Trimark Armor Pump I
+Small Hybrid Collision Accelerator I
+
+Hammerhead I x2
+Hobgoblin II x5
+Antimatter Charge S x2000
+Iridium Charge S x2000
+Lead Charge S x2000
+Nanite Repair Paste x50";
 
 fn group(fit: &eft::Fit, section: Section) -> &eft::Group {
     fit.group(section)
@@ -167,6 +196,61 @@ fn a_single_bay_is_split_by_the_data_or_stays_drones_or_cargo() {
         .expect("a fit");
     assert_eq!(group(&fit, Section::DronesOrCargo).filled(), 5);
     assert!(fit.group(Section::Drones).is_none());
+}
+
+#[test]
+fn a_block_of_drones_and_cargo_is_split_by_the_data_and_charges_stay_loaded() {
+    let fit = eft::parse(ALGOS).expect("a fit");
+    assert_eq!(
+        group(&fit, Section::Drones).items,
+        [item("Hammerhead I", None, 2), item("Hobgoblin II", None, 5)]
+    );
+    assert_eq!(
+        group(&fit, Section::Cargo).items,
+        [
+            item("Antimatter Charge S", None, 2000),
+            item("Iridium Charge S", None, 2000),
+            item("Lead Charge S", None, 2000),
+            item("Nanite Repair Paste", None, 50),
+        ]
+    );
+    assert_eq!(
+        group(&fit, Section::High).items,
+        [item(
+            "Light Neutron Blaster II",
+            Some("Antimatter Charge S"),
+            5
+        )]
+    );
+    assert!(group(&fit, Section::Low).items.contains(&item(
+        "Small Ancillary Armor Repairer",
+        Some("Nanite Repair Paste"),
+        1
+    )));
+}
+
+#[test]
+fn the_page_gets_the_drones_apart_from_the_cargo() {
+    // The fitting wheel's engine puts a block that mixes drones and cargo into the cargo whole.
+    let split = ALGOS.replace("Hobgoblin II x5\n", "Hobgoblin II x5\n\n");
+    assert_eq!(eft::separate_drones(ALGOS), split);
+    // Line ends and everything else stay as pasted.
+    assert_eq!(
+        eft::separate_drones(&ALGOS.replace('\n', "\r\n")),
+        split.replace('\n', "\r\n")
+    );
+    // Drones listed after the cargo come first, so the bay order does not matter to the engine.
+    assert_eq!(
+        eft::separate_drones("[Algos, x]\n\nNanite Repair Paste x50\nHammerhead I x2\n"),
+        "[Algos, x]\n\nHammerhead I x2\n\nNanite Repair Paste x50\n"
+    );
+    // Separate bays, a block of drones only and module blocks are left alone.
+    for text in [RIFTER, LEGION, split.as_str(), MAMBA_WITHOUT_BLANK_LINES] {
+        assert!(
+            matches!(eft::separate_drones(text), Cow::Borrowed(_)),
+            "{text}"
+        );
+    }
 }
 
 /// A real paste whose blank lines got lost in the chat composer.
@@ -671,6 +755,49 @@ fn open_shows_the_fitting_wheel_and_sends_the_fit_when_the_page_is_ready() {
     assert_eq!(message["strings"]["lang"], "en");
     assert_eq!(message["strings"]["loading"], "Loading the fitting wheel…");
     assert_eq!(message["strings"]["wheel"], "Fitting wheel");
+    assert_eq!(message["strings"]["drones"], "Drone bay");
+    assert_eq!(message["strings"]["cargo"], "Cargo hold");
+}
+
+#[test]
+fn the_algos_fit_shows_its_drones_and_cargo_on_the_page_and_in_the_list() {
+    let mut app = App::default();
+    let mut host = web_host();
+    app.on_chat_match(&mut host, "Bob", ALGOS);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    app.on_webview_message(&mut host, WEBVIEW_READY);
+    let fit = posted(&host)["fit"].as_str().expect("the fit").to_owned();
+    assert!(
+        fit.contains("Hobgoblin II x5\n\nAntimatter Charge S x2000"),
+        "{fit}"
+    );
+    assert!(
+        fit.contains("Light Neutron Blaster II, Antimatter Charge S\n"),
+        "{fit}"
+    );
+
+    let mut app = App::default();
+    let mut host = Fake::default();
+    app.on_chat_match(&mut host, "Bob", ALGOS);
+    app.on_card_action(&mut host, &card_id(1), view::ACTION_OPEN);
+    let lines = texts(host.dialog.as_ref().expect("dialog content"));
+    for expected in [
+        "5× Light Neutron Blaster II · Antimatter Charge S",
+        "1× Small Ancillary Armor Repairer · Nanite Repair Paste",
+        "Drones 7",
+        "2× Hammerhead I",
+        "5× Hobgoblin II",
+        "Cargo 6050",
+        "2000× Antimatter Charge S",
+        "2000× Iridium Charge S",
+        "2000× Lead Charge S",
+        "50× Nanite Repair Paste",
+    ] {
+        assert!(
+            lines.iter().any(|l| l == expected),
+            "{expected} in {lines:?}"
+        );
+    }
 }
 
 #[test]

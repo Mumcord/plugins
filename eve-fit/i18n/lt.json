@@ -31,6 +31,8 @@
   "web.licences": "Licencijos",
   "web.wheel": "Įrangos ratas",
   "web.stats": "Laivo statistika",
+  "web.drone_bay": "Dronų skyrius",
+  "web.cargo_hold": "Krovinių triumas",
   "panel.last": "Paskutinis fitas: {{fit}}",
   "panel.none": "Fitų dar nėra. Į pokalbį įklijuoti fitai rodomi čia.",
   "panel.history": "Fitų istorija",

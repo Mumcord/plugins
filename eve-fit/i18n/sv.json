@@ -29,6 +29,8 @@
   "web.licences": "Licenser",
   "web.wheel": "Utrustningshjul",
   "web.stats": "Skeppsstatistik",
+  "web.drone_bay": "Drönarhangar",
+  "web.cargo_hold": "Lastrum",
   "panel.last": "Senaste fit: {{fit}}",
   "panel.none": "Inga fits ännu. Fits som klistras in i chatten visas här.",
   "panel.history": "Fit-historik",

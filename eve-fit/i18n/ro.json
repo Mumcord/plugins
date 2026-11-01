@@ -30,6 +30,8 @@
   "web.licences": "Licențe",
   "web.wheel": "Roată de echipare",
   "web.stats": "Statisticile navei",
+  "web.drone_bay": "Compartiment pentru drone",
+  "web.cargo_hold": "Cală de marfă",
   "panel.last": "Ultimul fit: {{fit}}",
   "panel.none": "Încă nu există fituri. Fiturile lipite în chat apar aici.",
   "panel.history": "Istoricul fiturilor",

@@ -16,6 +16,7 @@ import { DamageProfiles, EveShipFitProvider, ImagesProvider, LocalFits, TextsPro
 import { loadSde, loadTexts, type Texts } from "@eveshipfit/sde-loader";
 import { FittingWheel, ShipStatistics } from "@eveshipfit/ui-ingame";
 
+import { Bays } from "./bays";
 import { loadData } from "./data";
 import { parseMessage, type Strings, type ViewMessage } from "./message";
 import { licences, NOTICE } from "./licences";
@@ -69,8 +70,11 @@ function Fit({ loaded, fit, strings }: { loaded: Loaded; fit: FitStore; strings:
     <ImagesProvider images={loaded.images}>
       <EveShipFitProvider engine={loaded.engine} fit={fit} localFits={localFits} damageProfiles={damageProfiles}>
         <div className="layout">
-          <div className="wheel">
-            <FittingWheel readOnly label={strings.wheel} />
+          <div className="fitting">
+            <div className="wheel">
+              <FittingWheel readOnly label={strings.wheel} />
+            </div>
+            <Bays drones={strings.drones} cargo={strings.cargo} lang={strings.lang} />
           </div>
           <div className="stats">
             <ShipStatistics label={strings.stats} />

@@ -292,8 +292,9 @@ impl App {
         let Some(pasted) = &self.open else {
             return;
         };
-        // The page reads English names only; Copy fitting keeps the text as pasted.
-        let fit = names::canonical(&pasted.text);
+        // The page reads English names only, and needs the drones apart from the cargo; Copy
+        // fitting keeps the text as pasted.
+        let fit = eft::separate_drones(&names::canonical(&pasted.text)).into_owned();
         let message = view::webview_message(&self.strings, &self.language, &fit);
         if let Err(e) = host.post_webview(&message) {
             host.warn(&format!(

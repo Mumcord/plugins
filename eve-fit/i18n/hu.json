@@ -29,6 +29,8 @@
   "web.licences": "Licencek",
   "web.wheel": "Felszereléskerék",
   "web.stats": "Hajóstatisztika",
+  "web.drone_bay": "Drónrekesz",
+  "web.cargo_hold": "Raktér",
   "panel.last": "Utolsó fit: {{fit}}",
   "panel.none": "Még nincs fit. A csevegésbe beillesztett fitek itt jelennek meg.",
   "panel.history": "Fitelőzmények",

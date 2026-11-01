@@ -31,6 +31,8 @@
   "web.licences": "Licence",
   "web.wheel": "Kolo opreme",
   "web.stats": "Statistika ladje",
+  "web.drone_bay": "Prostor za drone",
+  "web.cargo_hold": "Tovorni prostor",
   "panel.last": "Zadnji fit: {{fit}}",
   "panel.none": "Ni še fitov. Fiti, prilepljeni v klepet, se prikažejo tukaj.",
   "panel.history": "Zgodovina fitov",

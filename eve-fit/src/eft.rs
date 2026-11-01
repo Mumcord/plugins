@@ -29,6 +29,8 @@
 //! The text comes from other people in the chat: it is untrusted, so the parser is bounded in
 //! size and never panics.
 
+use std::borrow::Cow;
+
 use crate::items;
 
 /// The longest text the parser looks at; the host forwards at most 4 KiB as well.
@@ -141,6 +143,46 @@ pub fn parse(text: &str) -> Option<Fit> {
         return None;
     }
     Some(Fit { ship, name, groups })
+}
+
+/// The fit with every block of `xN` lines that mixes drones with other items split in two:
+/// the drones, a blank line, then the rest. The fitting wheel's engine puts such a mixed block,
+/// common when a fit is written by hand or its blank lines got lost, into the cargo whole, so
+/// the drones would not be in the drone bay. Everything else stays as pasted; borrowed when
+/// nothing changes.
+pub fn separate_drones(text: &str) -> Cow<'_, str> {
+    let lines: Vec<&str> = text.split('\n').collect();
+    let is_drone = |line: &str| {
+        let line = line.trim().replace('\u{a0}', " ");
+        quantity(&line).is_some_and(|(name, _)| items::section(name) == Some(Section::Drones))
+    };
+    let mut out: Vec<&str> = Vec::with_capacity(lines.len() + 1);
+    let mut changed = false;
+    for block in lines.split_inclusive(|l| l.trim().is_empty()) {
+        let (items, blank) = match block.split_last() {
+            Some((last, rest)) if last.trim().is_empty() => (rest, Some(*last)),
+            _ => (block, None),
+        };
+        let all_bay = items
+            .iter()
+            .all(|l| quantity(&l.trim().replace('\u{a0}', " ")).is_some());
+        let drones = items.iter().filter(|l| is_drone(l)).count();
+        if !items.is_empty() && all_bay && drones > 0 && drones < items.len() {
+            changed = true;
+            out.extend(items.iter().filter(|l| is_drone(l)));
+            // The blank line keeps the line ends of the text, `\r` included.
+            out.push(if items[0].ends_with('\r') { "\r" } else { "" });
+            out.extend(items.iter().filter(|l| !is_drone(l)));
+        } else {
+            out.extend(items);
+        }
+        out.extend(blank);
+    }
+    if changed {
+        Cow::Owned(out.join("\n"))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
 
 /// `[Ship, Fit name]`; the fit name may contain commas and may be empty.

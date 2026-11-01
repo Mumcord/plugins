@@ -29,6 +29,8 @@
   "web.licences": "Licences",
   "web.wheel": "Fitting wheel",
   "web.stats": "Ship statistics",
+  "web.drone_bay": "Drone bay",
+  "web.cargo_hold": "Cargo hold",
   "panel.last": "Last fit: {{fit}}",
   "panel.none": "No fits yet. Fits pasted in the chat appear here.",
   "panel.history": "Fit history",

@@ -30,6 +30,8 @@
   "web.licences": "Licences",
   "web.wheel": "Aprīkojuma rats",
   "web.stats": "Kuģa statistika",
+  "web.drone_bay": "Dronu nodalījums",
+  "web.cargo_hold": "Kravas telpa",
   "panel.last": "Pēdējais fits: {{fit}}",
   "panel.none": "Vēl nav neviena fita. Tērzēšanā ielīmētie fiti parādās šeit.",
   "panel.history": "Fitu vēsture",

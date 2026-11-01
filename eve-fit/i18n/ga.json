@@ -32,6 +32,8 @@
   "web.licences": "Ceadúnais",
   "web.wheel": "Roth feistis",
   "web.stats": "Staitisticí na loinge",
+  "web.drone_bay": "Cuas dróin",
+  "web.cargo_hold": "Coimeád lasta",
   "panel.last": "An fit is déanaí: {{fit}}",
   "panel.none": "Níl aon fit fós. Taispeántar anseo fits a ghreamaítear sa chomhrá.",
   "panel.history": "Stair na bhfits",

@@ -29,6 +29,8 @@
   "web.licences": "Licenser",
   "web.wheel": "Fitting-hjul",
   "web.stats": "Skibsstatistik",
+  "web.drone_bay": "Dronebugt",
+  "web.cargo_hold": "Lastrum",
   "panel.last": "Seneste fit: {{fit}}",
   "panel.none": "Ingen fits endnu. Fits, der indsættes i chatten, vises her.",
   "panel.history": "Fit-historik",

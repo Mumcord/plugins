@@ -30,6 +30,8 @@
   "web.licences": "Licence",
   "web.wheel": "Kotač opreme",
   "web.stats": "Statistika broda",
+  "web.drone_bay": "Odjeljak za dronove",
+  "web.cargo_hold": "Teretni prostor",
   "panel.last": "Zadnji fit: {{fit}}",
   "panel.none": "Još nema fitova. Fitovi zalijepljeni u chat pojavljuju se ovdje.",
   "panel.history": "Povijest fitova",

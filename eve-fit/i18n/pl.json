@@ -31,6 +31,8 @@
   "web.licences": "Licencje",
   "web.wheel": "Koło wyposażenia",
   "web.stats": "Statystyki statku",
+  "web.drone_bay": "Hangar dronów",
+  "web.cargo_hold": "Ładownia",
   "panel.last": "Ostatni fit: {{fit}}",
   "panel.none": "Brak fitów. Fity wklejone na czacie pojawią się tutaj.",
   "panel.history": "Historia fitów",

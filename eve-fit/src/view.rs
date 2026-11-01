@@ -123,6 +123,8 @@ const WEBVIEW_STRINGS: &[(&str, &str)] = &[
     ("licences", "web.licences"),
     ("wheel", "web.wheel"),
     ("stats", "web.stats"),
+    ("drones", "web.drone_bay"),
+    ("cargo", "web.cargo_hold"),
 ];
 
 /// The message for the fitting wheel page (web-src/src/message.ts): the fit as pasted, and the

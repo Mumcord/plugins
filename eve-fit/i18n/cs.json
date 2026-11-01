@@ -31,6 +31,8 @@
   "web.licences": "Licence",
   "web.wheel": "Kolo vybavení",
   "web.stats": "Statistiky lodi",
+  "web.drone_bay": "Hangár dronů",
+  "web.cargo_hold": "Nákladový prostor",
   "panel.last": "Poslední fit: {{fit}}",
   "panel.none": "Zatím žádné fity. Fity vložené do chatu se zobrazí zde.",
   "panel.history": "Historie fitů",
