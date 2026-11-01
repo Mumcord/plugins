@@ -173,6 +173,29 @@ impl View<'_> {
         ])
     }
 
+    /// One row of small icon buttons; the labels are what screen readers and tooltips say.
+    fn icon_actions(&self) -> El {
+        let asleep = self.pet.asleep(self.session, self.now);
+        let cost = balance::TREAT_COST.to_string();
+        ui::stack(Direction::Row, 8, Align::Center).children([
+            ui::icon_button(action::PAT, "assets/icons/pat.svg", &self.t.t("action.pat")),
+            ui::icon_button(
+                action::TREAT,
+                "assets/icons/treat.svg",
+                &self.t.f("action.treat", &[("cost", &cost)]),
+            )
+            .disabled(self.pet.notes < balance::TREAT_COST),
+            ui::icon_button(
+                action::PLAY,
+                "assets/icons/play.svg",
+                &self.t.t("action.play"),
+            )
+            .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
+            ui::icon_button(action::NAP, "assets/icons/nap.svg", &self.t.t("action.nap"))
+                .disabled(asleep),
+        ])
+    }
+
     fn refusal_text(&self) -> Option<El> {
         let key = match self.refusal? {
             Refusal::NotEnoughNotes => "refusal.notEnoughNotes",
@@ -231,22 +254,25 @@ impl View<'_> {
         )
     }
 
-    /// The 260×160 panel in the Plugins strip.
+    /// The 260×160 panel in the Plugins strip: big pet, two meters and the four care actions.
+    /// Everything else lives in the popover, so nothing here needs to scroll.
     pub fn panel_inline(&self) -> El {
-        let mut details = ui::column()
+        // A refusal replaces the species line so the panel keeps its height.
+        let subtitle = match self.refusal_text() {
+            Some(refusal) => refusal,
+            None => ui::caption(&self.kind()),
+        };
+        let details = ui::stack(Direction::Column, 2, Align::Stretch)
             .child(ui::heading(&self.pet.name))
-            .child(ui::caption(&self.kind()))
-            .children(self.meters())
-            .child(ui::row().children([
-                ui::button(action::PAT, &self.t.t("action.pat")).kind(ButtonKind::Primary),
-                self.notes_chip(),
-            ]));
-        if let Some(refusal) = self.refusal_text() {
-            details = details.child(refusal);
-        }
-        ui::stack(Direction::Row, 8, Align::Center)
-            .child(self.picture(72))
-            .child(details)
+            .child(subtitle)
+            .children(self.meters());
+        ui::stack(Direction::Column, 4, Align::Stretch)
+            .child(
+                ui::stack(Direction::Row, 8, Align::Center)
+                    .child(self.picture(96))
+                    .child(details),
+            )
+            .child(self.icon_actions())
     }
 
     /// The 420×560 popover: meters, growth, stats, care actions and customising.
