@@ -1,0 +1,18 @@
+{
+  "manifest": 1,
+  "id": "mumbot-music",
+  "name": "Mumbot Music",
+  "description": "Control a mumbot music bot in your channel: now playing, skip, volume, queue and adding tracks.",
+  "version": "1.0.0",
+  "api": "^1.0",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["tools"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": ["ui.user-menu", "ui.dialog", "events.presence", "events.self", "net.http", "secrets"],
+    "optional": ["notify"]
+  },
+  "net": { "hosts": "user-configured" },
+  "storage": { "quota_kib": 64 }
+}
