@@ -1,0 +1,32 @@
+# Voter side: Bob's poll arrives as a card, Alice votes, and the creator's tallies update it.
+# Payloads (big-endian): kind 1 = id u32, line hash u32, question, option count, options.
+name: Voting on someone else's poll
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  # Poll 1 from Bob: "Lunch?" with Pizza and Sushi.
+  - event: {peer-message: {from: 2, kind: 1, hex: "00000001 00000000 06 4c756e63683f 02 05 5069 7a7a61 05 5375736869"}}
+  - expect: {tree: {slot: {chat-card: p-2-1}, text: "Poll by Bob"}}
+
+  # The vote goes only to the creator.
+  - event: {ui-action: {action: vote-1, slot: {chat-card: p-2-1}}}
+  - expect: {message: {to: 2, kind: 2, hex: "00000001 01"}}
+
+  # Tally from the creator: id, closed, closing line hash, count, counts u16.
+  - event: {peer-message: {from: 2, kind: 3, hex: "00000001 00 00000000 02 0001 0002"}}
+  - expect: {tree: {slot: {chat-card: p-2-1}, text: "3 votes"}}
+
+  # A tally from someone who is not the creator changes nothing.
+  - event: {peer-message: {from: 3, kind: 3, hex: "00000001 01 00000000 02 0009 0009"}}
+  - expect: nothing
+
+  # Final tally closes the poll.
+  - event: {peer-message: {from: 2, kind: 3, hex: "00000001 01 00000000 02 0001 0002"}}
+  - expect: {tree: {slot: {chat-card: p-2-1}, text: "Closed"}}
+
+  # Malformed messages are dropped without stopping the plugin.
+  - event: {peer-message: {from: 2, kind: 3, hex: "00"}}
+  - expect: nothing

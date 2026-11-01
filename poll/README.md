@@ -51,3 +51,14 @@ cargo build --release --target wasm32-unknown-unknown
 ## Licence
 
 AGPL-3.0-or-later, see [LICENSE](LICENSE).
+
+## Scenario tests
+
+`scenarios/*.yaml` run the built package in the `mumcord-plugin` mock host:
+
+```
+mumcord-plugin build
+mumcord-plugin test dist/poll-1.0.0.mcplugin scenarios/*.yaml
+```
+
+They cover creating and closing a poll (card, text line, final tally), resending to a user who joins later, voting and tally updates on someone else's poll, a frozen poll when the creator leaves, and missing permissions. The poll id is the current second, so creator-side steps check message kinds and targets, not exact payloads.
