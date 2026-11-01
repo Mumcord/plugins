@@ -554,7 +554,7 @@ impl App {
                 Ok(())
             }
             Err(Error::RateLimited) => Err(api::RATE_LIMITED_TEXT.into()),
-            Err(e) => Err(format!("Mumcord refused the request ({e:?})")),
+            Err(e) => Err(format!("Mumcord refused the request ({})", e.name())),
         }
     }
 

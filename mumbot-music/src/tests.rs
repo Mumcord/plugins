@@ -35,10 +35,14 @@ struct Mock {
     menu: Option<Option<String>>,
     channel: Vec<Peer>,
     notes: Vec<String>,
+    refuse_http: Option<Error>,
 }
 
 impl Host for Mock {
     fn http(&mut self, request: HttpRequest) -> Result<u32, Error> {
+        if let Some(e) = self.refuse_http {
+            return Err(e);
+        }
         self.next_id += 1;
         self.requests.push((self.next_id, request));
         Ok(self.next_id)
@@ -243,6 +247,23 @@ fn the_test_needs_an_address_and_a_key() {
     app.dialog_action(&mut host, "test", ActionValue::None);
     assert!(host.shows(Slot::Dialog, "Enter the API key"));
     assert!(host.requests.is_empty());
+}
+
+#[test]
+fn a_refused_request_shows_a_short_message() {
+    let (mut app, mut host) = setup();
+    host.refuse_http = Some(Error::NotPermitted);
+    app.menu_requested(&mut host, &bot(7));
+    app.dialog_action(&mut host, "address", text("127.0.0.1:8081"));
+    app.dialog_action(&mut host, "key", ActionValue::None);
+    app.dialog_action(&mut host, "test", ActionValue::None);
+    assert!(host.shows(Slot::Dialog, "Mumcord refused the request (not-permitted)"));
+    // The host refuses a tree with a text above 200 characters.
+    assert!(
+        host.texts(Slot::Dialog)
+            .iter()
+            .all(|t| t.chars().count() <= 200)
+    );
 }
 
 #[test]
