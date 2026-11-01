@@ -1,0 +1,71 @@
+# Registry checks for pull requests (FR-6.56, policy/REVIEW.md). The job name `check` is the
+# required status check of the main branch protection.
+name: Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cli
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Schema
+        run: |
+          shopt -s nullglob
+          plugin_files=(plugins/*/plugin.toml)
+          version_files=(plugins/*/versions/*.toml)
+          schema() { pipx run check-jsonschema==0.33.0 --schemafile "$@"; }
+          schema schemas/revoked.schema.json revoked.toml
+          if (( ${#plugin_files[@]} )); then schema schemas/plugin.schema.json "${plugin_files[@]}"; fi
+          if (( ${#version_files[@]} )); then schema schemas/version.schema.json "${version_files[@]}"; fi
+          # The generator is the authoritative check: it refuses anything Mumcord would ignore.
+          mumcord-plugin site-data --repo . --out "$RUNNER_TEMP/site" --sequence 1
+      - name: Changed versions
+        id: changed
+        run: |
+          if [ -z "$DIFF_BASE" ] || [ "$DIFF_BASE" = 0000000000000000000000000000000000000000 ]; then
+            echo "No diff base; nothing to rebuild."
+            touch "$RUNNER_TEMP/changed.txt"
+          else
+            python3 .github/scripts/registry.py changed "$DIFF_BASE" > "$RUNNER_TEMP/changed.txt"
+          fi
+          cat "$RUNNER_TEMP/changed.txt"
+      - name: Reproducible rebuild, author signature, licence scan, mock-host load test
+        run: |
+          while read -r id version; do
+            python3 .github/scripts/registry.py verify "$id" "$version"
+          done < "$RUNNER_TEMP/changed.txt"
+      - name: Official plugin translations
+        run: python3 .github/scripts/registry.py i18n
+      - name: Permission diff
+        if: github.event_name == 'pull_request' && !cancelled()
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/permission-diff"
+          python3 .github/scripts/registry.py permission-diff "$DIFF_BASE" > "$RUNNER_TEMP/permission-diff/comment.md"
+          echo "$PR_NUMBER" > "$RUNNER_TEMP/permission-diff/pr-number"
+          cat "$RUNNER_TEMP/permission-diff/comment.md" >> "$GITHUB_STEP_SUMMARY"
+      # Posted by pr-comment.yml, which has write access; this job stays read-only for fork PRs.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request' && !cancelled()
+        with:
+          name: permission-diff
+          path: ${{ runner.temp }}/permission-diff
+          retention-days: 7

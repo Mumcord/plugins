@@ -1,0 +1,21 @@
+{
+  "api": "^1.0",
+  "authors": [
+    "Your name"
+  ],
+  "categories": [
+    "fun"
+  ],
+  "description": "Wave at the channel.",
+  "id": "my-plugin",
+  "license": "Apache-2.0",
+  "manifest": 1,
+  "name": "My plugin",
+  "permissions": {
+    "required": [
+      "ui.panel",
+      "peers.messages"
+    ]
+  },
+  "version": "0.1.0"
+}
