@@ -1,0 +1,35 @@
+# Bob starts Echo Echo; Alice joins, repeats the tune, her score goes out and the scores show.
+# Invite: version, game id u32, tune length, notes. Score: version, game id u32, correct notes.
+name: Joining an Echo Echo round
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  # Game 7 with the tune 0 1 2 3 0. A broken invite is ignored.
+  - event: {peer-message: {from: 2, kind: 3, hex: "01 00000007 02 00 09"}}
+  - event: {peer-message: {from: 2, kind: 3, hex: "01 00000007 05 00 01 02 03 00"}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "Bob started Echo Echo"}}
+
+  - event: {ui-action: {action: echo-join, slot: {chat-card: echo-echo-7}}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "Listen… note 1 of 5"}}
+
+  # The tune plays for five notes, then Alice repeats it.
+  - wait: 4500
+  - event: {ui-action: {action: "echo-pad:0"}}
+  - event: {ui-action: {action: "echo-pad:1"}}
+  - event: {ui-action: {action: "echo-pad:2"}}
+  - event: {ui-action: {action: "echo-pad:3"}}
+  - event: {ui-action: {action: "echo-pad:0"}}
+  - expect: {message: {to: channel, kind: 4, hex: "01 00000007 05"}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "You echoed 5 of 5 notes"}}
+
+  # Bob's score arrives; after 45 seconds the card lists everyone.
+  - event: {peer-message: {from: 2, kind: 4, hex: "01 00000007 03"}}
+  - wait: 41000
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "Bob 3/5"}}

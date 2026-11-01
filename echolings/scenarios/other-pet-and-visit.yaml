@@ -1,0 +1,27 @@
+# Bob's pet card turns into a badge and a profile card; Alice may pat it once per day.
+# Card, version 1: version, species, colour, mood, bond u16, days u16, streak u16, name length, name.
+name: Another user's pet and a visit pat
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  - event: {peer-message: {from: 2, kind: 1, hex: "01 01 00 03 0005 0003 0002 04 42696 c6c"}}
+  - expect: {tree: {slot: {member-badge: 2}, text: "Bill"}}
+
+  - event: {profile-card-opened: 2}
+  - expect: {tree: {slot: {profile-card: 2}, text: "Pat Bill"}}
+
+  # The first pat goes directly to Bob.
+  - event: {ui-action: {action: "visit-pat:2", slot: {profile-card: 2}}}
+  - expect: {message: {to: 2, kind: 2}}
+  - expect: {tree: {slot: {profile-card: 2}, text: "You patted Bill. See you tomorrow!"}}
+
+  # The second pat on the same day is refused and nothing is sent.
+  - event: {ui-action: {action: "visit-pat:2", slot: {profile-card: 2}}}
+  - expect: {tree: {slot: {profile-card: 2}, text: "You already patted Bill today."}}

@@ -1,0 +1,14 @@
+# Echo Echo, hosting side: pressing Play sends the invite to the channel and shows the game.
+name: Echo Echo invite and score
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  - event: {ui-action: {action: play}}
+  - expect: {message: {to: channel, kind: 3}}

@@ -1,0 +1,14 @@
+# The member badge shows the user's own pet and reacts while they talk.
+name: Own badge while talking
+me: {session: 1, name: Alice}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
+
+  - event: {talking: {session: 1, talking: true}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
+  - event: {talking: {session: 1, talking: false}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
