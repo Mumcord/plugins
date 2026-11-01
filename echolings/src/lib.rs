@@ -19,12 +19,15 @@ use mumcord_plugin_sdk::{
     },
     log, notify,
     peers::{self, Target},
-    theme, timers,
+    theme::{self, Mode},
+    timers,
     types::{Error, StartInfo},
     ui::{self as host_ui, El, Slot},
+    webview::{self, Place},
 };
 
 use games::echo_echo::{self, Game, GameView, Invite, Score, Start};
+use games::snack_race::{self, Race, RaceView, page};
 use pet::{Now, Pet, Reaction, Refusal, Session, Species, clean_name};
 use social::{Happening, OtherView, PatNote, Social, card::Card, display_name, throttle::Decision};
 use storage::{AnimationLevel, Settings};
@@ -36,6 +39,8 @@ const TICK_MS: u32 = 60_000;
 const REACTION_MS: u32 = 3_000;
 /// A game message the host refused for its rate limit is tried again after this.
 const RETRY_MS: u32 = 2_500;
+/// How long a game burst lasts (FR-6.36).
+const BURST_SECS: u64 = 10;
 
 struct App {
     pet: Option<Pet>,
@@ -67,6 +72,26 @@ struct App {
     /// One game message waiting for the rate limit.
     retry: Option<(Target, u8, Vec<u8>)>,
     retry_timer: Option<u32>,
+    language: String,
+    dark: bool,
+    race: Option<Race>,
+    /// Closes the lobby of a race the user hosts.
+    race_lobby_timer: Option<u32>,
+    /// Ends the user's own run.
+    race_run_timer: Option<u32>,
+    /// Shows the results.
+    race_end_timer: Option<u32>,
+    /// Spaces out the progress messages.
+    race_progress_timer: Option<u32>,
+    /// Hops last shared with the channel.
+    race_progress_sent: u8,
+    /// Unix seconds until which the game burst allows progress messages.
+    race_burst_until: u64,
+    /// The race page is (probably) open: the user may have closed it, so this only decides
+    /// whether posting is worth it.
+    race_page: bool,
+    /// The web view could not open.
+    race_no_view: bool,
 }
 
 thread_local! {
@@ -99,6 +124,7 @@ impl App {
             motion: self.motion(),
             reaction: self.reaction,
             refusal: self.refusal,
+            race: self.granted(page::PERMISSION),
         })
     }
 
@@ -142,6 +168,9 @@ impl App {
     fn render_panel(&self, now: Now) {
         if self.game.is_some() && !self.game_in_chat() {
             return self.render_game();
+        }
+        if self.race.is_some() && !self.game_in_chat() {
+            return self.render_race(now);
         }
         let tree = match (self.panel, self.view(now)) {
             (PanelVisibility::Hidden, _) => return,
@@ -204,6 +233,7 @@ impl App {
                 host_ui::clear(&Slot::MemberBadge(session));
             }
             self.drop_game();
+            self.drop_race();
         }
         self.session.me = me;
         self.channel = channel;
@@ -255,6 +285,11 @@ impl App {
             (echo_echo::action::JOIN, _) => self.join_game(now),
             (echo_echo::action::CLOSE, _) => self.drop_game(),
             (echo_echo::action::START_NOW, _) => self.begin_game(now),
+            (snack_race::action::START, Some(_)) => self.start_race(now),
+            (snack_race::action::JOIN, _) => self.join_race(now),
+            (snack_race::action::OPEN, _) => self.open_race_page(),
+            (snack_race::action::START_NOW, _) => self.begin_race(now),
+            (snack_race::action::CLOSE, _) => self.drop_race(),
             (other, _) if social::action::parse_pat(other).is_some() => {
                 if let Some(session) = social::action::parse_pat(other) {
                     self.pat_other(session, now);
@@ -317,6 +352,7 @@ impl App {
         // The panel shows the game itself when it is not a chat card.
         if self.game_in_chat() {
             self.render_game();
+            self.render_race(now);
         }
     }
 
@@ -465,6 +501,9 @@ impl App {
             social::PAT => self.pat_received(&message, now),
             echo_echo::INVITE => self.game_invited(&message, now),
             echo_echo::START => self.start_received(&message, now),
+            snack_race::INVITE => self.race_invited(&message, now),
+            snack_race::START => self.race_start_received(&message, now),
+            snack_race::PROGRESS | snack_race::SCORE => self.race_message(&message, now),
             echo_echo::SCORE => {
                 let score = Score::decode(&message.payload);
                 if let (Some(game), Some(score)) = (&mut self.game, score)
@@ -673,9 +712,342 @@ impl App {
         }
     }
 
+    // --- Snack Race --------------------------------------------------------------------------
+
+    fn render_race(&self, now: Now) {
+        let Some(race) = &self.race else { return };
+        let tree = RaceView {
+            race,
+            t: &self.t,
+            no_view: self.race_no_view,
+        }
+        .card();
+        if self.game_in_chat() {
+            show(Slot::ChatCard(race.card_id()), tree);
+        } else if self.panel != PanelVisibility::Hidden && self.game.is_none() {
+            show(Slot::Panel, tree);
+        }
+        self.post_race(now);
+    }
+
+    /// Sends the whole race state to the page, if it is open.
+    fn post_race(&self, now: Now) {
+        let Some(race) = self.race.as_ref().filter(|_| self.race_page) else {
+            return;
+        };
+        let view = RaceView {
+            race,
+            t: &self.t,
+            no_view: false,
+        };
+        let me = page::PageRunner {
+            name: self.t.t("race.you"),
+            pet: self
+                .pet
+                .as_ref()
+                .and_then(|pet| page::web_picture(&pet.asset(true, false))),
+            hops: 0,
+            me: true,
+        };
+        let pet_of = |session: u32| {
+            let pet = self.social.pets.get(&session)?;
+            page::web_picture(&pet.card.asset(true, false))
+        };
+        let look = page::Look {
+            t: &self.t,
+            language: &self.language,
+            motion: self.motion(),
+            dark: self.dark,
+            me,
+            pet_of: &pet_of,
+        };
+        let message = page::state(race, look, now.secs, view.status(), view.results());
+        match webview::post(&message) {
+            Ok(()) | Err(Error::NotPermitted) => {}
+            Err(e) => log::warn(&format!("could not update the race page: {e:?}")),
+        }
+    }
+
+    fn open_race_page(&mut self) {
+        if !self.race.as_ref().is_some_and(Race::playing) {
+            return;
+        }
+        match webview::show(Place::Dialog, page::ENTRY) {
+            Ok(()) => {
+                // The page asks for the state with `ready` once it listens.
+                self.race_page = true;
+                self.race_no_view = false;
+            }
+            Err(e) => {
+                if e != Error::NotPermitted {
+                    log::warn(&format!("could not open the race page: {e:?}"));
+                }
+                self.race_no_view = true;
+            }
+        }
+    }
+
+    /// The race button: the pet must be awake and rested enough, like Play.
+    fn start_race(&mut self, now: Now) {
+        if !self.granted(page::PERMISSION) || self.race.as_ref().is_some_and(|r| !r.is_over()) {
+            return;
+        }
+        let Some(pet) = &mut self.pet else { return };
+        match pet.play(&self.session, now) {
+            Ok(reaction) => self.react(Some(reaction)),
+            Err(refusal) => {
+                self.refusal = Some(refusal);
+                return;
+            }
+        }
+        let me = u64::from(self.session.me.unwrap_or(0));
+        let id = u32::try_from((now.secs ^ (me << 16)) & 0xffff_ffff).unwrap_or(0);
+        self.drop_race();
+        self.race = Some(Race::open(id, now.secs));
+        self.open_race_page();
+        if self.can_message() && self.session.me.is_some() {
+            let invite = snack_race::Invite {
+                id,
+                lobby: u8::try_from(snack_race::LOBBY_SECS).unwrap_or(u8::MAX),
+            };
+            self.send_game(Target::Channel, snack_race::INVITE, invite.encode());
+            self.race_lobby_timer = start_timer(snack_race::LOBBY_MS, "race lobby");
+            self.render_race(now);
+        } else {
+            // Nobody can join without messages, so there is no lobby to wait for.
+            self.begin_race(now);
+        }
+    }
+
+    /// The host closes the lobby (timer or Start now) and the race starts.
+    fn begin_race(&mut self, now: Now) {
+        if let Some(id) = self.race_lobby_timer.take() {
+            timers::cancel(id);
+        }
+        let Some(race) = &mut self.race else { return };
+        if !race.is_host() || !race.begin(now.secs) {
+            return;
+        }
+        let start = snack_race::Start { id: race.id };
+        if self.can_message() && self.session.me.is_some() {
+            self.send_game(Target::Channel, snack_race::START, start.encode());
+        }
+        self.race_started(now);
+    }
+
+    fn race_start_received(&mut self, message: &PeerMessage, now: Now) {
+        let Some(start) = snack_race::Start::decode(&message.payload) else {
+            return;
+        };
+        if let Some(race) = &mut self.race
+            && race.start_received(message.sender.session, start, now.secs)
+        {
+            self.race_started(now);
+        }
+    }
+
+    /// Timers for a race that just started: the user's run if they are in, and the results.
+    fn race_started(&mut self, now: Now) {
+        if let Some(id) = self.race_end_timer.take() {
+            timers::cancel(id);
+        }
+        self.race_end_timer = start_timer(snack_race::RESULTS_MS, "race end");
+        self.start_run(now);
+        self.render_race(now);
+    }
+
+    /// The user's pet starts running: its clock, and a game burst so others see it move.
+    fn start_run(&mut self, now: Now) {
+        if !self
+            .race
+            .as_ref()
+            .is_some_and(|r| r.phase == snack_race::Phase::Racing)
+        {
+            return;
+        }
+        if let Some(id) = self.race_run_timer.take() {
+            timers::cancel(id);
+        }
+        self.race_run_timer = start_timer(snack_race::RACE_MS, "race run");
+        if self.can_message() && self.session.me.is_some() {
+            match peers::start_game_burst() {
+                Ok(()) => self.race_burst_until = now.secs + BURST_SECS,
+                // Another plugin's burst or one within the last minute: only the score goes out.
+                Err(e) => log::debug(&format!("no game burst for the race: {e:?}")),
+            }
+        }
+    }
+
+    fn race_invited(&mut self, message: &PeerMessage, now: Now) {
+        // A sleeping pet does not race, and without the web view the race is hidden.
+        if self.session.do_not_disturb
+            || !self.granted(page::PERMISSION)
+            || self.race.as_ref().is_some_and(|r| !r.is_over())
+        {
+            return;
+        }
+        let Some(invite) = snack_race::Invite::decode(&message.payload) else {
+            return;
+        };
+        self.drop_race();
+        let host = display_name(&message.sender.name);
+        let race = Race::invited(invite, message.sender.session, host, now.secs);
+        let end_ms = race.ends_at.saturating_sub(now.secs).saturating_mul(1000);
+        self.race = Some(race);
+        self.race_end_timer = start_timer(u32::try_from(end_ms).unwrap_or(u32::MAX), "race end");
+        if self.game_in_chat() {
+            self.render_race(now);
+        }
+    }
+
+    fn join_race(&mut self, now: Now) {
+        let (Some(pet), Some(race)) = (&mut self.pet, &mut self.race) else {
+            return;
+        };
+        if race.phase != snack_race::Phase::Invited {
+            return;
+        }
+        match pet.play(&self.session, now) {
+            Ok(_) => {
+                race.join();
+                self.open_race_page();
+                self.start_run(now);
+                self.render_race(now);
+            }
+            Err(refusal) => self.refusal = Some(refusal),
+        }
+    }
+
+    /// Progress and scores of the other pets.
+    fn race_message(&mut self, message: &PeerMessage, now: Now) {
+        let Some(race) = &mut self.race else { return };
+        let session = message.sender.session;
+        let name = display_name(&message.sender.name);
+        let changed = if message.kind == snack_race::PROGRESS {
+            snack_race::Progress::decode(&message.payload)
+                .is_some_and(|p| race.progress_received(session, name, p))
+        } else {
+            snack_race::Score::decode(&message.payload)
+                .is_some_and(|s| race.score_received(session, name, s))
+        };
+        if changed {
+            // Progress only moves pets on the page; the card changes with the results.
+            self.post_race(now);
+        }
+    }
+
+    fn page_message(&mut self, message: &str, now: Now) {
+        match page::parse(message) {
+            Some(page::FromPage::Ready) => {
+                self.race_page = true;
+                self.post_race(now);
+            }
+            Some(page::FromPage::Start) => self.begin_race(now),
+            Some(page::FromPage::Hop { hops, ms }) => self.hop(hops, ms, now),
+            None => log::debug("ignored a message from the race page"),
+        }
+    }
+
+    fn hop(&mut self, hops: u8, ms: u32, now: Now) {
+        let Some(race) = &mut self.race else { return };
+        match race.hop(hops, ms, now.secs) {
+            Some(score) => self.run_over(score, now),
+            None => self.share_progress(now),
+        }
+    }
+
+    fn race_time_up(&mut self, now: Now) {
+        if let Some(score) = self.race.as_mut().and_then(|r| r.time_up(now.secs)) {
+            self.run_over(score, now);
+        }
+    }
+
+    /// The user's run ended: the score goes to the channel and the pet earns its game Notes.
+    fn run_over(&mut self, score: snack_race::Score, now: Now) {
+        for id in [self.race_run_timer.take(), self.race_progress_timer.take()]
+            .into_iter()
+            .flatten()
+        {
+            timers::cancel(id);
+        }
+        if let Some(pet) = &mut self.pet {
+            pet.game_finished(now);
+        }
+        if self.can_message() {
+            self.send_game(Target::Channel, snack_race::SCORE, score.encode());
+        }
+        self.save();
+        self.render_race(now);
+    }
+
+    /// Shares the user's hops while the game burst lasts, at most every [`snack_race::PROGRESS_MS`].
+    fn share_progress(&mut self, now: Now) {
+        let Some(race) = &self.race else { return };
+        let progress = snack_race::Progress {
+            id: race.id,
+            hops: race.hops,
+        };
+        let racing = race.phase == snack_race::Phase::Racing;
+        if self.race_progress_timer.is_some()
+            || !racing
+            || progress.hops <= self.race_progress_sent
+            || now.secs >= self.race_burst_until
+            || !self.can_message()
+        {
+            return;
+        }
+        // Progress is only decoration: one lost to the rate limit is not tried again.
+        if let Err(e) = peers::send(Target::Channel, snack_race::PROGRESS, &progress.encode()) {
+            log::debug(&format!("race progress not sent: {e:?}"));
+        }
+        self.race_progress_sent = progress.hops;
+        self.race_progress_timer = start_timer(snack_race::PROGRESS_MS, "race progress");
+    }
+
+    fn end_race(&mut self, now: Now) {
+        if let Some(id) = self.race_run_timer.take() {
+            timers::cancel(id);
+        }
+        if let Some(race) = &mut self.race {
+            race.end();
+        }
+        self.render_race(now);
+    }
+
+    /// Removes the current race's card, page and timers.
+    fn drop_race(&mut self) {
+        for id in [
+            self.race_lobby_timer.take(),
+            self.race_run_timer.take(),
+            self.race_end_timer.take(),
+            self.race_progress_timer.take(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            timers::cancel(id);
+        }
+        self.race_progress_sent = 0;
+        self.race_burst_until = 0;
+        self.race_no_view = false;
+        if self.race_page {
+            webview::hide();
+            self.race_page = false;
+        }
+        if let Some(race) = self.race.take()
+            && self.game_in_chat()
+        {
+            host_ui::clear(&Slot::ChatCard(race.card_id()));
+        }
+    }
+
     fn settings_changed(&mut self, settings: PluginSettings, now: Now) {
         self.granted = settings.granted;
         self.visibility = settings.visibility;
+        // Without the web view there is no Snack Race (FR-6.83).
+        if !self.granted(page::PERMISSION) {
+            self.drop_race();
+        }
         if !self.can_message() {
             self.social.throttle.invalidate();
         }
@@ -727,13 +1099,18 @@ impl App {
             Event::SelfChanged(state) => self.self_changed(state, now),
             Event::ThemeChanged(theme) => {
                 self.reduced_motion = theme.reduced_motion;
+                self.dark = theme.mode == Mode::Dark;
                 self.render(now);
+                self.post_race(now);
             }
             Event::LanguageChanged(language) => {
                 self.t.set_language(&language);
+                self.language = language;
                 self.render(now);
                 self.render_settings();
+                self.render_race(now);
             }
+            Event::WebviewMessage(message) => self.page_message(&message, now),
             Event::UiAction(action) => self.ui_action(action, now),
             Event::Timer(id) if Some(id) == self.tick_timer => self.tick(now),
             Event::Timer(id) if Some(id) == self.card_timer => {
@@ -747,6 +1124,22 @@ impl App {
                 self.begin_game(now);
             }
             Event::Timer(id) if Some(id) == self.retry_timer => self.retry_send(),
+            Event::Timer(id) if Some(id) == self.race_lobby_timer => {
+                self.race_lobby_timer = None;
+                self.begin_race(now);
+            }
+            Event::Timer(id) if Some(id) == self.race_run_timer => {
+                self.race_run_timer = None;
+                self.race_time_up(now);
+            }
+            Event::Timer(id) if Some(id) == self.race_end_timer => {
+                self.race_end_timer = None;
+                self.end_race(now);
+            }
+            Event::Timer(id) if Some(id) == self.race_progress_timer => {
+                self.race_progress_timer = None;
+                self.share_progress(now);
+            }
             Event::Timer(id) if Some(id) == self.reaction_timer => {
                 self.reaction_timer = None;
                 self.reaction = None;
@@ -800,6 +1193,7 @@ impl Plugin for Echolings {
         if let Some(pet) = &mut pet {
             pet.catch_up(now);
         }
+        let theme_info = theme::current();
         let tick_timer = timers::start(TICK_MS, true)
             .map_err(|e| format!("could not start the care timer: {e:?}"))?;
         let mut app = App {
@@ -808,7 +1202,7 @@ impl Plugin for Echolings {
             channel: None,
             settings: storage::load_settings(),
             t: I18n::new("en"),
-            reduced_motion: theme::current().reduced_motion,
+            reduced_motion: theme_info.reduced_motion,
             panel: PanelVisibility::Inline,
             draft: Draft::default(),
             need_name: false,
@@ -830,6 +1224,17 @@ impl Plugin for Echolings {
             lobby_timer: None,
             retry: None,
             retry_timer: None,
+            language: "en".to_owned(),
+            dark: theme_info.mode == Mode::Dark,
+            race: None,
+            race_lobby_timer: None,
+            race_run_timer: None,
+            race_end_timer: None,
+            race_progress_timer: None,
+            race_progress_sent: 0,
+            race_burst_until: 0,
+            race_page: false,
+            race_no_view: false,
         };
         app.save();
         app.render(now);

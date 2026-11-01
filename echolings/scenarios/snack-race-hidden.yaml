@@ -1,0 +1,21 @@
+# Without the web view permission Snack Race is hidden (FR-6.83): invites are ignored and the
+# race action does nothing; the panel and badge only show the pet again.
+name: Snack Race needs the web view
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, events.voice, events.presence, events.self, peers.messages]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
+
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 00000007 1e"}}
+  - expect: {tree: {slot: panel, text: "Pip"}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
+  - event: {ui-action: {action: race}}
+  - expect: {tree: {slot: panel, text: "Pip"}}
+  - expect: {tree: {slot: {member-badge: 1}, text: "Pip"}}
+  - expect: nothing

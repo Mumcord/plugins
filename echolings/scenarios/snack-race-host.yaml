@@ -1,0 +1,30 @@
+# Alice starts Snack Race: the invite goes out, the lobby closes after 30 seconds with the start
+# message, her run ends after 15 seconds with her score, and the results show 20 seconds after
+# the start. Without the chat-card permission the race card takes over the panel. The mock host has no web view, so no hops are made and the card says so.
+# Invite: version, race id u32, lobby secs. Start: version, race id. Score: version, race id,
+# hops, finish ms u16.
+name: Hosting a Snack Race
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.webview, events.voice, events.presence, events.self, peers.messages]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  - event: {ui-action: {action: race}}
+  - expect: {message: {to: channel, kind: 6}}
+  - expect: {tree: {slot: panel, text: "You started Snack Race"}}
+
+  - wait: 30500
+  - expect: {message: {to: channel, kind: 7}}
+  - expect: {tree: {slot: panel, text: "The race is on!"}}
+
+  - wait: 15000
+  - expect: {message: {to: channel, kind: 9}}
+  - expect: {tree: {slot: panel, text: "Your run is over"}}
+
+  - wait: 5000
+  - expect: {tree: {slot: panel, text: "1. You 0/10"}}

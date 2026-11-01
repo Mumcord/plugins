@@ -1,0 +1,40 @@
+# Bob starts Snack Race; Alice joins in the lobby, Bob's start message starts her run, Bob's
+# pet hops and reaches the snack, Alice's run times out and the results rank Bob first.
+# Invite: version, race id u32, lobby secs. Start: version, race id. Progress: version, race
+# id, hops. Score: version, race id, hops, finish ms u16 (0x1b58 = 7000 ms, 0x3a98 = 15000 ms).
+name: Joining a Snack Race
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.chat-card, ui.webview, events.voice, events.presence, events.self, peers.messages]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Cleo}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  # Race 7 with a 30-second lobby. A broken invite is ignored.
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 0000"}}
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 00000007 1e"}}
+  - expect: {tree: {slot: {chat-card: snack-race-7}, text: "Bob started Snack Race"}}
+
+  - event: {ui-action: {action: race-join, slot: {chat-card: snack-race-7}}}
+  - expect: {tree: {slot: {chat-card: snack-race-7}, text: "You're in"}}
+
+  # Only the host's start counts.
+  - event: {peer-message: {from: 3, kind: 7, hex: "01 00000007"}}
+  - event: {peer-message: {from: 2, kind: 7, hex: "01 00000007"}}
+  - expect: {tree: {slot: {chat-card: snack-race-7}, text: "The race is on!"}}
+
+  # Bob hops along and finishes in 7 seconds; a forged 1-second finish from Cleo is dropped.
+  - event: {peer-message: {from: 2, kind: 8, hex: "01 00000007 05"}}
+  - event: {peer-message: {from: 2, kind: 9, hex: "01 00000007 0a 1b58"}}
+  - event: {peer-message: {from: 3, kind: 9, hex: "01 00000007 0a 03e8"}}
+
+  # Alice's run times out without hops (the mock host has no web view).
+  - wait: 15000
+  - expect: {message: {to: channel, kind: 9, hex: "01 00000007 00 3a98"}}
+
+  - wait: 5000
+  - expect: {tree: {slot: {chat-card: snack-race-7}, text: "1. Bob 7.0 s · 2. You 0/10"}}

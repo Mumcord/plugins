@@ -7,6 +7,7 @@ mod tests;
 
 use mumcord_plugin_sdk::ui::{self, Align, Animation, ButtonKind, Direction, El};
 
+use crate::games::snack_race::action::START as RACE;
 use crate::pet::{Mood, Now, Pet, Reaction, Refusal, SMALL_MAX, Session, Species, balance};
 use crate::storage::AnimationLevel;
 use i18n::I18n;
@@ -80,6 +81,8 @@ pub struct View<'a> {
     pub reaction: Option<Reaction>,
     /// The latest refused action, shown until the next action.
     pub refusal: Option<Refusal>,
+    /// Snack Race is offered (the web view permission is granted).
+    pub race: bool,
 }
 
 impl View<'_> {
@@ -165,41 +168,56 @@ impl View<'_> {
     fn actions(&self) -> El {
         let asleep = self.pet.asleep(self.session, self.now);
         let cost = balance::TREAT_COST.to_string();
-        ui::row().children([
-            ui::button(action::PAT, &self.t.t("action.pat")).kind(ButtonKind::Primary),
-            ui::button(action::TREAT, &self.t.f("action.treat", &[("cost", &cost)]))
-                .kind(ButtonKind::Secondary)
-                .disabled(self.pet.notes < balance::TREAT_COST),
-            ui::button(action::PLAY, &self.t.t("action.play"))
-                .kind(ButtonKind::Secondary)
-                .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
-            ui::button(action::NAP, &self.t.t("action.nap"))
-                .kind(ButtonKind::Secondary)
-                .disabled(asleep),
-        ])
+        ui::row()
+            .children([
+                ui::button(action::PAT, &self.t.t("action.pat")).kind(ButtonKind::Primary),
+                ui::button(action::TREAT, &self.t.f("action.treat", &[("cost", &cost)]))
+                    .kind(ButtonKind::Secondary)
+                    .disabled(self.pet.notes < balance::TREAT_COST),
+                ui::button(action::PLAY, &self.t.t("action.play"))
+                    .kind(ButtonKind::Secondary)
+                    .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
+            ])
+            .children(self.race.then(|| {
+                ui::button(RACE, &self.t.t("action.race"))
+                    .kind(ButtonKind::Secondary)
+                    .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST)
+            }))
+            .child(
+                ui::button(action::NAP, &self.t.t("action.nap"))
+                    .kind(ButtonKind::Secondary)
+                    .disabled(asleep),
+            )
     }
 
     /// One row of small icon buttons; the labels are what screen readers and tooltips say.
     fn icon_actions(&self) -> El {
         let asleep = self.pet.asleep(self.session, self.now);
         let cost = balance::TREAT_COST.to_string();
-        ui::stack(Direction::Row, 8, Align::Center).children([
-            ui::icon_button(action::PAT, "assets/icons/pat.svg", &self.t.t("action.pat")),
-            ui::icon_button(
-                action::TREAT,
-                "assets/icons/treat.svg",
-                &self.t.f("action.treat", &[("cost", &cost)]),
+        ui::stack(Direction::Row, 8, Align::Center)
+            .children([
+                ui::icon_button(action::PAT, "assets/icons/pat.svg", &self.t.t("action.pat")),
+                ui::icon_button(
+                    action::TREAT,
+                    "assets/icons/treat.svg",
+                    &self.t.f("action.treat", &[("cost", &cost)]),
+                )
+                .disabled(self.pet.notes < balance::TREAT_COST),
+                ui::icon_button(
+                    action::PLAY,
+                    "assets/icons/play.svg",
+                    &self.t.t("action.play"),
+                )
+                .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
+            ])
+            .children(self.race.then(|| {
+                ui::icon_button(RACE, "assets/icons/race.svg", &self.t.t("action.race"))
+                    .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST)
+            }))
+            .child(
+                ui::icon_button(action::NAP, "assets/icons/nap.svg", &self.t.t("action.nap"))
+                    .disabled(asleep),
             )
-            .disabled(self.pet.notes < balance::TREAT_COST),
-            ui::icon_button(
-                action::PLAY,
-                "assets/icons/play.svg",
-                &self.t.t("action.play"),
-            )
-            .disabled(asleep || self.pet.energy < balance::PLAY_ENERGY_COST),
-            ui::icon_button(action::NAP, "assets/icons/nap.svg", &self.t.t("action.nap"))
-                .disabled(asleep),
-        ])
     }
 
     fn refusal_text(&self) -> Option<El> {

@@ -30,6 +30,7 @@ fn view<'a>(pet: &'a Pet, session: &'a Session, t: &'a I18n, motion: Motion) -> 
         motion,
         reaction: None,
         refusal: None,
+        race: true,
     }
 }
 
