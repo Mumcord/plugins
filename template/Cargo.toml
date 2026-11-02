@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord", branch = "epic/plugins" }
+mumcord-plugin-sdk = "0.6"
 
 [profile.release]
 opt-level = "s"

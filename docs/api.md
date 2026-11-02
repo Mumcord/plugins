@@ -17,7 +17,7 @@ this for you):
 
 ```toml
 [dependencies]
-mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord", branch = "main" }
+mumcord-plugin-sdk = "0.6"
 ```
 
 ## Lifecycle
