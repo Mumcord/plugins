@@ -1,0 +1,9 @@
+# A bot without a certificate cannot be recognised again, so nothing is offered to set up.
+name: User without certificate
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Guest, anonymous: true}
+
+steps:
+  - event: {user-menu-requested: 2}
+  - expect: {tree: {slot: dialog, text: "no certificate"}}

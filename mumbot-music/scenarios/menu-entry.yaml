@@ -1,0 +1,12 @@
+# The plugin offers "Configure bot" only to mumbot music bots (by their hello) and shows the
+# empty settings list. Normal users and bots without the music module are not listed.
+name: Menu entry and empty settings list
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Mumbot, bot: {name: mumbot, modules: [music]}}
+  - {session: 3, name: Bob}
+  - {session: 4, name: Hook, bot: {name: mumbot, modules: [webhook]}}
+
+steps:
+  - expect: {menu-entry: {label: Configure bot, sessions: [2]}}
+  - expect: {tree: {slot: settings, text: "No bots yet"}}
