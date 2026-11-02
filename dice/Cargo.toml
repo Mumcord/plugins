@@ -1,0 +1,31 @@
+[package]
+name = "dice"
+description = "Mumcord plugin: roll dice in chat that everyone can check"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Mumcord/plugins"
+publish = false
+
+# Built on its own, not as part of a larger workspace.
+[workspace]
+
+[lib]
+# cdylib is the plugin module; rlib lets `cargo test` run the logic natively.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mumcord-plugin-sdk = "0.6"
+hmac = "0.13"
+sha2 = "0.11"
+
+[dev-dependencies]
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

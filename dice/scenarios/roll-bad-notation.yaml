@@ -1,0 +1,10 @@
+name: Bad notation shows a local error and sends nothing
+grant: [ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {ui-action: {action: roll, command: true, value: "banana"}}
+  - expect: {tree: {slot: {chat-card: error-1}}}
+  - expect: nothing

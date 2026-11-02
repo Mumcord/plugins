@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="48" viewBox="0 0 288 48">
+<g transform="translate(0 0) rotate(0 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="24" cy="24" r="4" fill="#3a3f4b"/>
+</g>
+<g transform="translate(48 0) rotate(-12 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="14" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="24" cy="24" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="34" r="4" fill="#3a3f4b"/>
+</g>
+<g transform="translate(96 0) rotate(8 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="14" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="24" cy="24" r="4" fill="#3a3f4b"/>
+<circle cx="14" cy="34" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="34" r="4" fill="#3a3f4b"/>
+</g>
+<g transform="translate(144 0) rotate(-6 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="14" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="34" r="4" fill="#3a3f4b"/>
+</g>
+<g transform="translate(192 0) rotate(14 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="14" cy="12" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="12" r="4" fill="#3a3f4b"/>
+<circle cx="14" cy="24" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="24" r="4" fill="#3a3f4b"/>
+<circle cx="14" cy="36" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="36" r="4" fill="#3a3f4b"/>
+</g>
+<g transform="translate(240 0) rotate(0 24 24)">
+<rect x="4" y="4" width="40" height="40" rx="8" fill="#ffffff" stroke="#3a3f4b" stroke-width="2.5"/>
+<circle cx="14" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="14" r="4" fill="#3a3f4b"/>
+<circle cx="14" cy="34" r="4" fill="#3a3f4b"/>
+<circle cx="34" cy="34" r="4" fill="#3a3f4b"/>
+</g>
+</svg>

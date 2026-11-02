@@ -1,0 +1,9 @@
+name: Without chat.send the text line is refused but the card still shows
+grant: [ui.chat-card, peers.messages, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+
+steps:
+  # Alone in the channel: no peers, so the roll settles at once.
+  - event: {ui-action: {action: roll, command: true, value: "d20"}}
+  - expect: {log: {contains: could not post the text line}}
+  # The roll itself still settles (the card shows); only the chat line is refused.

@@ -1,0 +1,15 @@
+name: A quick-roll button rolls like /roll and the help button opens the popover
+grant: [ui.panel, ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - expect: {tree: {slot: panel, text: "No roll yet"}}
+  - event: {ui-action: {action: "quick:d20 adv"}}
+  - expect: {message: {to: channel, kind: 1}}
+  - wait: 5000
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: {chat: {text: "unverified, rolled alone"}}
+  - event: {ui-action: {action: help}}
+  - expect: {panel-popover: {open: true}}

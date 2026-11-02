@@ -1,0 +1,17 @@
+name: Another player's roll is checked with two witnesses and shown as Verified
+grant: [ui.chat-card, peers.messages, chat.send, chat.supersedes, random.bytes, commands]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Cara}
+  - {session: 4, name: Dan}
+
+steps:
+  # Bob commits to a 2d6+3 roll (roll id 0x01020304).
+  - event: {peer-message: {from: 2, kind: 1, hex: "010203045afe5209016952254cfa7879ca4b4ce78cf089091c2c1675e570437c8f8713a33264362b33"}}
+  - expect: {tree: {slot: {chat-card: roll-2-01020304}, text: Rolling}}
+  # Two other witnesses arrive before Alice's own, so Alice adds none.
+  - event: {peer-message: {from: 3, kind: 2, hex: "000000020102030421212121212121212121212121212121"}}
+  - event: {peer-message: {from: 4, kind: 2, hex: "000000020102030422222222222222222222222222222222"}}
+  - event: {peer-message: {from: 2, kind: 3, hex: "0102030411111111111111111111111111111111022121212121212121212121212121212122222222222222222222222222222222"}}
+  - expect: {tree: {slot: {chat-card: roll-2-01020304}, text: Verified}}
