@@ -1,0 +1,17 @@
+version = "1.0.0"
+api = 1
+size = 261466
+sha256 = "5a8adcce5805d923837559beca2719327051041c46f858b0c0e63f23eb12cbf9"
+permissions = ["ui.user-menu", "ui.dialog", "events.presence", "events.self", "net.http", "secrets", "notify"]
+published = "2026-11-02"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HN4BulAqs8n0eysU9NP2mSxThdLzjhmbdUaIdPNRuFohu/w2ljnFEw2ZQJYg4UOuYH6eLPV5K39vD5GNhUBJhQY=
+trusted comment: timestamp:1793597753
+IVI4v5j4fA7c2G9E0JtQKSbEYcmvVm5ZHY3eTrSgdVHinXMuPMVLTfJAb59FJjnBFbX/CWQaSV0Oy4DvzGhsDg==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "d896072efdcbe7d6dfd93809626fbcdccefb6a46"
+path = "mumbot-music"

@@ -1,0 +1,17 @@
+version = "1.0.1"
+api = 1
+size = 23508919
+sha256 = "3a98907f215642981ed2610a5c8224c756d459accd992fe4435e51ea912484a0"
+permissions = ["ui.chat-card", "ui.dialog", "ui.webview", "chat.patterns", "ui.panel"]
+published = "2026-11-02"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HKLBkafTh/HgcCB5VxmW6wJvNo+bK1v8iGXY99t3h3W8Z9L2BwRI9A1HHiC1IAjSU8N+GHzOSSjiWLoOZ62kGAQ=
+trusted comment: timestamp:1793597752
+naF+ZKKhhjM0opUr3HyY9L6suVYuFUCkbU/F1dPVNfcoHLIJlkQTvNySlaT32dUYZbfz1wKKX6DyKAgYtfz6BQ==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "d896072efdcbe7d6dfd93809626fbcdccefb6a46"
+path = "eve-fit"

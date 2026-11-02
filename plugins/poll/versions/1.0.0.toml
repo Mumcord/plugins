@@ -1,0 +1,17 @@
+version = "1.0.0"
+api = 1
+size = 207302
+sha256 = "95ee6e3774ec36091b338018e9db698a3b3fef4c5f6e79a6109ae9ae04c785fb"
+permissions = ["ui.panel", "ui.chat-card", "peers.messages", "chat.send", "chat.supersedes", "events.presence", "chat.triggers", "notify"]
+published = "2026-11-02"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HARiliIpI0KspLx2GWiK1tD1q1/xp+ieXLEBBMgV8P81v6prvJnXaK9LlKO66Eptazrgds58ijvXZAXPC3sxRwU=
+trusted comment: timestamp:1793597753
+N3oB9ei/v9Oi3AsWLl7W9Kv+a0gwamJSIamrE1r9OGsCS0T12a+u+CfLvfj/YhE9+I0+0gLzR3MP0tE3e+t5Dw==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "d896072efdcbe7d6dfd93809626fbcdccefb6a46"
+path = "poll"
