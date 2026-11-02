@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="EVE fit">
+  <title>EVE fit</title>
+  <defs>
+    <radialGradient id="fit-tile" gradientUnits="userSpaceOnUse" cx="256" cy="269" r="256" gradientTransform="translate(256 269) scale(1.6 1) translate(-256 -269)">
+      <stop offset="0" stop-color="#26026d"/><stop offset=".5" stop-color="#280272"/><stop offset=".75" stop-color="#2f027f"/><stop offset="1" stop-color="#3a0294"/>
+    </radialGradient>
+    <linearGradient id="fit-purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ab7bfe"/><stop offset="1" stop-color="#7126fe"/></linearGradient>
+    <linearGradient id="fit-orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdb558"/><stop offset="1" stop-color="#fdac52"/></linearGradient>
+    <linearGradient id="fit-coral" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb7f88"/><stop offset="1" stop-color="#fb777c"/></linearGradient>
+    <filter id="fit-shadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="34"/></filter>
+    <clipPath id="fit-clip"><rect width="512" height="512" rx="152"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="152" fill="url(#fit-tile)"/><g clip-path="url(#fit-clip)"><g opacity=".3" filter="url(#fit-shadow)"><path d="M256 92 L316 244 L396 324 L396 368 L302 344 L286 384 L226 384 L210 344 L116 368 L116 324 L196 244 Z" fill="url(#fit-purple)"/>
+<path d="M232 390 Q256 470 280 390 Z" fill="url(#fit-orange)"/>
+<ellipse cx="256" cy="214" rx="20" ry="40" fill="#26026d"/>
+<rect x="138" y="330" width="48" height="20" rx="10" fill="url(#fit-coral)"/>
+<rect x="326" y="330" width="48" height="20" rx="10" fill="url(#fit-coral)"/></g></g><path d="M256 92 L316 244 L396 324 L396 368 L302 344 L286 384 L226 384 L210 344 L116 368 L116 324 L196 244 Z" fill="url(#fit-purple)"/>
+<path d="M232 390 Q256 470 280 390 Z" fill="url(#fit-orange)"/>
+<ellipse cx="256" cy="214" rx="20" ry="40" fill="#26026d"/>
+<rect x="138" y="330" width="48" height="20" rx="10" fill="url(#fit-coral)"/>
+<rect x="326" y="330" width="48" height="20" rx="10" fill="url(#fit-coral)"/>
+</svg>

@@ -329,7 +329,7 @@ def next_sequence(index_url: str) -> int:
     return max(int(time.time()), published + 1)
 
 
-OFFICIAL_FOLDERS = ("poll", "dice", "echolings", "mumbot-music")
+OFFICIAL_FOLDERS = ("poll", "dice", "echolings", "mumbot-music", "eve-fit")
 OFFICIAL_REPOSITORY = "https://github.com/Mumcord/plugins"
 
 

@@ -1,0 +1,51 @@
+# A fit whose drones and cargo share one block, as when written by hand or when a blank line got
+# lost: EVE's data tells the drones from the cargo, so the card counts both and the full fit lists
+# them in their own sections. Loaded charges stay with their modules.
+name: Drones and cargo in one block show apart
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event:
+      chat-match:
+        sender: 2
+        text: |
+          [Algos, Alpha FW Drones]
+          Light Neutron Blaster II, Antimatter Charge S
+          Light Neutron Blaster II, Antimatter Charge S
+          Light Neutron Blaster II, Antimatter Charge S
+          Light Neutron Blaster II, Antimatter Charge S
+          Light Neutron Blaster II, Antimatter Charge S
+
+          5MN Y-T8 Compact Microwarpdrive
+          Initiated Compact Warp Scrambler
+          Fleeting Compact Stasis Webifier
+
+          IFFA Compact Damage Control
+          Drone Damage Amplifier II
+          Small Ancillary Armor Repairer, Nanite Repair Paste
+
+          Small Trimark Armor Pump I
+          Small Trimark Armor Pump I
+          Small Hybrid Collision Accelerator I
+
+          Hammerhead I x2
+          Hobgoblin II x5
+          Antimatter Charge S x2000
+          Iridium Charge S x2000
+          Lead Charge S x2000
+          Nanite Repair Paste x50
+  # The card counts the drones apart from the cargo.
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Drones 7"}}
+
+  - event: {ui-action: {action: open, slot: {chat-card: fit-1}}}
+  - expect: {dialog: {title: "Alpha FW Drones"}}
+  - expect: {tree: {slot: dialog, text: "5× Hobgoblin II"}}
+  - event: dialog-closed
+
+  # Opened again, the full fit lists the charges in the cargo, not among the drones.
+  - event: {ui-action: {action: open, slot: {chat-card: fit-1}}}
+  - expect: {dialog: {title: "Alpha FW Drones"}}
+  - expect: {tree: {slot: dialog, text: "2000× Lead Charge S"}}
+  - expect: nothing

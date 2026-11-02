@@ -16,6 +16,7 @@ Registry source and official plugins for [Mumcord](https://github.com/Mumcord/mu
 | <img src="dice/assets/icon-128.png" alt="" width="64"> | [**Dice roller**](dice/) | `/roll d20` or `2d6+3` with fair rolls that others in the channel can witness and verify. |
 | <img src="echolings/assets/icon-128.png" alt="" width="64"> | [**Echolings**](echolings/) | A little creature made of sound that grows while you hang out with friends. It never dies and never nags. |
 | <img src="mumbot-music/assets/icon-128.png" alt="" width="64"> | [**Mumbot Music**](mumbot-music/) | Control a mumbot music bot in your channel: now playing, skip, volume, queue and adding tracks. |
+| <img src="eve-fit/assets/icon-128.png" alt="" width="64"> | [**EVE fit**](eve-fit/) | EVE Online ship fits pasted into the chat become a tidy card, with the full fit one click away. |
 
 ## How plugins work
 
@@ -48,7 +49,7 @@ Propose your plugin with a pull request that adds its registry entry under `plug
 ## Repository layout
 
 - `plugins/<id>/plugin.toml`, `plugins/<id>/versions/<ver>.toml`, media: registry entries
-- `poll/`, `dice/`, `echolings/`, `mumbot-music/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
+- `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `eve-fit/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
 - `policy/REVIEW.md`: review policy
 - `revoked.toml`: revoked plugin versions and keys
 - `docs/`: user guides and author documentation (Apache-2.0); `mkdocs.yml` and `docs-site/` build the

@@ -1,0 +1,135 @@
+/* EVE's fitting window is dark only; the page follows it in light mode too. */
+html,
+body {
+  margin: 0;
+  background: #0d1012;
+  color: #c8c8c8;
+  font: 13px/1.4 "Noto Sans", system-ui, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+/*
+ * The wheel's drawing reaches past its box, which is 572 of EVE's units wide: the rings by 34
+ * units on every side, the implant and booster arcs by up to 52 units on the left and right. So
+ * the wheel gets that much padding, and its size is chosen so that box plus padding fits the
+ * frame's width and, minus room for the page padding and the first footer line, its height.
+ */
+.wheel {
+  --wheel-size: max(
+    240px,
+    min(560px, calc((100vw - 24px) * 572 / 684), calc((100vh - 64px) * 572 / 640))
+  );
+  --esf-wheel-size: var(--wheel-size);
+  padding: calc(var(--wheel-size) * 34 / 572) calc(var(--wheel-size) * 56 / 572);
+}
+
+/* Wide enough for the statistics beside the wheel (280px, plus the 16px gap and page padding). */
+@media (min-width: 820px) {
+  .wheel {
+    --wheel-size: max(
+      240px,
+      min(560px, calc((100vw - 320px) * 572 / 684), calc((100vh - 64px) * 572 / 640))
+    );
+  }
+}
+
+.stats {
+  flex: 1 1 280px;
+  max-width: 320px;
+  min-width: 280px;
+}
+
+.fitting {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/*
+ * The drone bay and cargo below the wheel, side by side when there is room, as wide as the
+ * statistics; one item per row, its quantity on the right. The sections bring their own top margin.
+ */
+.bays {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 16px;
+}
+
+.bays > * {
+  flex: 0 1 280px;
+  min-width: 0;
+}
+
+.bay {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bay li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.bay-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bay-quantity {
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  align-self: center;
+  font-size: 15px;
+}
+
+footer {
+  padding: 8px 12px 12px;
+  font-size: 11px;
+  color: #8a8a8a;
+}
+
+footer p {
+  margin: 0 0 4px;
+}
+
+footer summary {
+  cursor: pointer;
+}
+
+footer pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* The wheel's "open on eveship.fit" link would navigate the sealed frame, which closes it. */
+.wheel a[href^="https://eveship.fit"] {
+  display: none;
+}

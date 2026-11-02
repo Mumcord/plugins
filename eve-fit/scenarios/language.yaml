@@ -1,0 +1,26 @@
+# A language change renders the cards and the open dialog again in the new language.
+name: Cards follow the language
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event:
+      chat-match:
+        sender: 2
+        text: |
+          [Vexor, Ratting]
+          Drone Damage Amplifier II
+
+
+          Hammerhead II x5
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Drones 5"}}
+  - event: {ui-action: {action: open, slot: {chat-card: fit-1}}}
+  - expect: {dialog: {title: "Ratting"}}
+  - expect: {tree: {slot: dialog, text: "5× Hammerhead II"}}
+
+  - event: {language: de}
+  - expect: {tree: {slot: {chat-card: fit-1}, text: "Drohnen 5"}}
+  - expect: {dialog: {title: "Ratting"}}
+  - expect: {tree: {slot: dialog, text: "Low 1/1"}}
+  - expect: nothing

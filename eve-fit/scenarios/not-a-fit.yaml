@@ -1,0 +1,14 @@
+# A message that only starts like a fit (a header and nothing else) shows no card.
+name: Text that is no fit is ignored
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event:
+      chat-match:
+        sender: 2
+        text: |
+          [Rifter, anyone?]
+          
+  - expect: nothing
