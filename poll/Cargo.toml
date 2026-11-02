@@ -17,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord", branch = "epic/plugins" }
+mumcord-plugin-sdk = "0.6"
 
 [profile.release]
 opt-level = "s"
