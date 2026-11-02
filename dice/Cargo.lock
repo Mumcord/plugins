@@ -196,8 +196,9 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "mumcord-plugin-sdk"
-version = "0.5.0"
-source = "git+https://github.com/Mumcord/mumcord?branch=epic%2Fplugins#c813684b139937313216dceaa05cc6f87c6eae00"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f075a531b2a5f5100293a9716f397001647de29007d484b75ffacf7c32f9b19"
 dependencies = [
  "serde",
  "serde_json",
