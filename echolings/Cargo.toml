@@ -1,0 +1,24 @@
+[package]
+name = "echolings"
+description = "Echolings: a little creature made of sound that grows while you hang out with friends"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "AGPL-3.0-or-later"
+publish = false
+
+# cdylib is the plugin; rlib lets `cargo test` run the pet logic on the host.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mumcord-plugin-sdk = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

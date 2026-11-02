@@ -1,0 +1,32 @@
+# Hatching: choose a species, colour and name; then the care actions Pat, Treat and Nap.
+# Run: mumcord-plugin build . && mumcord-plugin test dist/echolings-1.0.0.mcplugin scenarios/*.yaml
+name: Hatching and caring for an Echoling
+me: {session: 1, name: Alice}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - expect: {tree: {slot: panel, text: "Choose your Echoling"}}
+
+  # Hatching without a name is refused.
+  - event: {ui-action: {action: hatch}}
+  - expect: {tree: {slot: panel, text: "Give your Echoling a name first."}}
+
+  # Species pick, name, then hatch.
+  - event: {ui-action: {action: pick-species, value: mossmo}}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+  - expect: {tree: {slot: panel, text: "Pip"}}
+  - expect: {tree: {slot: panel, text: "Mossmo · Hum"}}
+
+  - event: {ui-action: {action: pat}}
+  - expect: {tree: {slot: panel, text: "Pat"}}
+
+  # A treat costs Notes; a fresh pet cannot afford one yet.
+  - event: {ui-action: {action: treat}}
+  - expect: {tree: {slot: panel, text: "Not enough Notes for a treat yet."}}
+
+  # A nap puts the pet to sleep; it cannot nap twice.
+  - event: {ui-action: {action: nap}}
+  - expect: {tree: {slot: panel, text: "sleeping"}}
+  - event: {ui-action: {action: nap}}
+  - expect: {tree: {slot: panel, text: "Pip is asleep."}}

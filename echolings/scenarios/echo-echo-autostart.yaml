@@ -1,0 +1,21 @@
+# Echo Echo starts on its own: 30 seconds after Play the host's lobby closes, the start message
+# Without the chat-card permission the game takes over the panel.
+# goes to the channel and the tune plays, even though nobody joined (the host plays alone).
+name: Echo Echo starts on its own
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, events.voice, events.presence, events.self, peers.messages, notify]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  - event: {ui-action: {action: play}}
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: {tree: {slot: panel, text: "You started Echo Echo"}}
+
+  - wait: 30500
+  - expect: {message: {to: channel, kind: 5}}
+  - expect: {tree: {slot: panel, text: "Listen… note 1 of 5"}}

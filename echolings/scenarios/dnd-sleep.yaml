@@ -1,0 +1,22 @@
+# Do Not Disturb: the pet sleeps and ignores care; when DND ends it is awake again.
+# Run: mumcord-plugin build . && mumcord-plugin test dist/echolings-1.0.0.mcplugin scenarios/dnd-sleep.yaml
+name: Do Not Disturb puts the Echoling to sleep
+me: {session: 1, name: Alice}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-species, value: mossmo}}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+  - expect: {tree: {slot: panel, text: "Pip"}}
+
+  # DND on: the pet falls asleep and does not react to care.
+  - event: {self-changed: {dnd: true}}
+  - expect: {tree: {slot: panel, text: "sleeping"}}
+  - event: {ui-action: {action: nap}}
+  - expect: {tree: {slot: panel, text: "Pip is asleep."}}
+
+  # DND off: the pet is awake again and reacts.
+  - event: {self-changed: {dnd: false}}
+  - event: {ui-action: {action: pat}}
+  - expect: {tree: {slot: panel, text: "Pat"}}

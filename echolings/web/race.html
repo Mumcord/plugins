@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Snack Race</title>
+    <link rel="stylesheet" href="race.css" />
+  </head>
+  <body class="motion-still">
+    <main>
+      <header>
+        <h1 id="title"></h1>
+        <p id="clock" class="clock" aria-hidden="true"></p>
+      </header>
+      <p id="status" class="status" aria-live="polite"></p>
+      <ol id="track" class="track"></ol>
+      <section id="play" class="play" hidden>
+        <div id="bar" class="bar" role="img">
+          <div id="zone" class="zone"></div>
+          <div id="marker" class="marker"></div>
+        </div>
+        <button id="hop" class="hop" type="button"></button>
+        <p id="hint" class="hint"></p>
+        <p id="note" class="note" aria-live="assertive"></p>
+      </section>
+      <button id="start" class="start" type="button" hidden></button>
+      <ol id="results" class="results" hidden></ol>
+    </main>
+    <script src="race.js"></script>
+  </body>
+</html>

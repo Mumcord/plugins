@@ -1,0 +1,27 @@
+# Bob opens an Echo Echo lobby; Alice joins and waits. The tune only plays when Bob's start
+# message arrives, so every client starts together. A start from anyone else is ignored.
+# Invite: version, game id u32, tune length, notes, lobby seconds. Start: version, game id u32.
+name: Waiting in an Echo Echo lobby
+grant: [ui.panel, ui.member-badge, ui.profile-card, ui.dialog, ui.chat-card, events.voice, events.presence, events.self, peers.messages, notify]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Cleo}
+
+steps:
+  - event: {panel-visibility: expanded}
+  - event: {ui-action: {action: pick-name, value: Pip}}
+  - event: {ui-action: {action: hatch}}
+
+  - event: {peer-message: {from: 2, kind: 3, hex: "01 00000007 05 00 01 02 03 00 1e"}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "Bob started Echo Echo"}}
+
+  - event: {ui-action: {action: echo-join, slot: {chat-card: echo-echo-7}}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "You're in. The tune starts soon"}}
+
+  - event: {peer-message: {from: 3, kind: 5, hex: "01 00000007"}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "You're in. The tune starts soon"}}
+
+  - wait: 10000
+  - event: {peer-message: {from: 2, kind: 5, hex: "01 00000007"}}
+  - expect: {tree: {slot: {chat-card: echo-echo-7}, text: "Listen… note 1 of 5"}}
