@@ -1,0 +1,17 @@
+version = "1.0.0"
+api = 1
+size = 590573
+sha256 = "383b28c7c61f13572df8fc619a4d2cb3fa1723746c281ef5a526a3acc2941896"
+permissions = ["ui.panel", "ui.member-badge", "ui.profile-card", "ui.dialog", "events.voice", "events.presence", "events.self", "peers.messages", "ui.chat-card", "notify", "events.chat-activity", "ui.webview"]
+published = "2026-11-02"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HD8lMKUY/Z1fphHbQ6FW2xcgLm8YsOGUE1Wpptk96vMm8TwPAP6OYDAaUQvUNB986qLPBSRyxDB7XNcmGr/MMA0=
+trusted comment: timestamp:1793597752
+HjWnjNOhkn9SF7wCMfwTZEcwy5WaI8biri9zSI6hD3Gr4+MWs1SuVetQ4FP7rpy7dvzC0ZCmalYm8GHZCiVWDQ==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "d896072efdcbe7d6dfd93809626fbcdccefb6a46"
+path = "echolings"

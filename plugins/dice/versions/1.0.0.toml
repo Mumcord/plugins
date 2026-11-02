@@ -1,0 +1,17 @@
+version = "1.0.0"
+api = 1
+size = 262679
+sha256 = "7279406a751a59411d71b228444f7ba677282d4d5ab0694b614bd8ca11442b5f"
+permissions = ["ui.chat-card", "peers.messages", "chat.send", "chat.supersedes", "random.bytes", "commands", "ui.panel"]
+published = "2026-11-02"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HFCTufeqp+DzOq/+tDFElQS4ZRPJty47rp5GCRgZFoWAs72nBbBQM5KLYn2hEZXIKAPP/SAm8/sYIA2ffInrQQg=
+trusted comment: timestamp:1793597752
+Pb8vCBB4SODR/WRrGupRt1khTSjYLuvf6XUb8qWgDM4ZkHgePw1dCoRLMgoZ6S8KnBeBK84t2nbv2UN6iedCAQ==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "d896072efdcbe7d6dfd93809626fbcdccefb6a46"
+path = "dice"
