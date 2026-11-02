@@ -9,14 +9,6 @@
 cargo install mumcord-plugin
 ```
 
-> [!NOTE]
-> The crates.io release becomes available with Mumcord 0.6.0. Until then, install it from the
-> repository:
->
-> ```sh
-> cargo install --git https://github.com/Mumcord/mumcord mumcord-plugin
-> ```
-
 The CLI source is Apache-2.0, but the built binary links code from Mumcord's AGPL-3.0 crates (it
 runs the same package and manifest checks as the client). Treat the binary as AGPL-3.0 software; this
 does not change the licence of the plugins you build with it.
