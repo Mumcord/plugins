@@ -1,0 +1,25 @@
+# The host replays the poll's own "[Poll] " lines from chat history (chat-match
+# pattern index 255, `own: true`). The create line of a known poll gives way to its card and
+# the closing line is hidden, as the card shows the result.
+name: A replayed own create line is replaced by the card, the close line is hidden
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {ui-action: {action: new-poll}}
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {message: {to: channel, kind: 1}}
+  - event: {ui-action: {action: close}}
+  - expect: {chat: {text: "Closed: Lunch? Pizza: 0, Sushi: 0"}}
+  - expect: {message: {to: channel, kind: 3}}
+
+  - event: {chat-match: {own: true, text: "[Poll] 📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2", message: 31, replay: true}}
+  - expect: {replaced: {message: 31}}
+
+  - event: {chat-match: {own: true, text: "[Poll] Closed: Lunch? Pizza: 0, Sushi: 0", message: 32, replay: true}}
+  - expect: {hidden: {message: 32}}

@@ -1,0 +1,23 @@
+# A live "!poll N" for a poll this client knows is hidden behind the card and counted; one for
+# a number that is no option of any known poll is left alone.
+name: A live chat vote is hidden and counted
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  - event: {ui-action: {action: new-poll}}
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {message: {to: channel, kind: 1}}
+
+  - event: {chat-trigger: {sender: 2, trigger: "!poll", args: "2", message: 10}}
+  - expect: {hidden: {message: 10}}
+  - expect: {tree: {slot: panel, text: "Your poll · 1 vote"}}
+
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "9", message: 11}}
+  - expect: nothing

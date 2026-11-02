@@ -1,0 +1,18 @@
+# Without "Post into the chat" the poll is still created and sent, only the text line is
+# missing and the plugin logs it. Without presence nobody gets a resend.
+name: Missing permissions are handled
+grant: [ui.panel, ui.chat-card, peers.messages, chat.supersedes]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+  - expect: {log: {contains: could not post the poll line}}
+  - expect: {message: {to: channel, kind: 1}}
+  - expect: {tree: {slot: panel, text: "Your poll"}}
+  - event: {joined: 2}
+  - expect: nothing

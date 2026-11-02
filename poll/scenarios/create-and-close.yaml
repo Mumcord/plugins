@@ -1,0 +1,46 @@
+# Creator side: "New poll" opens the form in the popover, then the card, the fallback chat line, the final result and the
+# resend for a user who joins later. The poll id is the wall-clock second, so these steps
+# check message kinds and targets, not exact payload bytes.
+name: Creating, closing and resending a poll
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  # Empty state, then "New poll" opens the popover with the form.
+  - expect: {tree: {slot: panel, text: "No poll in this channel"}}
+  - event: {ui-action: {action: new-poll}}
+  - expect: {panel-popover: {open: true}}
+  - expect: {tree: {slot: panel, text: "Create poll"}}
+
+  # An incomplete form is refused and nothing is sent.
+  - event: {ui-action: {action: create}}
+  - expect: {tree: {slot: panel, text: "Enter a question and at least two options."}}
+  - expect: nothing
+
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+
+  # The plain text line for users without Poll, then the create message for the channel. The
+  # popover closes and the panel shows the poll with its End button.
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {message: {to: channel, kind: 1}}
+  - expect: {panel-popover: {open: false}}
+  - expect: {tree: {slot: panel, text: "End poll"}}
+
+  # Carol joins later and gets the poll directly (needs the presence permission).
+  - event: {joined: 3}
+  - expect: {message: {to: 3, kind: 1}}
+
+  # Bob installs Poll after the poll was created: once his Mumcord announces it, he gets it too.
+  - event: {peer-ready: 2}
+  - expect: {message: {to: 2, kind: 1}}
+
+  # Ending posts the result line and sends the final tally and the voter list.
+  - event: {ui-action: {action: close}}
+  - expect: {chat: {text: "Closed: Lunch?"}}
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: {tree: {slot: panel, text: "New poll"}}

@@ -1,0 +1,11 @@
+# The creator leaves: the poll stays visible, marked as frozen.
+name: Creator leaves, poll is frozen
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {peer-message: {from: 2, kind: 1, hex: "00000007 00000000 06 4c756e63683f 02 05 5069 7a7a61 05 5375736869"}}
+  - expect: {tree: {slot: {chat-card: p-2-7}, text: "Poll by Bob"}}
+  - event: {left: 2}
+  - expect: {tree: {slot: {chat-card: p-2-7}, text: "Creator left, poll is frozen"}}

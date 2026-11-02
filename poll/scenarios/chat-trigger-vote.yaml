@@ -1,0 +1,32 @@
+# People without Poll vote by writing "!poll <n>" in the chat; the creator's Poll counts it
+# like a plugin vote: one per person, a later one replaces the earlier one, nonsense is ignored.
+name: Votes from the chat with !poll
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+  - {session: 3, name: Carol}
+
+steps:
+  - event: {ui-action: {action: new-poll}}
+  - event: {ui-action: {action: question, value: "Lunch?"}}
+  - event: {ui-action: {action: option-0, value: "Pizza"}}
+  - event: {ui-action: {action: option-1, value: "Sushi"}}
+  - event: {ui-action: {action: create}}
+  - expect: {chat: {text: "📊 Lunch? · 1) Pizza · 2) Sushi · Vote with !poll 1 to !poll 2"}}
+  - expect: {message: {to: channel, kind: 1}}
+
+  - event: {chat-trigger: {sender: 2, trigger: "!poll", args: "2"}}
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "1"}}
+  - wait: 1100
+  - event: {chat-trigger: {sender: 2, trigger: "!poll", args: "1"}}
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "7"}}
+  - event: {chat-trigger: {sender: 3, trigger: "!poll", args: "pizza"}}
+  # Two votes after Bob and Carol; Bob's change keeps it at two, and the nonsense lines
+  # ("7" is no option, "pizza" no number) change nothing at all.
+  - expect: {tree: {slot: panel, text: "Your poll · 2 votes"}}
+  - expect: {tree: {slot: panel, text: "Your poll · 2 votes"}}
+
+  # One tally for the channel after the 2 s wait for more votes.
+  - wait: 2500
+  - expect: {message: {to: channel, kind: 3}}
+  - expect: nothing

@@ -1,0 +1,22 @@
+{
+  "manifest": 1,
+  "id": "poll",
+  "name": "Poll",
+  "description": "Ask the channel a question with up to ten options and watch the votes come in live.",
+  "version": "1.0.0",
+  "api": "^1.0",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["chat", "tools"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": ["ui.panel", "ui.chat-card", "peers.messages", "chat.send", "chat.supersedes"],
+    "optional": [
+      { "id": "events.presence", "suggested": true },
+      { "id": "chat.triggers", "suggested": true },
+      "notify"
+    ]
+  },
+  "triggers": ["!poll"],
+  "messaging": { "default_visibility": "everyone" }
+}
