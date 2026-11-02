@@ -159,8 +159,9 @@ def check_licence(folder: Path) -> None:
         raise CheckError(f"licence {licence!r} is not on the OSI allow-list ({', '.join(unknown)})")
     if not (folder / "LICENSE").is_file():
         raise CheckError("the source folder has no LICENSE file")
-    run("cargo", "deny", "--manifest-path", folder / "Cargo.toml", "check", "licenses",
-        "--config", DENY_CONFIG, "--hide-inclusion-graph")
+    # cargo-deny 0.20 takes --config as a global option, before the subcommand.
+    run("cargo", "deny", "--manifest-path", folder / "Cargo.toml", "--config", DENY_CONFIG,
+        "check", "licenses", "--hide-inclusion-graph")
 
 
 def check_signature(package: Path, version: dict, author_keys: list[str]) -> None:
