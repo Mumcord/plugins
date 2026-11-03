@@ -1,0 +1,211 @@
+# Tests of the official plugins: logic in the mock host (`cargo test` and the YAML scenarios with
+# `mumcord-plugin test`) and E2E in a real Mumcord against a local Mumble server (e2e/run.sh).
+# Only the plugins whose folder changed run; a change to the harness runs all of them
+# (e2e/changed-plugins.sh). Mumcord is the release tag in e2e/mumcord-version: its app, E2E image
+# and CLI are built once per tag and kept in the cache.
+name: Plugin tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: plugin-tests-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  MUMCORD_PLUGINS_E2E: /home/runner/.cache/plugins-e2e
+  MUMCORD_E2E_CACHE: /home/runner/.cache/mumcord-e2e
+  MUMCORD_PLUGIN_CLI: /home/runner/.cache/mumcord-cli/bin/mumcord-plugin
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+
+jobs:
+  changes:
+    name: Changed plugins
+    runs-on: ubuntu-24.04
+    outputs:
+      plugins: ${{ steps.select.outputs.plugins }}
+      tag: ${{ steps.select.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: select
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          plugins="$(e2e/changed-plugins.sh "$BASE")"
+          echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+          echo "tag=$(tr -d '[:space:]' < e2e/mumcord-version)" >> "$GITHUB_OUTPUT"
+          echo "Plugins under test: $plugins" >> "$GITHUB_STEP_SUMMARY"
+
+  # The mumcord-plugin CLI of the pinned tag (build, mock host), shared by the jobs below.
+  cli:
+    name: CLI ${{ needs.changes.outputs.tag }}
+    needs: changes
+    if: needs.changes.outputs.plugins != '[]'
+    runs-on: ubuntu-24.04
+    steps:
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/mumcord-cli
+          key: mumcord-cli-${{ needs.changes.outputs.tag }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          TAG: ${{ needs.changes.outputs.tag }}
+        run: cargo install --locked --quiet --root /home/runner/.cache/mumcord-cli --git https://github.com/Mumcord/mumcord.git --tag "$TAG" mumcord-plugin
+
+  logic:
+    name: Mock host (${{ matrix.plugin }})
+    needs: [changes, cli]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJSON(needs.changes.outputs.plugins) }}
+    env:
+      # Each plugin pins its toolchain (rust-toolchain.toml); rustup installs it on first use.
+      RUSTUP_AUTO_INSTALL: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/.cache/mumcord-cli
+          key: mumcord-cli-${{ needs.changes.outputs.tag }}
+          fail-on-cache-miss: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.plugin }} -> target
+          key: ${{ matrix.plugin }}
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - name: Unit tests
+        working-directory: ${{ matrix.plugin }}
+        run: cargo test --quiet
+      - name: Scenarios in the mock host
+        env:
+          PLUGIN: ${{ matrix.plugin }}
+        run: |
+          "$MUMCORD_PLUGIN_CLI" build "$PLUGIN" --out "$RUNNER_TEMP/package"
+          "$MUMCORD_PLUGIN_CLI" test "$RUNNER_TEMP"/package/*.mcplugin "$PLUGIN"/scenarios/*.yaml
+
+  # Mumcord's E2E image and app (with its test backend) for the pinned tag, built once per tag.
+  mumcord:
+    name: Mumcord ${{ needs.changes.outputs.tag }} E2E build
+    needs: changes
+    if: needs.changes.outputs.plugins != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/.cache/mumcord-e2e-build
+          key: mumcord-e2e-build-${{ needs.changes.outputs.tag }}
+          lookup-only: true
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Free runner disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Build the E2E image and the app
+        run: e2e/run.sh
+        env:
+          MUMCORD_E2E_STEP: build
+      # zstd keeps the ~3 GB image quick to save and load; tar keeps the executable bits.
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Package image and binaries
+        shell: bash
+        run: |
+          out=/home/runner/.cache/mumcord-e2e-build
+          mkdir -p "$out"
+          docker save mumcord-e2e | zstd -T0 -3 -q -o "$out/image.tar.zst"
+          tar -C "$MUMCORD_E2E_CACHE/target/debug" -cf - mumcord mumbot netsim examples/libtest_plugin.so \
+            examples/headless_check libmumcord_overlay_layer.so | zstd -T0 -3 -q -o "$out/bin.tar.zst"
+          ls -lh "$out"
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/.cache/mumcord-e2e-build
+          key: mumcord-e2e-build-${{ needs.changes.outputs.tag }}
+
+  e2e:
+    name: E2E (${{ matrix.plugin }})
+    needs: [changes, cli, mumcord]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJSON(needs.changes.outputs.plugins) }}
+    env:
+      RUSTUP_AUTO_INSTALL: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/.cache/mumcord-cli
+          key: mumcord-cli-${{ needs.changes.outputs.tag }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/.cache/mumcord-e2e-build
+          key: mumcord-e2e-build-${{ needs.changes.outputs.tag }}
+          fail-on-cache-miss: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.plugin }} -> target
+          key: ${{ matrix.plugin }}
+          save-if: false
+      - name: Load image and binaries
+        run: |
+          build=/home/runner/.cache/mumcord-e2e-build
+          zstd -dc "$build/image.tar.zst" | docker load -q
+          mkdir -p "$MUMCORD_E2E_CACHE/target/debug"
+          zstd -dc "$build/bin.tar.zst" | tar -C "$MUMCORD_E2E_CACHE/target/debug" -xf -
+          rm -rf "$build"
+      - name: Check the specs
+        run: e2e/run.sh --check "${{ matrix.plugin }}"
+      # Mumcord's e2e/run.sh creates its test server .env with a random password; no secrets needed.
+      - name: Run E2E
+        run: e2e/run.sh "${{ matrix.plugin }}"
+        env:
+          MUMCORD_E2E_STEP: test
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-${{ matrix.plugin }}
+          path: ${{ env.MUMCORD_PLUGINS_E2E }}/mumcord-${{ needs.changes.outputs.tag }}/e2e/artifacts/
+          if-no-files-found: ignore
+
+  # One check for branch protection: passes when nothing needed testing.
+  result:
+    name: Plugin tests
+    if: always()
+    needs: [changes, cli, logic, mumcord, e2e]
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          if grep -qE 'failure|cancelled' <<<"$RESULTS"; then exit 1; fi
