@@ -192,9 +192,10 @@ impl Msg {
     }
 }
 
-/// Cursor, live strokes and laser are too chatty for the peers channel.
+/// Cursor and live strokes are too chatty for the peers channel. Laser is allowed there: without
+/// a relay it is sent during a game burst.
 fn relay_only(kind: u8) -> bool {
-    matches!(kind, KIND_CURSOR | KIND_LIVE | KIND_LASER)
+    matches!(kind, KIND_CURSOR | KIND_LIVE)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

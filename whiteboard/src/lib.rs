@@ -4,6 +4,7 @@ pub mod codec;
 pub mod export;
 pub mod model;
 pub mod store;
+pub mod sync;
 
 use mumcord_plugin_sdk::{Plugin, events::Event, types::StartInfo};
 
