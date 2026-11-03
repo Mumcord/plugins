@@ -2,6 +2,7 @@
 
 pub mod codec;
 pub mod model;
+pub mod store;
 
 use mumcord_plugin_sdk::{Plugin, events::Event, types::StartInfo};
 
