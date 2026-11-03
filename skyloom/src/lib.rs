@@ -52,14 +52,13 @@ impl Host for Mumcord {
             .ok()
     }
 
-    fn send(&mut self, message: &Message, _live: bool) {
+    fn send(&mut self, message: &Message, live: bool) {
         let bytes = message.encode();
-        // The relay carries everything when it can; the game never depends on it.
-        if RELAY_OK.get() {
-            match relay::send_channel(&bytes, false) {
-                Ok(()) => return,
-                Err(e) => log::debug(&format!("relay send failed, using Mumble: {e:?}")),
+        if live {
+            if let Err(e) = relay::send_channel(&bytes, false) {
+                log::debug(&format!("relay send failed: {e:?}"));
             }
+            return;
         }
         if let Err(e) = peers::send(peers::Target::Channel, wire::KIND, &bytes) {
             log::debug(&format!("could not send a game message: {e:?}"));
@@ -67,11 +66,7 @@ impl Host for Mumcord {
     }
 
     fn send_direct(&mut self, to: u32, message: &Message) {
-        let bytes = message.encode();
-        if RELAY_OK.get() && relay::send_direct(to, &bytes, false).is_ok() {
-            return;
-        }
-        if let Err(e) = peers::send(peers::Target::Direct(to), wire::KIND, &bytes) {
+        if let Err(e) = peers::send(peers::Target::Direct(to), wire::KIND, &message.encode()) {
             log::warn(&format!("could not reach the second Weaver: {e:?}"));
         }
     }

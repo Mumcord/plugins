@@ -66,9 +66,10 @@ in gold. Everything is integer maths, so every client gets bit-identical results
 
 ## Wire format
 
-Messages go over the relay when the channel has one and the user allows it (star movement is then
-live at about 12 updates per second), and otherwise as Mumble plugin data with kind 1 (own stars at
-most every 2 s, 4 per second in the game burst during first light). Byte 0 is the format (1),
+All messages go as Mumble plugin data with kind 1, which works on every standard server: own stars
+at most every 2 s, 4 per second in the game burst during first light. When the channel has a relay
+and the user allows it, star movement is also streamed over the relay at about 12 updates per
+second, so it is live; the game never depends on the relay. Byte 0 is the format (1),
 byte 1 the type; integers are big-endian; positions are on a 1600 × 900 loom. Every message is at
 most 64 bytes.
 

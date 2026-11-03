@@ -41,8 +41,8 @@ pub const PAST_SKIES: usize = 20;
 /// Calls into Mumcord. Everything that leaves the plugin goes through here.
 pub trait Host {
     fn random(&mut self, len: u32) -> Option<Vec<u8>>;
-    /// Sends to everyone in the channel who runs Skyloom. `live` marks star movement, which may
-    /// go over the relay at a higher rate.
+    /// Sends to everyone in the channel who runs Skyloom: over Mumble plugin data, or over the
+    /// relay when `live` (star movement at a higher rate; only sent while [`Host::live`]).
     fn send(&mut self, message: &Message, live: bool);
     fn send_direct(&mut self, to: u32, message: &Message);
     /// The relay carries our data right now, so star movement can be live.
@@ -166,6 +166,7 @@ pub struct Round {
     pub burst: bool,
     pub own_dirty: bool,
     pub last_sent: u64,
+    pub last_live: u64,
     pub drift_at: u64,
     pub left: BTreeSet<u32>,
     pub void_reason: Option<&'static str>,
@@ -817,6 +818,7 @@ impl App {
             burst: false,
             own_dirty: false,
             last_sent: 0,
+            last_live: 0,
             drift_at: 0,
             left: BTreeSet::new(),
             void_reason: None,
@@ -1261,7 +1263,7 @@ impl App {
                 let first_light = now + rules::FIRST_LIGHT_MS >= r.deadline;
                 if first_light && !r.burst {
                     r.burst = true;
-                    if !live && r.is_threader(me) {
+                    if r.is_threader(me) {
                         host.start_game_burst();
                     }
                     self.announce(host, "first-light");
@@ -1269,9 +1271,18 @@ impl App {
                 let Some(r) = self.night.as_mut().and_then(|n| n.round.as_mut()) else {
                     return;
                 };
-                let every = if live {
-                    SEND_LIVE_MS
-                } else if first_light {
+                // The relay, when there is one, streams movement live; Mumble plugin data always
+                // carries it too at its own rate, so clients without the relay keep up and the
+                // game never depends on it.
+                if r.own_dirty
+                    && live
+                    && now >= r.last_live + SEND_LIVE_MS
+                    && let Some(stars) = r.positions.get(&me).cloned()
+                {
+                    r.last_live = now;
+                    host.send(&Message::Stars { round: r.no, stars }, true);
+                }
+                let every = if first_light {
                     SEND_BURST_MS
                 } else {
                     SEND_SLOW_MS
@@ -1280,7 +1291,7 @@ impl App {
                     r.own_dirty = false;
                     r.last_sent = now;
                     if let Some(stars) = r.positions.get(&me).cloned() {
-                        host.send(&Message::Stars { round: r.no, stars }, true);
+                        host.send(&Message::Stars { round: r.no, stars }, false);
                     }
                 }
                 if now >= r.deadline {

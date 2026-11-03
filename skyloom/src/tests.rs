@@ -386,6 +386,8 @@ struct Mock {
     sounds: Vec<String>,
     stage_refused: bool,
     live: bool,
+    /// Star updates streamed over the relay.
+    streamed: usize,
     saved: Option<Prefs>,
 }
 
@@ -396,8 +398,14 @@ impl Host for Mock {
         h.update(self.seed.to_be_bytes());
         Some(h.finalize()[..len as usize].to_vec())
     }
-    fn send(&mut self, message: &Message, _live: bool) {
+    fn send(&mut self, message: &Message, live: bool) {
         assert!(message.encode().len() <= MAX_LEN);
+        if live {
+            assert!(self.live, "streamed without a relay");
+            assert!(matches!(message, Message::Stars { .. }));
+            self.streamed += 1;
+            return;
+        }
         self.outbox.push((None, message.clone()));
     }
     fn send_direct(&mut self, to: u32, message: &Message) {
@@ -952,4 +960,42 @@ fn the_page_view_fits_the_bridge() {
         "strings are {} bytes",
         strings.len()
     );
+}
+
+#[test]
+fn with_the_relay_movement_is_live_and_plugin_data_keeps_its_rate() {
+    let mut t = Table::new(3);
+    t.open(calm());
+    t.c(2).host.live = true;
+    let c = t.c(1);
+    c.app.on_page(&mut c.host, Intent::WeaveReady);
+    t.deliver();
+    t.run(3_500);
+    let mut slow = 0;
+    for step in 0..100 {
+        let c = t.c(2);
+        c.app.on_page(
+            &mut c.host,
+            Intent::Move {
+                star: 0,
+                x: 200 + step,
+                y: 300,
+            },
+        );
+        c.app.tick(&mut c.host, 0);
+        slow += c
+            .host
+            .outbox
+            .iter()
+            .filter(|(_, m)| matches!(m, Message::Stars { .. }))
+            .count();
+        t.deliver();
+    }
+    // 10 s of dragging: about 12 live updates per second, plugin data still every 2 s.
+    assert!(
+        t.c(2).host.streamed >= 90,
+        "streamed {}",
+        t.c(2).host.streamed
+    );
+    assert!(slow <= 6, "{slow} plugin data updates");
 }
