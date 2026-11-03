@@ -1,0 +1,66 @@
+{
+  "manifest": 1,
+  "id": "skyloom",
+  "name": "Skyloom",
+  "description": "A voice-first party game: one player describes a hidden constellation out loud, everyone else moves a star on a shared night sky.",
+  "version": "1.0.0",
+  "api": "^1.1",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["games", "fun"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": [
+      "peers.messages",
+      "events.presence",
+      "random.bytes",
+      "ui.webview",
+      "ui.stage",
+      "ui.side-panel",
+      "ui.app-menu"
+    ],
+    "optional": [
+      "peers.relay",
+      "audio.effects",
+      { "id": "events.voice", "suggested": true },
+      { "id": "chat.send", "suggested": true },
+      { "id": "chat.supersedes", "suggested": true },
+      "ui.chat-card",
+      "ui.member-badge",
+      "commands",
+      "notify"
+    ]
+  },
+  "commands": [
+    {
+      "name": "skyloom",
+      "description": "Open a night of Skyloom in this channel"
+    }
+  ],
+  "app_menu": [
+    {
+      "id": "start",
+      "label": "Start Skyloom"
+    }
+  ],
+  "stage": {
+    "title": "Skyloom",
+    "max_participants": 16
+  },
+  "webview": {
+    "places": ["stage", "side-panel", "dialog"]
+  },
+  "audio": {
+    "sounds": [
+      "sounds/settle-1.ogg",
+      "sounds/settle-2.ogg",
+      "sounds/settle-3.ogg",
+      "sounds/settle-4.ogg",
+      "sounds/settle-5.ogg",
+      "sounds/shimmer.ogg",
+      "sounds/thread-pull.ogg",
+      "sounds/chime.ogg"
+    ]
+  },
+  "messaging": { "default_visibility": "everyone", "max_payload": 64 }
+}
