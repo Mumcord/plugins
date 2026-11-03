@@ -1,6 +1,7 @@
 //! Whiteboard: one shared, endless board for everyone in a voice channel.
 
 pub mod codec;
+pub mod export;
 pub mod model;
 pub mod store;
 
