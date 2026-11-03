@@ -3,8 +3,7 @@ description: Installs the Rust toolchain with the plugin target and the mumcord-
 inputs:
   branch:
     description: Branch of Mumcord/mumcord the CLI is installed from.
-    # Switches to main when the plugin system is merged there.
-    default: epic/plugins
+    default: main
 runs:
   using: composite
   steps:
