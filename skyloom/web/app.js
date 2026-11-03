@@ -386,6 +386,8 @@ function render() {
         hud = "";
     else if (v.phase === "lobby")
         hud = lobby(v);
+    else if (v.phase === "between")
+        hud = `<div class="hud hud--center-top" style="top:40%">${glass(`<span><b>${esc(tr("hud.spectating"))}</b> ${esc(tr("hud.join-next"))}</span>`)}</div>`;
     else if (v.phase === "results")
         hud = results(v);
     else if (r && (v.phase === "reveal" || v.phase === "void"))

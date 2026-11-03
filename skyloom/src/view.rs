@@ -340,7 +340,12 @@ pub fn view(app: &App) -> String {
     let phase = if night.ended {
         "results"
     } else {
-        round.map(|r| phase_key(r.phase)).unwrap_or("lobby")
+        match round {
+            Some(r) => phase_key(r.phase),
+            // Joined while a round runs: watch until the next one starts.
+            None if night.round_no > 0 => "between",
+            None => "lobby",
+        }
     };
     let role = match round {
         _ if !night.players.contains(&me) => "spectator",

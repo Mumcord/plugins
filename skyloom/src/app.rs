@@ -704,6 +704,8 @@ impl App {
                 // Drop-in mid-round: watch now, a star next round.
                 night.pending.push(sender);
                 night.spectators.insert(sender);
+                // Tells the newcomer about the night so they can watch until their seat is ready.
+                night.roster_due = true;
             }
         } else {
             night.spectators.insert(sender);
