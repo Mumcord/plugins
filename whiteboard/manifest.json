@@ -1,0 +1,22 @@
+{
+  "manifest": 1,
+  "id": "whiteboard",
+  "name": "Whiteboard",
+  "description": "A shared, endless board for your voice channel: sketch, add sticky notes, present with a laser and export as PNG, SVG or PDF.",
+  "version": "1.0.0",
+  "api": "^1.1",
+  "authors": ["Mumcord team"],
+  "license": "AGPL-3.0-or-later",
+  "categories": ["tools", "fun"],
+  "icon": "assets/icon.svg",
+  "permissions": {
+    "required": ["ui.stage", "ui.webview", "ui.app-menu", "ui.dialog", "peers.messages", "events.presence", "random.bytes"],
+    "optional": ["peers.relay", "ui.side-panel", "events.voice", "chat.send", "chat.supersedes", "ui.chat-card", "commands"]
+  },
+  "app_menu": [{ "id": "start", "label": "Start whiteboard" }],
+  "commands": [{ "name": "whiteboard", "description": "Start a whiteboard in this channel" }],
+  "stage": { "title": "Whiteboard", "max_participants": 16 },
+  "webview": { "places": ["stage", "side-panel"] },
+  "storage": { "quota_kib": 1024 },
+  "messaging": { "default_visibility": "everyone" }
+}
