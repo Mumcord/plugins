@@ -276,7 +276,8 @@ function menu(v: View): string {
       ? button("⇥", "place-side", `aria-label="${esc(tr("menu.side"))}"`, "icon-button") +
         button("⧉", "place-dialog", `aria-label="${esc(tr("menu.popout"))}"`, "icon-button")
       : button("⇤", "place-stage", `aria-label="${esc(tr("menu.stage"))}"`, "icon-button");
-  return `<div class="menu">
+  const side = v.phase === "lobby" || v.phase === "results" ? " menu--left" : "";
+  return `<div class="menu${side}">
     ${button("?", "rules", `aria-label="${esc(tr("menu.rules"))}"`, "icon-button")}
     ${sound}
     <input type="range" min="0" max="100" step="5" value="${v.sound.volume}" id="volume" aria-label="${esc(tr("menu.volume"))}" ${v.sound.muted ? "disabled" : ""}/>
@@ -434,16 +435,17 @@ function weaveHud(v: View, r: Round): string {
   }
   const live = glass(
     `<span class="glass__muted">${esc(tr("hud.live"))}</span><b>${esc(tr(v.live ? "hud.relay" : "hud.server"))}</b>`,
+    "live-chip",
   );
   const who =
     v.role === "spectator" || v.role === "player"
-      ? `<div class="hud" style="left:16px;top:64px"><details class="glass glass--box"><summary>${esc(tr("hud.who"))}</summary><ul class="people">${v.players
+      ? `<details class="glass glass--box"><summary>${esc(tr("hud.who"))}</summary><ul class="people">${v.players
           .map((p) => `<li>${shapeIcon(p.shape, colourOf(p.s))}<span>${esc(p.name)}</span></li>`)
-          .join("")}</ul></details></div>`
+          .join("")}</ul></details>`
       : "";
   const card = weaving && r.card ? skyCard(r.card) : "";
-  return `${top}${timer}${center}${who}${twistHint(v, r) ? `<div class="hud" style="left:16px;top:64px">${twistHint(v, r)}</div>` : ""}${card}
-    <div class="hud hud--bottom"><div class="hud">${bottomLeft}</div>${live}</div>`;
+  return `${top}${timer}${center}<div class="hud hud--stack">${twistHint(v, r)}${who}</div>${card}
+    <div class="hud hud--bottom"><div class="hud-row">${bottomLeft}</div>${live}</div>`;
 }
 
 function nextControls(v: View): string {
@@ -468,7 +470,7 @@ function revealHud(v: View, r: Round): string {
     return `<div class="hud hud--center-top"><div class="reveal-title">
       <span class="reveal-title__name figure-name">${esc(tr("void.title"))}</span>
       <span class="reveal-title__note">${esc(tr(`void.${r.void ?? "stalled"}`))}</span></div></div>
-      <div class="hud hud--bottom"><span></span><div class="hud" style="position:static">${nextControls(v)}</div></div>`;
+      <div class="hud hud--bottom"><span></span><div class="hud-row">${nextControls(v)}</div></div>`;
   }
   const outcome = rv.gold ? "reveal.gold" : rv.woven ? "reveal.woven" : "reveal.loose";
   const awards: string[] = [];
@@ -501,7 +503,7 @@ function revealHud(v: View, r: Round): string {
     </div></div>
     <ul class="awards hud hud--side" style="right:16px;top:120px;width:220px;flex-direction:column;align-items:stretch">${awards.join("")}</ul>
     <div class="hud hud--bottom">${glass(`<span>${esc(tr(`verify.${rv.verify}`))}</span>`)}
-      <div class="hud" style="position:static">${nextControls(v)}</div></div>`;
+      <div class="hud-row">${nextControls(v)}</div></div>`;
 }
 
 function miniFigure(lines: Pt[][] | null): string {
@@ -624,7 +626,8 @@ function loomSvg(v: View): string {
     figure = `<g aria-hidden="true">${ghost}${targets}${offsets}${threads(rv)}</g>`;
   }
   const label = esc(tr("loom.label"));
-  return `<svg class="loom" id="loom" viewBox="0 0 ${LOOM_W} ${LOOM_H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${label}">
+  const withCard = v.phase === "weave" && r.card !== null && (r.weaver === v.me || r.twin === v.me);
+  return `<svg class="loom${withCard ? " loom--with-card" : ""}" id="loom" viewBox="0 0 ${LOOM_W} ${LOOM_H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${label}">
     <defs><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter></defs>
     ${figure}<g id="stars">${starsMarkup(v, r)}</g><g id="ripples"></g></svg>`;
 }
@@ -660,6 +663,8 @@ function starsMarkup(v: View, r: Round): string {
   if (v.phase === "reveal" && r.reveal) {
     for (const s of r.reveal.stars) revealed.set(starKey(s[0], s[1]), s[4]);
   }
+  // In a narrow place the whole loom is small, so stars are drawn larger to stay readable.
+  const k = sky.clientWidth < 640 ? 2.2 : 1;
   const counts = new Map<number, number>();
   for (const s of r.stars) counts.set(s[0], (counts.get(s[0]) ?? 0) + 1);
   return r.stars
@@ -687,12 +692,12 @@ function starsMarkup(v: View, r: Round): string {
           : "star star--other";
       const focusable = mine || weaving ? `tabindex="0" role="button"` : `role="img"`;
       return `<g class="${cls}${left}" id="star-${key}" data-key="${key}" data-owner="${owner}" data-index="${index}" ${focusable} aria-label="${esc(label)}" transform="translate(${sx.toFixed(1)},${sy.toFixed(1)})" style="--c:${colourOf(owner)}">
-        <circle class="star__glow" r="26"/>
-        ${p?.talking ? `<circle class="star__talk" r="30"/>` : ""}
-        <circle class="star__focus" r="24"/>
-        <path class="star__body" d="${shapePath(shape, 14)}"/>
-        <text class="star__initial">${esc(initialOf(owner))}</text>
-        <text class="star__name" y="38">${esc(name)}${res !== undefined ? ` · ${res}%` : ""}</text></g>`;
+        <circle class="star__glow" r="${40 * k}"/>
+        ${p?.talking ? `<circle class="star__talk" r="${34 * k}"/>` : ""}
+        <circle class="star__focus" r="${30 * k}"/>
+        <path class="star__body" d="${shapePath(shape, 20 * k)}"/>
+        <text class="star__initial" style="font-size:${18 * k}px">${esc(initialOf(owner))}</text>
+        <text class="star__name" y="${50 * k}" style="font-size:${19 * k}px">${esc(name)}${res !== undefined ? ` · ${res}%` : ""}</text></g>`;
     })
     .join("");
 }
@@ -909,7 +914,7 @@ window.addEventListener("message", (event: MessageEvent) => {
           if (msg.on && !ring) {
             const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             c.setAttribute("class", "star__talk");
-            c.setAttribute("r", "30");
+            c.setAttribute("r", "34");
             g.insertBefore(c, g.children[1] ?? null);
           } else if (!msg.on) ring?.remove();
         });

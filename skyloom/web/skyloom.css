@@ -894,3 +894,53 @@ input {
 .sky-col--scroll {
   overflow: auto;
 }
+.hud-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.hud--stack {
+  top: 64px;
+  left: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* Inside the loom, sizes are loom units (1600 × 900), not screen pixels. */
+.loom .star__initial {
+  font-size: 18px;
+}
+.loom .star__name {
+  font-size: 19px;
+}
+.loom .ghost-line {
+  stroke-width: 3;
+  stroke-dasharray: 4 10;
+}
+.loom .ghost-point,
+.loom .offset {
+  stroke-width: 2.5;
+}
+.loom--with-card {
+  width: calc(100% - 330px);
+}
+.sky-card {
+  top: 120px;
+  bottom: 64px;
+}
+.sky--compact .loom--with-card {
+  width: 100%;
+  height: calc(100% - 260px);
+}
+.menu--left {
+  top: auto;
+  right: auto;
+  bottom: 16px;
+  left: 16px;
+}
+.sky--compact .hud--top-left .glass:not(:first-child),
+.sky--compact .hud--top-right .glass,
+.sky--compact .keys,
+.sky--compact .live-chip,
+.sky--compact .menu input[type="range"] {
+  display: none;
+}
