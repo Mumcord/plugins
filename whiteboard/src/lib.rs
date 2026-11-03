@@ -1,5 +1,8 @@
 //! Whiteboard: one shared, endless board for everyone in a voice channel.
 
+pub mod codec;
+pub mod model;
+
 use mumcord_plugin_sdk::{Plugin, events::Event, types::StartInfo};
 
 struct Whiteboard;
