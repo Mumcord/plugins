@@ -17,6 +17,7 @@ Registry source and official plugins for [Mumcord](https://github.com/Mumcord/mu
 | <img src="echolings/assets/icon-128.png" alt="" width="64"> | [**Echolings**](echolings/) | A little creature made of sound that grows while you hang out with friends. It never dies and never nags. |
 | <img src="mumbot-music/assets/icon-128.png" alt="" width="64"> | [**Mumbot Music**](mumbot-music/) | Control a mumbot music bot in your channel: now playing, skip, volume, queue and adding tracks. |
 | <img src="eve-fit/assets/icon-128.png" alt="" width="64"> | [**EVE fit**](eve-fit/) | EVE Online ship fits pasted into the chat become a tidy card, with the full fit one click away. |
+| <img src="skyloom/assets/icon-128.png" alt="" width="64"> | [**Skyloom**](skyloom/) | A voice-first party game: one player describes a hidden constellation out loud, everyone else moves a star on a shared night sky. Needs Mumcord 0.7. |
 
 ## How plugins work
 
@@ -96,7 +97,7 @@ The specs run as part of Mumcord's suite: `e2e/run.sh` copies them to
 ## Repository layout
 
 - `plugins/<id>/plugin.toml`, `plugins/<id>/versions/<ver>.toml`, media: registry entries
-- `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `eve-fit/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
+- `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `eve-fit/`, `skyloom/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
   with their mock-host scenarios (`scenarios/`) and E2E specs (`e2e/`)
 - `e2e/`: E2E harness for the official plugins (runner, shared helpers, pinned Mumcord tag)
 - `policy/REVIEW.md`: review policy
@@ -111,5 +112,5 @@ The specs run as part of Mumcord's suite: `e2e/run.sh` copies them to
 
 There is no repository-wide licence; each part carries its own `LICENSE`:
 
-- Official plugins (`poll/`, `dice/`, `echolings/`, `mumbot-music/`): AGPL-3.0-or-later
+- Official plugins (`poll/`, `dice/`, `echolings/`, `mumbot-music/`, `skyloom/`): AGPL-3.0-or-later
 - Template (`template/`) and docs (`docs/`): Apache-2.0
