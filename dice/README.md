@@ -84,6 +84,11 @@ cargo build --release --target wasm32-unknown-unknown
 
 `mumcord-plugin build` turns `dice.wasm` into the plugin component and package.
 
+## Tests
+
+The mock-host scenarios are in `scenarios/`, the end-to-end specs in `e2e/` (see the repository
+README, section Tests).
+
 ## Licence
 
 AGPL-3.0-or-later, see [LICENSE](LICENSE).
