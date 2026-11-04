@@ -1,6 +1,6 @@
 # Publishes the official registry (FR-6.55, FR-6.80): rebuilds and releases new plugin versions,
 # signs index.json and revoked.json in the protected `publish` environment, deploys GitHub Pages
-# (registry under v1/, documentation site under docs/) and tells the website with a
+# (registry under v1/ and v1.1/, documentation site under docs/) and tells the website with a
 # `plugins-published` repository_dispatch event.
 name: Publish
 on:
@@ -14,6 +14,7 @@ on:
       - docs-site/**
       - mkdocs.yml
       - policy/REVIEW.md
+      - .github/mumcord-cli-ref
       - assets/brand/**
       - '*/assets/icon-128.png'
   workflow_dispatch:
@@ -22,7 +23,9 @@ concurrency:
   group: publish
   cancel-in-progress: false
 env:
+  # Both indexes get one sequence above the highest published one (FR-9.14).
   INDEX_URL: https://mumcord.github.io/plugins/v1/index.json
+  INDEX_URL_V11: https://mumcord.github.io/plugins/v1.1/index.json
 jobs:
   # Builds run plugin source code (build scripts), so this job only has a read-only token.
   build:
@@ -107,9 +110,10 @@ jobs:
       - name: Generate site data
         run: |
           # Above the published sequence, so clients never see a rollback.
-          sequence=$(python3 .github/scripts/registry.py sequence "$INDEX_URL")
+          sequence=$(python3 .github/scripts/registry.py sequence "$INDEX_URL" "$INDEX_URL_V11")
           mumcord-plugin site-data --repo . --out site --sequence "$sequence"
-      - name: Sign index.json and revoked.json
+          python3 .github/scripts/registry.py site-check site
+      - name: Sign the indexes and revoked.json
         env:
           PLUGIN_SIGNING_KEY: ${{ secrets.PLUGIN_SIGNING_KEY }}
           MUMCORD_PLUGIN_KEY_PASSWORD: ${{ secrets.PLUGIN_SIGNING_KEY_PASSWORD }}
@@ -119,13 +123,14 @@ jobs:
           (umask 077 && printf '%s\n' "$PLUGIN_SIGNING_KEY" > "$key")
           status=0
           mumcord-plugin sign site/v1/index.json --key "$key" && \
+            mumcord-plugin sign site/v1.1/index.json --key "$key" && \
             mumcord-plugin sign site/v1/revoked.json --key "$key" || status=$?
           rm -f "$key"
           exit "$status"
       - name: Verify signatures with the published public key
         run: |
           sudo apt-get install -y -qq minisign > /dev/null
-          for file in site/v1/index.json site/v1/revoked.json; do
+          for file in site/v1/index.json site/v1.1/index.json site/v1/revoked.json; do
             minisign -V -q -p .github/registry-key.pub -m "$file"
           done
       # Added after signing: the docs are plain pages next to the signed registry files.
