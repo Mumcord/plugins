@@ -33,8 +33,9 @@ use crate::bridge::{
     self, BoardListEntry, BoardSettings, Init, Me, PageMsg, PaperSetting, PeerJson, PxRect,
     StatusJson, ToPage,
 };
+use crate::bridge::{Area, ExportReq, FileFormat, PngPart};
 use crate::codec::{self, BoardId, BoardMsg, FORMAT, Msg};
-use crate::dialogs::{self, Area, Ctx, Dialog, Effect, ExportReq, FileFormat, Line, View};
+use crate::dialogs::{self, Ctx, Dialog, Effect, Line, View};
 use crate::export::{self, Options, Paper, Scope};
 use crate::model::{
     AuthorInfo, AuthorKey, Board, BoardField, Edit, Fields, Geom, Kind, MAX_NAME_CHARS, ObjId,
@@ -201,11 +202,7 @@ impl Page {
     }
 
     fn max_bytes(&self) -> usize {
-        if self.place == Place::Stage {
-            bridge::STAGE_MAX_BYTES
-        } else {
-            bridge::PANEL_MAX_BYTES
-        }
+        bridge::max_bytes(self.place)
     }
 }
 
@@ -225,6 +222,8 @@ struct Render {
     /// When the click that asked for it happened (the host's gesture window starts there).
     clicked: u64,
     started: u64,
+    /// The page drawing it.
+    place: Place,
 }
 
 #[derive(Default)]
@@ -274,7 +273,8 @@ pub struct App {
     open: Option<Open>,
     /// A saved board to open once the page is ready (chosen in the boards dialog).
     pending_open: Option<BoardId>,
-    page: Option<Page>,
+    /// The open web views: the stage page and the side panel's mini view, each at most once.
+    pages: Vec<Page>,
     stage_hidden: bool,
     side_closed: bool,
     dialog: Option<Dialog>,
@@ -286,6 +286,8 @@ pub struct App {
     selection: Vec<ObjId>,
     paper: Option<PaperSetting>,
     clear_undo_until: Option<u64>,
+    /// The page whose in-board dialog asked for the running export, post or clear.
+    asked_by: Option<Place>,
     index: Option<Vec<IndexEntry>>,
     save_state: SaveState,
     /// Page messages dropped by validation.
@@ -329,7 +331,7 @@ impl App {
             Event::ThemeChanged(info) => {
                 self.dark = info.mode == Mode::Dark;
                 self.reduced_motion = info.reduced_motion;
-                self.queue_init(host);
+                self.queue_init_all(host);
             }
             Event::AppMenuActivated(id) => {
                 if id == MENU_START {
@@ -380,8 +382,8 @@ impl App {
                 } else {
                     self.talking.remove(&p.session)
                 };
-                if changed && let Some(page) = &mut self.page {
-                    page.out.peers = true;
+                if changed {
+                    self.pages.iter_mut().for_each(|p| p.out.peers = true);
                 }
             }
             Event::WebviewMessage(message) => self.page_message(host, &message),
@@ -447,7 +449,7 @@ impl App {
     fn start<H: Host>(&mut self, host: &mut H) {
         if self.activity.is_some() {
             // Already on a board: bring the board page back to the stage.
-            if self.page.as_ref().is_none_or(|p| p.place != Place::Stage) {
+            if !self.has_page(Place::Stage) {
                 self.show_stage(host);
             }
             return;
@@ -462,7 +464,7 @@ impl App {
                     starter,
                 });
                 self.participants = BTreeSet::from([starter]);
-                self.page = Some(Page::new(Place::Stage, self.now));
+                self.set_page(Place::Stage);
                 self.ensure_timer(host);
                 let card = self.invite_for(starter);
                 self.invites[card].name = self
@@ -539,7 +541,7 @@ impl App {
                     starter,
                 });
                 self.participants = BTreeSet::from([peer.session, starter]);
-                self.page = Some(Page::new(Place::Stage, self.now));
+                self.set_page(Place::Stage);
                 self.ensure_timer(host);
                 if let Some(b) = self.seen_boards.get(&starter).cloned() {
                     self.adopt(host, b);
@@ -581,7 +583,7 @@ impl App {
         self.open = None;
         self.activity = None;
         self.participants.clear();
-        self.page = None;
+        self.pages.clear();
         self.render = None;
         self.view = None;
         self.selection.clear();
@@ -597,9 +599,23 @@ impl App {
         self.stop_timer(host);
     }
 
+    fn has_page(&self, place: Place) -> bool {
+        self.pages.iter().any(|p| p.place == place)
+    }
+
+    fn page_mut(&mut self, place: Place) -> Option<&mut Page> {
+        self.pages.iter_mut().find(|p| p.place == place)
+    }
+
+    /// A (re)shown page starts over: it is not ready until it says so.
+    fn set_page(&mut self, place: Place) {
+        self.pages.retain(|p| p.place != place);
+        self.pages.push(Page::new(place, self.now));
+    }
+
     fn show_stage<H: Host>(&mut self, host: &mut H) {
         match host.webview_show(Place::Stage, STAGE_ENTRY) {
-            Ok(()) => self.page = Some(Page::new(Place::Stage, self.now)),
+            Ok(()) => self.set_page(Place::Stage),
             Err(e) => host.log(Level::Warn, &format!("could not show the board: {e:?}")),
         }
     }
@@ -610,23 +626,24 @@ impl App {
             return;
         }
         if visible {
-            if self.page.as_ref().is_none_or(|p| p.place != Place::Stage) {
+            if !self.has_page(Place::Stage) {
                 self.show_stage(host);
             }
-        } else if self.has("ui.side-panel") && !self.side_closed && self.open.is_some() {
-            // One web view per plugin: the mini view takes the stage page's place until the stage
-            // tab is visible again.
+        } else if self.has("ui.side-panel")
+            && !self.side_closed
+            && self.open.is_some()
+            && !self.has_page(Place::SidePanel)
+        {
+            // The mini view keeps the board in sight while something else is on stage.
             match host.webview_show(Place::SidePanel, MINI_ENTRY) {
-                Ok(()) => self.page = Some(Page::new(Place::SidePanel, self.now)),
+                Ok(()) => self.set_page(Place::SidePanel),
                 Err(e) => host.log(Level::Debug, &format!("no side panel: {e:?}")),
             }
         }
     }
 
     fn surface_closed(&mut self, place: Place) {
-        if self.page.as_ref().is_some_and(|p| p.place == place) {
-            self.page = None;
-        }
+        self.pages.retain(|p| p.place != place);
         if place == Place::SidePanel {
             self.side_closed = true;
         }
@@ -767,7 +784,7 @@ impl App {
         });
         self.save_state = SaveState::None;
         self.run(host, out, None);
-        self.queue_init(host);
+        self.queue_init_all(host);
         self.ensure_timer(host);
     }
 
@@ -797,9 +814,7 @@ impl App {
             }
         };
         self.index = None;
-        if let Some(page) = &mut self.page {
-            page.out.status = true;
-        }
+        self.pages.iter_mut().for_each(|p| p.out.status = true);
     }
 
     // ---- the engine -----------------------------------------------------------------------------
@@ -823,18 +838,10 @@ impl App {
             .is_some_and(|r| now.saturating_sub(r.started) > RENDER_TIMEOUT_MS)
         {
             self.render = None;
-            self.dialog_note(host, Tone::Danger, t("dialog.render.timeout"));
+            self.page_note(Tone::Danger, t("dialog.render.timeout"), false);
         }
         if self.clear_undo_until.is_some_and(|u| now >= u) {
             self.clear_undo_until = None;
-            if self
-                .dialog
-                .as_ref()
-                .is_some_and(|d| matches!(d.view, View::Cleared { .. }))
-            {
-                host.close_dialog();
-                self.dialog = None;
-            }
         }
     }
 
@@ -887,10 +894,20 @@ impl App {
                 o.autosave.changed(now);
             }
         }
-        let Some(page) = &mut self.page else {
-            return;
-        };
-        let out = &mut page.out;
+        for page in &mut self.pages {
+            Self::to_outbox(&mut page.out, ui.clone());
+        }
+        // The settings dialog lists people and the host state.
+        if self
+            .dialog
+            .as_ref()
+            .is_some_and(|d| matches!(d.view, View::Settings { .. }))
+        {
+            self.redraw_dialog(host);
+        }
+    }
+
+    fn to_outbox(out: &mut Outbox, ui: Ui) {
         match ui {
             Ui::Objects(Changed::All) => {
                 out.reset = true;
@@ -939,14 +956,6 @@ impl App {
             } => out.view = Some((author, x, y, zoom_permille)),
             Ui::Announce(_) | Ui::BoardSeen(_) => {}
         }
-        // The settings dialog lists people and the host state.
-        if self
-            .dialog
-            .as_ref()
-            .is_some_and(|d| matches!(d.view, View::Settings { .. }))
-        {
-            self.redraw_dialog(host);
-        }
     }
 
     fn name_of(&self, author: AuthorKey) -> String {
@@ -987,7 +996,18 @@ impl App {
     }
 
     fn flush_announcements(&mut self) {
-        if let Some(page) = &mut self.page
+        // One page reads announcements out, so a screen reader hears each only once: the
+        // stage page when it is there.
+        let place = if self
+            .pages
+            .iter()
+            .any(|p| p.place == Place::Stage && p.ready)
+        {
+            Place::Stage
+        } else {
+            Place::SidePanel
+        };
+        if let Some(page) = self.pages.iter_mut().find(|p| p.place == place)
             && page.ready
             && let Some(text) = self.announcer.take(self.now)
         {
@@ -1199,11 +1219,10 @@ impl App {
     // ---- messages from the page -----------------------------------------------------------------
 
     fn page_message<H: Host>(&mut self, host: &mut H, text: &str) {
-        let Some(page) = &self.page else {
-            return;
-        };
-        let msg = match bridge::parse(text, page.max_bytes()) {
-            Ok(m) => m,
+        let (place, msg) = match bridge::parse(text) {
+            // Only a page this plugin shows may speak.
+            Ok((place, m)) if self.has_page(place) => (place, m),
+            Ok(_) => return,
             Err(e) => {
                 self.dropped_page += 1;
                 host.log(Level::Debug, &format!("dropped a page message: {e:?}"));
@@ -1212,14 +1231,9 @@ impl App {
         };
         let now = self.now;
         match msg {
-            PageMsg::Ready => self.page_ready(host),
+            PageMsg::Ready => self.page_ready(host, place),
             PageMsg::OpenStage => self.show_stage(host),
-            PageMsg::Png {
-                req,
-                part,
-                of,
-                data,
-            } => self.png_part(host, req, part, of, data),
+            PageMsg::Png(part) => self.png_part(host, place, part),
             PageMsg::Menu {
                 item,
                 view,
@@ -1227,7 +1241,33 @@ impl App {
             } => {
                 self.view = view;
                 self.selection = selection;
+                self.asked_by = Some(place);
                 self.menu(host, item);
+            }
+            PageMsg::Export {
+                req,
+                view,
+                selection,
+            } => {
+                self.view = view;
+                self.selection = selection;
+                self.asked_by = Some(place);
+                if self.open.is_none() || self.render.is_some() {
+                    return;
+                }
+                if let Some(problem) = self.area_problem(req.area) {
+                    self.page_note(Tone::Warning, problem, false);
+                } else {
+                    self.export(host, req);
+                }
+            }
+            PageMsg::Clear => {
+                self.asked_by = Some(place);
+                self.clear_board(host);
+            }
+            PageMsg::UndoClear => {
+                self.asked_by = Some(place);
+                self.undo_clear(host);
             }
             PageMsg::Open(id) => {
                 if self.activity.as_ref().is_some_and(|a| a.mine) && self.open.is_none() {
@@ -1386,9 +1426,9 @@ impl App {
         self.announcer.push(text);
     }
 
-    fn page_ready<H: Host>(&mut self, host: &mut H) {
+    fn page_ready<H: Host>(&mut self, host: &mut H, place: Place) {
         let now = self.now;
-        let Some(page) = &mut self.page else {
+        let Some(page) = self.page_mut(place) else {
             return;
         };
         page.ready = true;
@@ -1404,12 +1444,12 @@ impl App {
             self.open_saved(host, id);
             return;
         }
-        self.queue_init(host);
+        self.queue_init(host, place);
         if self.open.is_none() && self.activity.as_ref().is_some_and(|a| a.mine) {
             if self.index(host).is_empty() {
                 self.new_board(host, "");
             } else {
-                self.queue_boards(host);
+                self.queue_boards(host, place);
             }
         }
     }
@@ -1436,14 +1476,19 @@ impl App {
         if let Err(e) = host.set(PAPER_KEY, p.name().as_bytes()) {
             host.log(Level::Debug, &format!("paper choice not saved: {e}"));
         }
-        if let Some(page) = &mut self.page {
-            page.out.status = true;
+        self.pages.iter_mut().for_each(|p| p.out.status = true);
+    }
+
+    fn queue_init_all<H: Host>(&mut self, host: &mut H) {
+        let places: Vec<Place> = self.pages.iter().map(|p| p.place).collect();
+        for place in places {
+            self.queue_init(host, place);
         }
     }
 
     /// Queues `init` (and everything after it) for a ready page.
-    fn queue_init<H: Host>(&mut self, host: &mut H) {
-        if !self.page.as_ref().is_some_and(|p| p.ready) {
+    fn queue_init<H: Host>(&mut self, host: &mut H, place: Place) {
+        if !self.pages.iter().any(|p| p.place == place && p.ready) {
             return;
         }
         let paper = self.paper(host);
@@ -1502,7 +1547,7 @@ impl App {
             lang: text::language(),
         }));
         let has_board = self.open.is_some();
-        let Some(page) = &mut self.page else {
+        let Some(page) = self.page_mut(place) else {
             return;
         };
         page.out.queue.clear();
@@ -1513,7 +1558,7 @@ impl App {
         page.out.status = true;
     }
 
-    fn queue_boards<H: Host>(&mut self, host: &mut H) {
+    fn queue_boards<H: Host>(&mut self, host: &mut H, place: Place) {
         let now = host.wall_ms();
         let list: Vec<BoardListEntry> = self
             .index(host)
@@ -1529,7 +1574,7 @@ impl App {
                 bytes: e.size,
             })
             .collect();
-        if let Some(page) = &mut self.page {
+        if let Some(page) = self.page_mut(place) {
             page.out.queue.push_back(ToPage::Boards { list }.to_json());
         }
     }
@@ -1613,10 +1658,16 @@ impl App {
             .collect()
     }
 
-    /// Turns coalesced state into messages and posts as many as the bridge allows.
+    /// Turns coalesced state into messages and posts as many as each page's bridge allows.
     fn flush_page<H: Host>(&mut self, host: &mut H) {
+        for place in [Place::Stage, Place::SidePanel] {
+            self.flush_one(host, place);
+        }
+    }
+
+    fn flush_one<H: Host>(&mut self, host: &mut H, place: Place) {
         let now = self.now;
-        let Some(page) = &mut self.page else {
+        let Some(page) = self.page_mut(place) else {
             return;
         };
         if !page.ready {
@@ -1628,17 +1679,21 @@ impl App {
         // New state is only materialised once the queue has drained, so a busy bridge coalesces.
         // A second round sends what came after an `init` right away.
         for _ in 0..2 {
-            if self.page.as_ref().is_some_and(|p| p.out.queue.is_empty()) {
-                self.materialise(host);
+            if self
+                .pages
+                .iter()
+                .any(|p| p.place == place && p.out.queue.is_empty())
+            {
+                self.materialise(host, place);
             }
-            let Some(page) = &mut self.page else {
+            let Some(page) = self.page_mut(place) else {
                 return;
             };
             while page.out.tokens >= 1.0 {
                 let Some(msg) = page.out.queue.front() else {
                     break;
                 };
-                match host.webview_post(msg) {
+                match host.webview_post(&bridge::addressed(msg, place)) {
                     Ok(()) => {
                         page.out.queue.pop_front();
                         page.out.tokens -= 1.0;
@@ -1653,7 +1708,7 @@ impl App {
                     }
                     Err(e) => {
                         host.log(Level::Debug, &format!("page is gone: {e:?}"));
-                        self.page = None;
+                        self.pages.retain(|p| p.place != place);
                         return;
                     }
                 }
@@ -1664,18 +1719,18 @@ impl App {
         }
     }
 
-    fn materialise<H: Host>(&mut self, host: &mut H) {
+    fn materialise<H: Host>(&mut self, host: &mut H, place: Place) {
         let status = self
-            .page
-            .as_ref()
-            .is_some_and(|p| p.out.status)
+            .pages
+            .iter()
+            .any(|p| p.place == place && p.out.status)
             .then(|| self.status_json(host));
         let peers = self
-            .page
-            .as_ref()
-            .is_some_and(|p| p.out.peers)
+            .pages
+            .iter()
+            .any(|p| p.place == place && p.out.peers)
             .then(|| self.peers_json());
-        let Some(page) = &mut self.page else {
+        let Some(page) = self.pages.iter_mut().find(|p| p.place == place) else {
             return;
         };
         let max = page.max_bytes();
@@ -1769,11 +1824,18 @@ impl App {
 
     fn menu<H: Host>(&mut self, host: &mut H, item: bridge::MenuItem) {
         use bridge::MenuItem;
+        let which = match item {
+            MenuItem::Export => Some("export"),
+            MenuItem::Post => Some("post"),
+            MenuItem::Clear => Some("clear"),
+            _ => None,
+        };
+        if let Some(which) = which {
+            self.open_page_dialog(which);
+            return;
+        }
         let ctx = self.dialog_ctx(host);
         let dialog = match item {
-            MenuItem::Export if ctx.open => Dialog::export(&ctx),
-            MenuItem::Post if ctx.open => Dialog::post(&ctx),
-            MenuItem::Clear if ctx.open && ctx.host => Dialog::new(View::Clear),
             MenuItem::Settings => Dialog::new(View::Settings {
                 confirm_remove: None,
             }),
@@ -1801,7 +1863,7 @@ impl App {
         let Some(d) = &self.dialog else {
             return;
         };
-        let title = d.title(&ctx);
+        let title = d.title();
         let tree = d.render(&ctx);
         if let Err(e) = host.open_dialog(&title) {
             host.log(Level::Warn, &format!("could not open the dialog: {e:?}"));
@@ -1884,14 +1946,6 @@ impl App {
             }
         }));
         ctx.title = board_title(o);
-        ctx.items = board.visible_objects().len();
-        ctx.people = peers.len() + 1;
-        ctx.selected = self
-            .selection
-            .iter()
-            .filter(|id| o.s.is_visible(**id))
-            .count();
-        ctx.has_view = self.view.is_some();
         ctx.host = status.host;
         ctx.policy = Some(settings.policy.as_ref().map_or(Policy::Everyone, |r| r.val));
         ctx.laser = settings.laser_for_viewers.as_ref().is_some_and(|r| r.val);
@@ -1919,43 +1973,12 @@ impl App {
                 self.dialog = None;
                 self.render = None;
             }
-            Effect::Export(req) => self.export(host, req),
-            Effect::Post(area) => {
-                self.request_render(host, area, 2, false, Purpose::Post { scale: 2 }, now)
-            }
-            Effect::Clear => {
-                let Some(o) = &mut self.open else {
-                    return;
-                };
-                match o.s.clear(now) {
-                    Ok(out) => {
-                        self.run(host, out, None);
-                        self.clear_undo_until = Some(now + UNDO_CLEAR_MS);
-                        let until = host.wall_ms() / 1000 + UNDO_CLEAR_MS / 1000;
-                        self.open_dialog(host, Dialog::new(View::Cleared { until }));
-                        self.announcer.push(t("announce.cleared"));
-                    }
-                    Err(e) => self.dialog_refused(host, e),
-                }
-            }
-            Effect::UndoClear => {
-                if self.clear_undo_until.is_none_or(|u| now >= u) {
-                    self.dialog_note(host, Tone::Warning, t("dialog.cleared.tooLate"));
-                    return;
-                }
-                let Some(o) = &mut self.open else {
-                    return;
-                };
-                match o.s.undo(now) {
-                    Ok(out) => {
-                        self.run(host, out, None);
-                        self.clear_undo_until = None;
-                        host.close_dialog();
-                        self.dialog = None;
-                        self.announcer.push(t("announce.restored"));
-                    }
-                    Err(e) => self.dialog_refused(host, e),
-                }
+            Effect::AskClear => {
+                // The confirmation is drawn in the board page (mockup 6b).
+                host.close_dialog();
+                self.dialog = None;
+                self.asked_by = Some(Place::Stage);
+                self.open_page_dialog("clear");
             }
             Effect::Policy(p) => self.board_settings(host, vec![BoardField::Policy(p)]),
             Effect::Allow { key, on } => {
@@ -2039,11 +2062,16 @@ impl App {
                         self.dialog_note(host, Tone::Danger, t("dialog.boards.deleteFailed"));
                     }
                 }
-                if self.open.is_none()
-                    && let Some(page) = &self.page
-                    && page.ready
-                {
-                    self.queue_boards(host);
+                if self.open.is_none() {
+                    let ready: Vec<Place> = self
+                        .pages
+                        .iter()
+                        .filter(|p| p.ready)
+                        .map(|p| p.place)
+                        .collect();
+                    for place in ready {
+                        self.queue_boards(host, place);
+                    }
                 }
             }
         }
@@ -2069,8 +2097,128 @@ impl App {
 
     /// The page reads policy and laser from `init`/`status`; a status update carries them.
     fn queue_init_settings(&mut self) {
-        if let Some(page) = &mut self.page {
-            page.out.status = true;
+        self.pages.iter_mut().for_each(|p| p.out.status = true);
+    }
+
+    /// The Clear confirmation's button in the board page (host only, mockup 6b).
+    fn clear_board<H: Host>(&mut self, host: &mut H) {
+        let now = self.now;
+        let Some(o) = &mut self.open else {
+            return;
+        };
+        match o.s.clear(now) {
+            Ok(out) => {
+                self.run(host, out, None);
+                self.clear_undo_until = Some(now + UNDO_CLEAR_MS);
+                let until = host.wall_ms() / 1000 + UNDO_CLEAR_MS / 1000;
+                let place = self.asked_by.unwrap_or(Place::Stage);
+                if let Some(page) = self.page_mut(place) {
+                    page.out
+                        .queue
+                        .push_back(ToPage::Cleared { until }.to_json());
+                }
+                self.announcer.push(t("announce.cleared"));
+            }
+            Err(e) => self.page_refused(host, e),
+        }
+    }
+
+    /// "Undo" in the page's cleared notice: only while nothing newer of mine came after it.
+    fn undo_clear<H: Host>(&mut self, host: &mut H) {
+        let now = self.now;
+        if self.clear_undo_until.is_none_or(|u| now >= u) {
+            self.page_note(Tone::Warning, t("dialog.cleared.tooLate"), false);
+            return;
+        }
+        let Some(o) = &mut self.open else {
+            return;
+        };
+        match o.s.undo(now) {
+            Ok(out) => {
+                self.run(host, out, None);
+                self.clear_undo_until = None;
+                self.announcer.push(t("announce.restored"));
+            }
+            Err(e) => self.page_refused(host, e),
+        }
+    }
+
+    fn page_refused<H: Host>(&mut self, host: &mut H, e: LocalError) {
+        host.log(Level::Debug, &format!("refused: {e:?}"));
+        let text = match e {
+            LocalError::NotAllowed => t("dialog.hostOnly"),
+            LocalError::Model(_) => t("dialog.failed"),
+        };
+        self.page_note(Tone::Warning, text, false);
+    }
+
+    /// Shows the outcome of an in-board dialog button in the page that asked.
+    fn page_note(&mut self, tone: Tone, text: String, busy: bool) {
+        let tone = match tone {
+            Tone::Success => "success",
+            Tone::Accent => "accent",
+            Tone::Warning => "warning",
+            Tone::Danger => "danger",
+            _ => "neutral",
+        };
+        let place = self.asked_by.unwrap_or(Place::Stage);
+        if let Some(page) = self.page_mut(place) {
+            page.out
+                .queue
+                .push_back(ToPage::Note { tone, text, busy }.to_json());
+        }
+    }
+
+    /// Opens an in-board dialog in the asking page with the counted texts it needs.
+    fn open_page_dialog(&mut self, which: &'static str) {
+        let Some(o) = &self.open else {
+            return;
+        };
+        if which == "clear" && !o.s.status().host {
+            return;
+        }
+        let items = o.s.visible_objects().len() as u64;
+        let people = o.s.peers().len() as u64 + 1;
+        let selected = self
+            .selection
+            .iter()
+            .filter(|id| o.s.is_visible(**id))
+            .count() as u64;
+        let dialog = bridge::DialogJson {
+            which,
+            title: clip_to(
+                &t_with("dialog.export.title", &[("title", &board_title(o))]),
+                120,
+            ),
+            board: tn("dialog.area.board", items, &[]),
+            selection: if selected == 0 {
+                t("dialog.area.selectionNone")
+            } else {
+                tn("dialog.area.selection", selected, &[])
+            },
+            has_selection: selected > 0,
+            body: t_with(
+                "dialog.clear.body",
+                &[
+                    ("items", &tn("dialog.clear.items", items, &[])),
+                    ("people", &tn("dialog.clear.people", people, &[])),
+                ],
+            ),
+        };
+        let place = self.asked_by.unwrap_or(Place::Stage);
+        if let Some(page) = self.page_mut(place) {
+            page.out
+                .queue
+                .push_back(ToPage::Dialog(Box::new(dialog)).to_json());
+        }
+    }
+
+    /// Why an export of `area` cannot start, if it cannot.
+    fn area_problem(&self, area: Area) -> Option<String> {
+        match area {
+            Area::Selection if self.selection.is_empty() => Some(t("dialog.area.nothingSelected")),
+            Area::View if self.view.is_none() => Some(t("dialog.area.noView")),
+            _ => None,
         }
     }
 
@@ -2099,14 +2247,12 @@ impl App {
         let name = export::file_name(&title, format);
         if req.format == FileFormat::Png {
             let now = self.now;
-            self.request_render(
-                host,
-                req.area,
-                req.scale,
-                req.transparent,
-                Purpose::Export { name },
-                now,
-            );
+            let purpose = if req.to_chat {
+                Purpose::Post { scale: req.scale }
+            } else {
+                Purpose::Export { name }
+            };
+            self.request_render(req.area, req.scale, req.transparent, purpose, now);
             return;
         }
         let scope = match req.area {
@@ -2145,7 +2291,7 @@ impl App {
                     Ok(b) => b,
                     Err(e) => {
                         host.log(Level::Warn, &format!("board file failed: {e:?}"));
-                        self.dialog_note(host, Tone::Danger, t("dialog.export.failed"));
+                        self.page_note(Tone::Danger, t("dialog.export.failed"), false);
                         return;
                     }
                 }
@@ -2168,23 +2314,28 @@ impl App {
                 t_with("dialog.export.error", &[("error", &error_text(e))]),
             ),
         };
-        self.dialog_note(host, tone, text);
+        self.page_note(tone, text, false);
     }
 
-    fn request_render<H: Host>(
+    fn request_render(
         &mut self,
-        host: &mut H,
         area: Area,
         scale: u8,
         transparent: bool,
         purpose: Purpose,
         clicked: u64,
     ) {
-        let ready = self.page.as_ref().is_some_and(|p| p.ready);
-        if !ready {
-            self.dialog_note(host, Tone::Warning, t("dialog.render.noPage"));
+        // The asking page draws the picture; the mini view can too.
+        let Some(place) = [
+            self.asked_by.unwrap_or(Place::Stage),
+            Place::Stage,
+            Place::SidePanel,
+        ]
+        .into_iter()
+        .find(|&pl| self.pages.iter().any(|p| p.place == pl && p.ready)) else {
+            self.page_note(Tone::Warning, t("dialog.render.noPage"), false);
             return;
-        }
+        };
         self.render_seq = self.render_seq.wrapping_add(1);
         let req = self.render_seq;
         self.render = Some(Render {
@@ -2195,8 +2346,9 @@ impl App {
             parts: Vec::new(),
             clicked,
             started: self.now,
+            place,
         });
-        if let Some(page) = &mut self.page {
+        if let Some(page) = self.page_mut(place) {
             page.out.queue.push_back(
                 ToPage::Render {
                     req,
@@ -2207,21 +2359,27 @@ impl App {
                 .to_json(),
             );
         }
-        self.redraw_dialog(host);
+        self.page_note(Tone::Neutral, t("dialog.render.working"), true);
     }
 
-    fn png_part<H: Host>(&mut self, host: &mut H, req: u32, part: u16, of: u16, data: String) {
+    fn png_part<H: Host>(&mut self, host: &mut H, place: Place, part: PngPart) {
+        let PngPart {
+            req,
+            part,
+            of,
+            data,
+        } = part;
         let Some(r) = &mut self.render else {
             // Only a click in a dialog asks for a picture; anything else is ignored.
             host.log(Level::Debug, "ignored a picture nobody asked for");
             return;
         };
-        if r.req != req {
+        if r.req != req || r.place != place {
             return;
         }
         if of == 0 {
             self.render = None;
-            self.dialog_note(host, Tone::Danger, t("dialog.render.failed"));
+            self.page_note(Tone::Danger, t("dialog.render.failed"), false);
             return;
         }
         if r.parts.is_empty() {
@@ -2229,14 +2387,14 @@ impl App {
         }
         if r.parts.len() != usize::from(of) {
             self.render = None;
-            self.dialog_note(host, Tone::Danger, t("dialog.render.failed"));
+            self.page_note(Tone::Danger, t("dialog.render.failed"), false);
             return;
         }
         r.parts[usize::from(part)] = Some(data);
         let total: usize = r.parts.iter().flatten().map(String::len).sum();
         if total > bridge::MAX_PNG_BYTES / 3 * 4 + 4 {
             self.render = None;
-            self.dialog_note(host, Tone::Warning, t("dialog.render.tooLarge"));
+            self.page_note(Tone::Warning, t("dialog.render.tooLarge"), false);
             return;
         }
         if r.parts.iter().any(Option::is_none) {
@@ -2249,12 +2407,12 @@ impl App {
         let png = match bridge::base64_decode(&joined) {
             Some(b) if b.starts_with(b"\x89PNG\r\n\x1a\n") => b,
             _ => {
-                self.dialog_note(host, Tone::Danger, t("dialog.render.failed"));
+                self.page_note(Tone::Danger, t("dialog.render.failed"), false);
                 return;
             }
         };
         if self.now.saturating_sub(r.clicked) > GESTURE_MS {
-            self.dialog_note(host, Tone::Warning, t("dialog.render.slow"));
+            self.page_note(Tone::Warning, t("dialog.render.slow"), false);
             return;
         }
         match r.purpose {
@@ -2263,39 +2421,35 @@ impl App {
                 let alt = self.post_alt();
                 match host.post_image(&png, &alt) {
                     Ok(PostOutcome::Image) => {
-                        self.dialog_note(host, Tone::Success, t("dialog.post.posted"));
+                        self.page_note(Tone::Success, t("dialog.post.posted"), false);
                     }
                     Ok(PostOutcome::FileOffer) => {
-                        self.dialog_note(host, Tone::Accent, t("dialog.post.fileOffer"));
+                        self.page_note(Tone::Accent, t("dialog.post.fileOffer"), false);
                     }
                     Err(Error::TooLarge) if scale > 1 => {
                         // No image limit is known up front: try the smaller picture once.
                         self.request_render(
-                            host,
                             r.area,
                             1,
                             r.transparent,
                             Purpose::Post { scale: 1 },
                             r.clicked,
                         );
-                        self.dialog_note(host, Tone::Neutral, t("dialog.post.trySmaller"));
-                        if let Some(d) = &mut self.dialog {
-                            d.busy = true;
-                        }
+                        self.page_note(Tone::Neutral, t("dialog.post.trySmaller"), true);
                     }
                     Err(Error::TooLarge) => {
-                        self.dialog_note(host, Tone::Warning, t("dialog.post.tooLarge"));
+                        self.page_note(Tone::Warning, t("dialog.post.tooLarge"), false);
                     }
                     Err(Error::NotPermitted) => {
-                        self.dialog_note(host, Tone::Warning, t("dialog.post.notPermitted"));
+                        self.page_note(Tone::Warning, t("dialog.post.notPermitted"), false);
                     }
                     Err(Error::NoRecipients) => {
-                        self.dialog_note(host, Tone::Warning, t("dialog.post.notConnected"));
+                        self.page_note(Tone::Warning, t("dialog.post.notConnected"), false);
                     }
-                    Err(e) => self.dialog_note(
-                        host,
+                    Err(e) => self.page_note(
                         Tone::Danger,
                         t_with("dialog.post.error", &[("error", &error_text(e))]),
+                        false,
                     ),
                 }
             }
@@ -2432,7 +2586,7 @@ impl App {
     }
 
     fn refresh_texts<H: Host>(&mut self, host: &mut H) {
-        self.queue_init(host);
+        self.queue_init_all(host);
         if self.dialog.is_some() {
             self.redraw_dialog(host);
         }

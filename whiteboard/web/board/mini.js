@@ -28,7 +28,7 @@ let queued = false;
 const store = new ObjectStore();
 const cursorEls = new Map();
 
-const bridge = connect(onMessage, 16 * 1024);
+const bridge = connect(onMessage, 16 * 1024, "side");
 const send = (msg) => bridge.send(msg, false);
 const theme = createTheme(() => {
   palette = readPalette(document.documentElement);

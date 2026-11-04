@@ -1,12 +1,9 @@
-//! Mumcord tree dialogs for the actions that need a real user gesture or a confirmation:
-//! Export, Post to chat, Clear board, Board settings, Saved boards and Describe board.
+//! Mumcord tree dialogs: Board settings, Saved boards, Describe board and notices.
 //!
-//! The web page asks for a dialog (`menu`), but a page message is not a user gesture: only the
-//! buttons drawn here are. Saving a file, posting an image or a chat line therefore always starts
-//! from a click in one of these dialogs. The module is deliberately self-contained: a dialog is
-//! a small state machine that renders an [`El`] tree from a [`Ctx`] snapshot and turns clicks
-//! into an [`Effect`] for the glue. Moving a dialog into the page later only means producing the
-//! same effects from page buttons once the host accepts page clicks as gestures.
+//! Export, Post to chat and the Clear confirmation are drawn inside the board page (mockups 5,
+//! 5b, 6b): a genuine click in the plugin's own page counts as a user gesture (FR-9.45). The
+//! dialogs here are opened from the page's menu. A dialog is a small state machine that renders
+//! an [`El`] tree from a [`Ctx`] snapshot and turns clicks into an [`Effect`] for the glue.
 
 use mumcord_plugin_sdk::events::ActionValue;
 use mumcord_plugin_sdk::ui::{self, Align, ButtonKind, Direction, El, Justify, Tone};
@@ -15,72 +12,7 @@ use crate::bridge::PaperSetting;
 use crate::codec::BoardId;
 use crate::model::{AuthorKey, MAX_TITLE_CHARS, Policy};
 use crate::store::{hex_id, parse_hex_id};
-use crate::text::{clip, clip_to, t, t_with, tn};
-
-/// Which part of the board an export or post covers.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Area {
-    #[default]
-    Board,
-    View,
-    Selection,
-}
-
-impl Area {
-    /// The page's word in a `render` request.
-    pub fn name(self) -> &'static str {
-        match self {
-            Area::Board => "board",
-            Area::View => "view",
-            Area::Selection => "selection",
-        }
-    }
-
-    fn from_name(s: &str) -> Option<Area> {
-        [Area::Board, Area::View, Area::Selection]
-            .into_iter()
-            .find(|a| a.name() == s)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum FileFormat {
-    #[default]
-    Png,
-    Svg,
-    Pdf,
-    Board,
-}
-
-impl FileFormat {
-    const ALL: [FileFormat; 4] = [
-        FileFormat::Png,
-        FileFormat::Svg,
-        FileFormat::Pdf,
-        FileFormat::Board,
-    ];
-
-    fn name(self) -> &'static str {
-        match self {
-            FileFormat::Png => "png",
-            FileFormat::Svg => "svg",
-            FileFormat::Pdf => "pdf",
-            FileFormat::Board => "board",
-        }
-    }
-}
-
-/// What the user asked to export.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ExportReq {
-    pub format: FileFormat,
-    pub area: Area,
-    /// PNG only: 1, 2 or 4.
-    pub scale: u8,
-    pub transparent: bool,
-    /// SVG and PDF only.
-    pub names: bool,
-}
+use crate::text::{clip, clip_to, t, t_with};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Line {
@@ -115,11 +47,6 @@ pub struct BoardRow {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Ctx {
     pub title: String,
-    pub items: usize,
-    /// People on the board, including the local user.
-    pub people: usize,
-    pub selected: usize,
-    pub has_view: bool,
     pub host: bool,
     pub policy: Option<Policy>,
     pub laser: bool,
@@ -134,37 +61,12 @@ pub struct Ctx {
     pub open: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ExportForm {
-    pub format: FileFormat,
-    pub area: Area,
-    pub scale: u8,
-    pub transparent: bool,
-    pub names: bool,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum View {
-    Export(ExportForm),
-    Post {
-        area: Area,
-    },
-    Clear,
-    /// The board was cleared; Undo works until `until` (Unix seconds).
-    Cleared {
-        until: u64,
-    },
-    Settings {
-        confirm_remove: Option<AuthorKey>,
-    },
-    Boards {
-        confirm_delete: Option<BoardId>,
-    },
+    Settings { confirm_remove: Option<AuthorKey> },
+    Boards { confirm_delete: Option<BoardId> },
     Describe(Vec<String>),
-    Notice {
-        title: String,
-        lines: Vec<String>,
-    },
+    Notice { title: String, lines: Vec<String> },
 }
 
 /// What the glue has to do after a click.
@@ -173,13 +75,17 @@ pub enum Effect {
     None,
     Redraw,
     Close,
-    Export(ExportReq),
-    Post(Area),
-    Clear,
-    UndoClear,
+    /// The settings dialog's Clear board: the board page asks for confirmation.
+    AskClear,
     Policy(Policy),
-    Allow { key: String, on: bool },
-    Hide { author: AuthorKey, on: bool },
+    Allow {
+        key: String,
+        on: bool,
+    },
+    Hide {
+        author: AuthorKey,
+        on: bool,
+    },
     RemoveAuthor(AuthorKey),
     Handover(AuthorKey),
     Laser(bool),
@@ -208,20 +114,6 @@ impl Dialog {
         }
     }
 
-    pub fn export(ctx: &Ctx) -> Dialog {
-        Dialog::new(View::Export(ExportForm {
-            area: default_area(ctx),
-            scale: 2,
-            ..ExportForm::default()
-        }))
-    }
-
-    pub fn post(ctx: &Ctx) -> Dialog {
-        Dialog::new(View::Post {
-            area: default_area(ctx),
-        })
-    }
-
     pub fn notice(title: &str, lines: Vec<String>) -> Dialog {
         Dialog::new(View::Notice {
             title: title.to_owned(),
@@ -236,12 +128,8 @@ impl Dialog {
     }
 
     /// The dialog title (Mumcord draws it in the header, at most 64 characters).
-    pub fn title(&self, ctx: &Ctx) -> String {
+    pub fn title(&self) -> String {
         let s = match &self.view {
-            View::Export(_) => t_with("dialog.export.title", &[("title", &ctx.title)]),
-            View::Post { .. } => t("dialog.post.title"),
-            View::Clear => t("dialog.clear.title"),
-            View::Cleared { .. } => t("dialog.cleared.title"),
             View::Settings { .. } => t("dialog.settings.title"),
             View::Boards { .. } => t("dialog.boards.title"),
             View::Describe(_) => t("dialog.describe.title"),
@@ -252,10 +140,6 @@ impl Dialog {
 
     pub fn render(&self, ctx: &Ctx) -> El {
         let body = match &self.view {
-            View::Export(f) => export_view(f, ctx, self.busy),
-            View::Post { area } => post_view(*area, ctx, self.busy),
-            View::Clear => clear_view(ctx),
-            View::Cleared { until } => cleared_view(*until),
             View::Settings { confirm_remove } => settings_view(ctx, *confirm_remove),
             View::Boards { confirm_delete } => boards_view(ctx, *confirm_delete),
             View::Describe(lines) | View::Notice { lines, .. } => text_view(lines),
@@ -280,80 +164,6 @@ impl Dialog {
             return Effect::Close;
         }
         match &mut self.view {
-            View::Export(f) => match (action, text, on) {
-                ("format", Some(v), _) => {
-                    if let Some(fmt) = FileFormat::ALL.into_iter().find(|x| x.name() == v) {
-                        f.format = fmt;
-                    }
-                    Effect::Redraw
-                }
-                ("area", Some(v), _) => {
-                    if let Some(a) = Area::from_name(v) {
-                        f.area = a;
-                    }
-                    Effect::Redraw
-                }
-                ("scale", Some(v), _) => {
-                    if let Some(s) = ["1", "2", "4"].iter().position(|x| *x == v) {
-                        f.scale = [1, 2, 4][s];
-                    }
-                    Effect::Redraw
-                }
-                ("transparent", _, Some(b)) => {
-                    f.transparent = b;
-                    Effect::Redraw
-                }
-                ("names", _, Some(b)) => {
-                    f.names = b;
-                    Effect::Redraw
-                }
-                ("save", ..) if !self.busy => match area_problem(f.area, ctx) {
-                    Some(problem) => {
-                        self.note = Some((Tone::Warning, problem));
-                        Effect::Redraw
-                    }
-                    None => {
-                        self.busy = true;
-                        self.note = None;
-                        Effect::Export(ExportReq {
-                            format: f.format,
-                            area: f.area,
-                            scale: f.scale,
-                            transparent: f.transparent,
-                            names: f.names,
-                        })
-                    }
-                },
-                _ => Effect::None,
-            },
-            View::Post { area } => match (action, text) {
-                ("area", Some(v)) => {
-                    if let Some(a) = Area::from_name(v) {
-                        *area = a;
-                    }
-                    Effect::Redraw
-                }
-                ("post", _) if !self.busy => match area_problem(*area, ctx) {
-                    Some(problem) => {
-                        self.note = Some((Tone::Warning, problem));
-                        Effect::Redraw
-                    }
-                    None => {
-                        self.busy = true;
-                        self.note = None;
-                        Effect::Post(*area)
-                    }
-                },
-                _ => Effect::None,
-            },
-            View::Clear => match action {
-                "clear" => Effect::Clear,
-                _ => Effect::None,
-            },
-            View::Cleared { .. } => match action {
-                "undo" => Effect::UndoClear,
-                _ => Effect::None,
-            },
             View::Settings { confirm_remove } => {
                 settings_action(action, text, on, confirm_remove, ctx)
             }
@@ -378,142 +188,10 @@ impl Dialog {
     }
 }
 
-fn default_area(ctx: &Ctx) -> Area {
-    if ctx.selected > 0 {
-        Area::Selection
-    } else {
-        Area::Board
-    }
-}
-
-fn area_problem(area: Area, ctx: &Ctx) -> Option<String> {
-    match area {
-        Area::Selection if ctx.selected == 0 => Some(t("dialog.area.nothingSelected")),
-        Area::View if !ctx.has_view => Some(t("dialog.area.noView")),
-        _ => None,
-    }
-}
-
 fn buttons(children: Vec<El>) -> El {
     ui::stack(Direction::Row, 8, Align::Center)
         .justify(Justify::End)
         .children(children)
-}
-
-fn area_select(area: Area, ctx: &Ctx) -> El {
-    let board = tn("dialog.area.board", ctx.items as u64, &[]);
-    let view = t("dialog.area.view");
-    let selection = if ctx.selected == 0 {
-        t("dialog.area.selectionNone")
-    } else {
-        tn("dialog.area.selection", ctx.selected as u64, &[])
-    };
-    ui::select(
-        "area",
-        &t("dialog.area.label"),
-        &[
-            ("board", &board),
-            ("view", &view),
-            ("selection", &selection),
-        ],
-        Some(area.name()),
-    )
-}
-
-fn export_view(f: &ExportForm, ctx: &Ctx, busy: bool) -> El {
-    let png = t("dialog.export.png");
-    let svg = t("dialog.export.svg");
-    let pdf = t("dialog.export.pdf");
-    let board = t("dialog.export.board");
-    let mut col = ui::column()
-        .child(ui::select(
-            "format",
-            &t("dialog.export.format"),
-            &[
-                ("png", &png),
-                ("svg", &svg),
-                ("pdf", &pdf),
-                ("board", &board),
-            ],
-            Some(f.format.name()),
-        ))
-        .child(ui::caption(&t(match f.format {
-            FileFormat::Png => "dialog.export.pngHint",
-            FileFormat::Svg | FileFormat::Pdf => "dialog.export.vectorHint",
-            FileFormat::Board => "dialog.export.boardHint",
-        })));
-    // A board file always holds the whole board.
-    if f.format != FileFormat::Board {
-        col = col.child(area_select(f.area, ctx));
-    }
-    if f.format == FileFormat::Png {
-        let one = t("dialog.export.scale1");
-        let two = t("dialog.export.scale2");
-        let four = t("dialog.export.scale4");
-        col = col.child(ui::select(
-            "scale",
-            &t("dialog.export.scale"),
-            &[("1", &one), ("2", &two), ("4", &four)],
-            Some(&f.scale.to_string()),
-        ));
-    }
-    if f.format != FileFormat::Board {
-        col = col.child(ui::toggle(
-            "transparent",
-            &t("dialog.export.transparent"),
-            f.transparent,
-        ));
-    }
-    if matches!(f.format, FileFormat::Svg | FileFormat::Pdf) {
-        col = col
-            .child(ui::toggle("names", &t("dialog.export.names"), f.names))
-            .child(ui::caption(&t("dialog.export.namesHint")));
-    }
-    col.child(ui::caption(&t("dialog.export.privacy")))
-        .child(buttons(vec![
-            ui::button("close", &t("dialog.cancel")).kind(ButtonKind::Secondary),
-            ui::button("save", &t("dialog.export.save"))
-                .kind(ButtonKind::Primary)
-                .disabled(busy),
-        ]))
-}
-
-fn post_view(area: Area, ctx: &Ctx, busy: bool) -> El {
-    ui::column()
-        .child(ui::text(&t("dialog.post.intro")))
-        .child(area_select(area, ctx))
-        .child(ui::caption(&t("dialog.post.hint")))
-        .child(buttons(vec![
-            ui::button("close", &t("dialog.cancel")).kind(ButtonKind::Secondary),
-            ui::button("post", &t("dialog.post.button"))
-                .kind(ButtonKind::Primary)
-                .disabled(busy),
-        ]))
-}
-
-fn clear_view(ctx: &Ctx) -> El {
-    let items = tn("dialog.clear.items", ctx.items as u64, &[]);
-    let people = tn("dialog.clear.people", ctx.people as u64, &[]);
-    ui::column()
-        .child(ui::text(&clip(&t_with(
-            "dialog.clear.body",
-            &[("items", &items), ("people", &people)],
-        ))))
-        .child(ui::text(&t("dialog.clear.undoHint")))
-        .child(buttons(vec![
-            ui::button("close", &t("dialog.clear.keep")).kind(ButtonKind::Secondary),
-            ui::button("clear", &t("dialog.clear.button")).kind(ButtonKind::Danger),
-        ]))
-}
-
-fn cleared_view(until: u64) -> El {
-    ui::column()
-        .child(ui::text(&t("dialog.cleared.body")))
-        .child(ui::countdown(&t("dialog.cleared.countdown"), until))
-        .child(buttons(vec![
-            ui::button("close", &t("dialog.done")).kind(ButtonKind::Secondary),
-            ui::button("undo", &t("dialog.cleared.undo")).kind(ButtonKind::Primary),
-        ]))
 }
 
 fn settings_action(
@@ -561,7 +239,7 @@ fn settings_action(
                 *confirm_remove = None;
                 Effect::Redraw
             }
-            ("clear", ..) => Effect::Clear,
+            ("clear", ..) => Effect::AskClear,
             ("line-start", ..) => Effect::Line(Line::Start),
             ("line-summary", ..) => Effect::Line(Line::Summary),
             ("boards", ..) => Effect::ShowBoards,
@@ -820,10 +498,6 @@ mod tests {
     fn ctx() -> Ctx {
         Ctx {
             title: "Plan".into(),
-            items: 143,
-            people: 5,
-            selected: 0,
-            has_view: true,
             host: true,
             policy: Some(Policy::Everyone),
             open: true,
@@ -871,61 +545,6 @@ mod tests {
             })
             .collect::<Vec<_>>()
             .join("\n")
-    }
-
-    #[test]
-    fn export_defaults_keep_names_off_and_save_is_the_gesture() {
-        let c = ctx();
-        let mut d = Dialog::export(&c);
-        let View::Export(f) = &d.view else {
-            panic!("not export")
-        };
-        assert!(!f.names);
-        assert_eq!(f.scale, 2);
-        assert_eq!(
-            d.on_action("format", &ActionValue::Text("pdf".into()), &c),
-            Effect::Redraw
-        );
-        assert!(texts(d.render(&c)).contains("Add names of who drew what"));
-        assert_eq!(
-            d.on_action("save", &ActionValue::None, &c),
-            Effect::Export(ExportReq {
-                format: FileFormat::Pdf,
-                area: Area::Board,
-                scale: 2,
-                transparent: false,
-                names: false
-            })
-        );
-        // A second click while it runs does nothing.
-        assert_eq!(d.on_action("save", &ActionValue::None, &c), Effect::None);
-    }
-
-    #[test]
-    fn an_empty_selection_cannot_be_posted() {
-        let c = ctx();
-        let mut d = Dialog::post(&c);
-        d.on_action("area", &ActionValue::Text("selection".into()), &c);
-        assert_eq!(d.on_action("post", &ActionValue::None, &c), Effect::Redraw);
-        assert!(d.note.is_some());
-        d.on_action("area", &ActionValue::Text("board".into()), &c);
-        assert_eq!(
-            d.on_action("post", &ActionValue::None, &c),
-            Effect::Post(Area::Board)
-        );
-    }
-
-    #[test]
-    fn clear_confirm_names_items_and_people() {
-        let c = ctx();
-        let d = Dialog::new(View::Clear);
-        let s = texts(d.render(&c));
-        assert!(
-            s.contains("This removes 143 items for all 5 people on the board."),
-            "{s}"
-        );
-        assert!(s.contains("Keep the board"));
-        assert!(s.contains("Clear board"));
     }
 
     #[test]

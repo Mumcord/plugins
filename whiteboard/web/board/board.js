@@ -9,8 +9,9 @@ import { createChrome, toolAllowed } from "./chrome.js";
 import { el, cursorEl, updateCursor } from "./dom.js";
 import { ObjectStore, normalizePeers, personColour } from "./objects.js";
 import { readPalette, drawScene, drawLive, textSize, HAND_FAMILY, noteTilt, loadHandFont } from "./render.js";
-import { answerRender } from "./pngrender.js";
+import { answerRender, drawPreview } from "./pngrender.js";
 import { STAGE_CHUNK } from "./chunk.js";
+import { createDialogs } from "./dialogs.js";
 import { addTrail, pruneTrail, trailAlpha, TRAIL_MS } from "./trail.js";
 import { nextShape, toolForKey, commandFor, isArrowKey, moveKbCursor, followShift, isTypingTarget } from "./keyboard.js";
 import {
@@ -77,8 +78,22 @@ let viewTimer = 0;
 let pointerInside = false;
 let lastPointer = null;
 
-const bridge = connect(onMessage, 64 * 1024);
+const bridge = connect(onMessage, 64 * 1024, "stage");
 const send = (msg, ephemeral = false) => bridge.send(msg, ephemeral);
+const exportScope = () => {
+  const v = viewRect(app.cam, app.vw, app.vh);
+  return { view: [v.x, v.y, v.w, v.h].map(q), sel: [...app.selected].slice(0, 2000) };
+};
+const dialogs = createDialogs((key, vars) => app.t(key, vars), send, exportScope, (canvas, area, transparent) =>
+  drawPreview(canvas, area, transparent, {
+    objs: app.store.list(),
+    selected: app.selected,
+    view: viewRect(app.cam, app.vw, app.vh),
+    palette,
+    peerOf,
+    hidden: app.hidden,
+  }),
+);
 const theme = createTheme(() => {
   palette = readPalette(document.documentElement);
   sceneDirty = true;
@@ -141,12 +156,9 @@ const act = {
   fit: fitBoard,
   present: (on) => send({ t: "present", on }),
   follow: (on) => send({ t: "follow", on }),
-  // The plugin's dialogs need what the page knows: the view (export "what I see now") and the
-  // selection (export or post the selection).
-  menu: (item) => {
-    const v = viewRect(app.cam, app.vw, app.vh);
-    send({ t: "menu", item, view: [v.x, v.y, v.w, v.h].map(q), sel: [...app.selected].slice(0, 2000) });
-  },
+  // The dialogs need what the page knows: the view (export "what I see now") and the selection
+  // (export or post the selection).
+  menu: (item) => send({ t: "menu", item, ...exportScope() }),
   toggleOutline: () => chrome.toggleOutline(),
   openHelp: () => chrome.openHelp(),
   selectOnly(id, reveal) {
@@ -278,6 +290,15 @@ function onMessage(msg) {
       break;
     case "boards":
       showBoards(msg.list);
+      break;
+    case "dialog":
+      dialogs.open(msg);
+      break;
+    case "note":
+      dialogs.note(msg);
+      break;
+    case "cleared":
+      dialogs.cleared(msg);
       break;
     default:
       break;

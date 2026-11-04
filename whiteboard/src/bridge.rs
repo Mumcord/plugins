@@ -19,6 +19,68 @@ use crate::model::{
     MAX_TITLE_CHARS, ObjId, Object, Policy, WIDTH_COUNT, valid_z,
 };
 use crate::store::{hex_id, parse_hex_id};
+use mumcord_plugin_sdk::webview::Place;
+
+/// Which part of the board an export or post covers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Area {
+    #[default]
+    Board,
+    View,
+    Selection,
+}
+
+impl Area {
+    /// The page's word in a `render` request and an `export` message.
+    pub fn name(self) -> &'static str {
+        match self {
+            Area::Board => "board",
+            Area::View => "view",
+            Area::Selection => "selection",
+        }
+    }
+
+    fn from_name(s: &str) -> Option<Area> {
+        [Area::Board, Area::View, Area::Selection]
+            .into_iter()
+            .find(|a| a.name() == s)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FileFormat {
+    #[default]
+    Png,
+    Svg,
+    Pdf,
+    Board,
+}
+
+impl FileFormat {
+    fn from_name(s: &str) -> Option<FileFormat> {
+        Some(match s {
+            "png" => FileFormat::Png,
+            "svg" => FileFormat::Svg,
+            "pdf" => FileFormat::Pdf,
+            "board" => FileFormat::Board,
+            _ => return None,
+        })
+    }
+}
+
+/// What the user asked to export from the in-board Export dialog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExportReq {
+    pub format: FileFormat,
+    pub area: Area,
+    /// PNG only: 1, 2 or 4.
+    pub scale: u8,
+    pub transparent: bool,
+    /// SVG and PDF only.
+    pub names: bool,
+    /// Post the PNG to chat instead of saving a file.
+    pub to_chat: bool,
+}
 
 /// Bridge limit of the stage page.
 pub const STAGE_MAX_BYTES: usize = 64 * 1024;
@@ -54,6 +116,7 @@ pub enum Refused {
 /// What the plugin opens from the page's menu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
+    /// The in-board dialogs (the page draws them, the plugin fills in the counted texts).
     Export,
     Post,
     Clear,
@@ -186,6 +249,14 @@ pub enum PageMsg {
         view: Option<PxRect>,
         selection: Vec<ObjId>,
     },
+    /// The Export dialog's Save or Post button.
+    Export {
+        req: ExportReq,
+        view: Option<PxRect>,
+        selection: Vec<ObjId>,
+    },
+    /// The Clear confirmation's "Clear board" button.
+    Clear,
     Settings {
         policy: Option<Policy>,
         allow: Option<(String, bool)>,
@@ -201,22 +272,69 @@ pub enum PageMsg {
     Open(BoardId),
     DeleteBoard(BoardId),
     NewBoard(String),
-    /// One part of a rendered PNG; `of == 0` means the render failed.
-    Png {
-        req: u32,
-        part: u16,
-        of: u16,
-        data: String,
-    },
+    Png(PngPart),
+    /// "Undo" in the page's cleared notice.
+    UndoClear,
 }
 
-/// Validates one message from the page. `max_bytes` is the bridge limit of its place.
-pub fn parse(raw: &str, max_bytes: usize) -> Result<PageMsg, Refused> {
-    if raw.len() > max_bytes {
+/// One part of a rendered PNG; `of == 0` means the render failed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PngPart {
+    pub req: u32,
+    pub part: u16,
+    pub of: u16,
+    pub data: String,
+}
+
+/// Validates one message from the page and returns the place the page says it runs in.
+///
+/// Host messages carry no place and a plugin may show up to three web views, so every page tags
+/// its messages with `p` (`stage` or `side`); the bridge limit of that place applies.
+pub fn parse(raw: &str) -> Result<(Place, PageMsg), Refused> {
+    if raw.len() > STAGE_MAX_BYTES {
         return Err(Refused::TooLarge);
     }
     let value: Value = serde_json::from_str(raw).map_err(|_| Refused::NotJson)?;
     let m = value.as_object().ok_or(Refused::NotJson)?;
+    let place = match m.get("p").and_then(Value::as_str) {
+        Some("stage") => Place::Stage,
+        Some("side") => Place::SidePanel,
+        _ => return Err(Refused::BadField("p")),
+    };
+    if raw.len() > max_bytes(place) {
+        return Err(Refused::TooLarge);
+    }
+    Ok((place, parse_msg(m)?))
+}
+
+/// The bridge limit of a place.
+pub fn max_bytes(place: Place) -> usize {
+    if place == Place::Stage {
+        STAGE_MAX_BYTES
+    } else {
+        PANEL_MAX_BYTES
+    }
+}
+
+/// The page tag of a place, as in `p` and `to`.
+pub fn place_tag(place: Place) -> &'static str {
+    if place == Place::Stage {
+        "stage"
+    } else {
+        "side"
+    }
+}
+
+/// Addresses a message for the page in `place`: the host may deliver a post to every open web
+/// view of the plugin, and each page keeps only messages whose `to` is its own tag.
+pub fn addressed(json: &str, place: Place) -> String {
+    match json.strip_prefix('{') {
+        Some(rest) => format!("{{\"to\":\"{}\",{rest}", place_tag(place)),
+        None => json.to_owned(),
+    }
+}
+
+fn parse_msg(m: &Map<String, Value>) -> Result<PageMsg, Refused> {
     let t = m
         .get("t")
         .and_then(Value::as_str)
@@ -278,6 +396,9 @@ pub fn parse(raw: &str, max_bytes: usize) -> Result<PageMsg, Refused> {
         "present" => PageMsg::Present(flag(m, "on")?.ok_or(Refused::BadField("on"))?),
         "follow" => PageMsg::Follow(flag(m, "on")?.ok_or(Refused::BadField("on"))?),
         "menu" => menu(m)?,
+        "export" => export_msg(m)?,
+        "clear" => PageMsg::Clear,
+        "undo-clear" => PageMsg::UndoClear,
         "settings" => settings(m)?,
         "hide" => PageMsg::Hide {
             author: author(m)?,
@@ -605,6 +726,17 @@ fn menu(m: &Map<String, Value>) -> Result<PageMsg, Refused> {
         Some("boards") => MenuItem::Boards,
         _ => return Err(Refused::BadField("item")),
     };
+    let (view, selection) = view_and_selection(m)?;
+    Ok(PageMsg::Menu {
+        item,
+        view,
+        selection,
+    })
+}
+
+/// What the page knows and the plugin needs for an export: the view ("what I see now") and the
+/// selection.
+fn view_and_selection(m: &Map<String, Value>) -> Result<(Option<PxRect>, Vec<ObjId>), Refused> {
     let view = match m.get("view") {
         None => None,
         Some(v) => {
@@ -619,8 +751,41 @@ fn menu(m: &Map<String, Value>) -> Result<PageMsg, Refused> {
         None => Vec::new(),
         Some(v) => id_list(Some(v), "sel")?,
     };
-    Ok(PageMsg::Menu {
-        item,
+    Ok((view, selection))
+}
+
+/// The in-board Export dialog's button (mockup 5): save a file or post the PNG to chat.
+fn export_msg(m: &Map<String, Value>) -> Result<PageMsg, Refused> {
+    let name = |key: &'static str| {
+        m.get(key)
+            .and_then(Value::as_str)
+            .ok_or(Refused::BadField(key))
+    };
+    let area = Area::from_name(name("area")?).ok_or(Refused::BadField("area"))?;
+    let to_chat = match name("dest")? {
+        "file" => false,
+        "chat" => true,
+        _ => return Err(Refused::BadField("dest")),
+    };
+    let format = FileFormat::from_name(name("format")?).ok_or(Refused::BadField("format"))?;
+    // Only a PNG goes to chat (mockup 5: the other formats are files only).
+    if to_chat && format != FileFormat::Png {
+        return Err(Refused::BadField("format"));
+    }
+    let scale = match m.get("scale").and_then(Value::as_u64) {
+        Some(s @ (1 | 2 | 4)) => s as u8,
+        _ => return Err(Refused::BadField("scale")),
+    };
+    let (view, selection) = view_and_selection(m)?;
+    Ok(PageMsg::Export {
+        req: ExportReq {
+            format,
+            area,
+            scale,
+            transparent: flag(m, "transparent")?.unwrap_or(false),
+            names: flag(m, "names")?.unwrap_or(false),
+            to_chat,
+        },
         view,
         selection,
     })
@@ -693,12 +858,12 @@ fn png(m: &Map<String, Value>) -> Result<PageMsg, Refused> {
                 .all(|b| b.is_ascii_alphanumeric() || b"+/=".contains(&b))
         })
         .ok_or(Refused::BadField("data"))?;
-    Ok(PageMsg::Png {
+    Ok(PageMsg::Png(PngPart {
         req,
         part,
         of,
         data: data.to_owned(),
-    })
+    }))
 }
 
 /// Decodes standard base64 with padding; `None` for anything else.
@@ -919,6 +1084,20 @@ pub enum ToPage {
     Boards {
         list: Vec<BoardListEntry>,
     },
+    /// The outcome of an in-board dialog button, shown in that dialog. `tone` is `success`,
+    /// `neutral`, `accent`, `warning` or `danger`; while `busy` the dialog's buttons stay off.
+    Note {
+        tone: &'static str,
+        text: String,
+        busy: bool,
+    },
+    /// Opens an in-board dialog: `which` is `export`, `post` (the export dialog set to post to
+    /// chat) or `clear`. The texts that count things come translated from the plugin.
+    Dialog(Box<DialogJson>),
+    /// The board was cleared: the page offers Undo until `until` (Unix seconds).
+    Cleared {
+        until: u64,
+    },
 }
 
 impl ToPage {
@@ -926,6 +1105,20 @@ impl ToPage {
         // Serialising plain structs and strings cannot fail.
         serde_json::to_string(self).unwrap_or_default()
     }
+}
+
+/// What an in-board dialog shows besides the page's own texts.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DialogJson {
+    pub which: &'static str,
+    pub title: String,
+    /// "143 items" for the whole board.
+    pub board: String,
+    /// "2 items", or that nothing is selected.
+    pub selection: String,
+    pub has_selection: bool,
+    /// The Clear confirmation's sentence.
+    pub body: String,
 }
 
 /// Flattens points to the page's `[x0, y0, …]` in pixels.
@@ -1003,12 +1196,82 @@ pub fn objs_messages(
 mod tests {
     use super::*;
 
+    /// Tags a test message as coming from the stage page.
+    fn staged(s: &str) -> String {
+        format!("{{\"p\":\"stage\",{}", &s[1..])
+    }
+
     fn ok(s: &str) -> PageMsg {
-        parse(s, STAGE_MAX_BYTES).unwrap_or_else(|e| panic!("{s}: {e:?}"))
+        let (place, msg) = parse(&staged(s)).unwrap_or_else(|e| panic!("{s}: {e:?}"));
+        assert_eq!(place, Place::Stage);
+        msg
     }
 
     fn bad(s: &str) -> Refused {
-        parse(s, STAGE_MAX_BYTES).expect_err(s)
+        parse(&staged(s)).expect_err(s)
+    }
+
+    #[test]
+    fn pages_tag_their_place() {
+        assert_eq!(
+            parse(r#"{"p":"side","t":"ready"}"#),
+            Ok((Place::SidePanel, PageMsg::Ready))
+        );
+        assert_eq!(parse(r#"{"t":"ready"}"#), Err(Refused::BadField("p")));
+        assert_eq!(
+            parse(r#"{"p":"dialog","t":"ready"}"#),
+            Err(Refused::BadField("p"))
+        );
+        // The side panel's bridge is smaller than the stage's.
+        let big = format!(
+            r#"{{"p":"side","t":"ready","pad":"{}"}}"#,
+            "x".repeat(PANEL_MAX_BYTES)
+        );
+        assert_eq!(parse(&big), Err(Refused::TooLarge));
+        assert_eq!(
+            addressed(r#"{"t":"announce","text":"hi"}"#, Place::SidePanel),
+            r#"{"to":"side","t":"announce","text":"hi"}"#
+        );
+    }
+
+    #[test]
+    fn in_board_buttons_are_checked() {
+        assert_eq!(
+            ok(
+                r#"{"t":"export","dest":"chat","format":"png","area":"selection","scale":2,"sel":["1.2"]}"#
+            ),
+            PageMsg::Export {
+                req: ExportReq {
+                    format: FileFormat::Png,
+                    area: Area::Selection,
+                    scale: 2,
+                    transparent: false,
+                    names: false,
+                    to_chat: true,
+                },
+                view: None,
+                selection: vec![ObjId {
+                    author: 1,
+                    counter: 2
+                }],
+            }
+        );
+        match ok(
+            r#"{"t":"export","dest":"file","format":"pdf","area":"board","scale":1,"names":true}"#,
+        ) {
+            PageMsg::Export { req, .. } => assert!(req.names && !req.to_chat),
+            other => panic!("{other:?}"),
+        }
+        // Only a PNG goes to chat; scales and areas are checked.
+        for m in [
+            r#"{"t":"export","dest":"chat","format":"svg","area":"board","scale":1}"#,
+            r#"{"t":"export","dest":"file","format":"png","area":"board","scale":3}"#,
+            r#"{"t":"export","dest":"file","format":"png","area":"all","scale":1}"#,
+            r#"{"t":"export","dest":"mail","format":"png","area":"board","scale":1}"#,
+        ] {
+            assert!(matches!(bad(m), Refused::BadField(_)), "{m}");
+        }
+        assert_eq!(ok(r#"{"t":"clear"}"#), PageMsg::Clear);
     }
 
     #[test]
@@ -1069,10 +1332,6 @@ mod tests {
         );
         let huge = format!(r#"{{"t":"ready","pad":"{}"}}"#, "x".repeat(STAGE_MAX_BYTES));
         assert_eq!(bad(&huge), Refused::TooLarge);
-        assert_eq!(
-            parse(r#"{"t":"ready","pad":"xxxxxxxxxxxxxxxxxxxx"}"#, 16),
-            Err(Refused::TooLarge)
-        );
     }
 
     #[test]
@@ -1156,7 +1415,7 @@ mod tests {
     fn png_parts_are_checked() {
         assert!(matches!(
             ok(r#"{"t":"png","req":3,"part":0,"of":2,"data":"iVBO"}"#),
-            PageMsg::Png { req: 3, of: 2, .. }
+            PageMsg::Png(PngPart { req: 3, of: 2, .. })
         ));
         assert_eq!(
             bad(r#"{"t":"png","req":3,"part":2,"of":2,"data":""}"#),

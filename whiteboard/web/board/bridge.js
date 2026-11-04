@@ -8,10 +8,13 @@ const RATE = 45;
 const BURST = 20;
 
 /**
- * Connects to the plugin. `maxBytes` is the bridge limit of the place the page runs in (64 KiB on
- * the stage, 16 KiB in the side panel); `onMessage` gets every parsed message with a string `t`.
+ * Connects to the plugin. `place` is where the page runs (`stage` or `side`) and `maxBytes` that
+ * place's bridge limit (64 KiB on the stage, 16 KiB in the side panel); `onMessage` gets every
+ * parsed message with a string `t`. A plugin may show several web views and the host does not
+ * say which one a message is for or from, so every message carries the place: `p` going out,
+ * `to` coming in.
  */
-export function connect(onMessage, maxBytes) {
+export function connect(onMessage, maxBytes, place) {
   let timer = 0;
   const pacer = new Pacer((text) => window.parent.postMessage(text, "*"), RATE, BURST, performance.now());
 
@@ -30,7 +33,7 @@ export function connect(onMessage, maxBytes) {
       console.warn("whiteboard: dropped a malformed bridge message", err.name);
       return;
     }
-    if (msg && typeof msg === "object" && typeof msg.t === "string") onMessage(msg);
+    if (msg && typeof msg === "object" && typeof msg.t === "string" && msg.to === place) onMessage(msg);
   });
 
   return {
@@ -39,7 +42,7 @@ export function connect(onMessage, maxBytes) {
      * budget is used up; everything else waits its turn.
      */
     send(msg, ephemeral = false) {
-      const text = JSON.stringify(msg);
+      const text = JSON.stringify({ p: place, ...msg });
       if (text.length > maxBytes) {
         console.warn(`whiteboard: message "${msg.t}" is too large for the bridge and was not sent`);
         return false;

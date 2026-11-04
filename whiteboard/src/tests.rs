@@ -231,8 +231,17 @@ impl User {
         self.app.on_event(&mut self.host, e);
     }
 
+    /// A message from the stage page (pages tag their place in `p`).
     fn page(&mut self, msg: &str) {
-        self.event(Event::WebviewMessage(msg.to_owned()));
+        self.page_at("stage", msg);
+    }
+
+    fn page_at(&mut self, place: &str, msg: &str) {
+        let tagged = match msg.strip_prefix('{') {
+            Some(rest) => format!(r#"{{"p":"{place}",{rest}"#),
+            None => msg.to_owned(),
+        };
+        self.event(Event::WebviewMessage(tagged));
     }
 
     fn click(&mut self, slot: Slot, action: &str, value: ActionValue) {
@@ -492,15 +501,8 @@ fn the_policy_blocks_an_author_who_may_not_draw() {
 }
 
 #[test]
-fn a_page_message_is_no_gesture_and_cannot_post_to_chat() {
+fn a_picture_nobody_asked_for_is_ignored() {
     let (mut alice, _bob) = two_on_a_board();
-    // The page can only ask for the dialog …
-    alice.page(r#"{"t":"menu","item":"post"}"#);
-    assert_eq!(
-        alice.host.dialogs.last().map(String::as_str),
-        Some("Post to chat")
-    );
-    // … and a picture nobody clicked for is ignored.
     let data = base64(PNG);
     alice.page(&format!(
         r#"{{"t":"png","req":1,"part":0,"of":1,"data":"{data}"}}"#
@@ -513,14 +515,31 @@ fn a_page_message_is_no_gesture_and_cannot_post_to_chat() {
     assert!(alice.host.files.is_empty());
 }
 
+fn last_note(app: &User) -> String {
+    app.posted_of("note")
+        .last()
+        .and_then(|n| n["text"].as_str().map(str::to_owned))
+        .unwrap_or_default()
+}
+
 #[test]
-fn post_to_chat_renders_at_2x_and_falls_back_to_1x() {
+fn post_to_chat_renders_and_falls_back_to_1x() {
     let (mut alice, _bob) = two_on_a_board();
-    alice.page(r#"{"t":"menu","item":"post","view":[0,0,800,600],"sel":[]}"#);
-    alice.click(Slot::Dialog, "post", ActionValue::None);
+    // The in-board Export dialog's "Post to #General" (mockup 5).
+    alice.page(
+        r#"{"t":"export","dest":"chat","format":"png","area":"board","scale":2,"view":[0,0,800,600],"sel":[]}"#,
+    );
     let render = alice.posted_of("render").pop().expect("render request");
     assert_eq!(render["scale"], 2);
     assert_eq!(render["scope"], "board");
+    assert!(
+        alice
+            .host
+            .posted
+            .last()
+            .expect("posted")
+            .starts_with(r#"{"to":"stage","#)
+    );
     alice.host.image_results = vec![Err(Error::TooLarge), Ok(PostOutcome::FileOffer)];
     let data = base64(PNG);
     let req = render["req"].as_u64().expect("req");
@@ -535,67 +554,86 @@ fn post_to_chat_renders_at_2x_and_falls_back_to_1x() {
         r#"{{"t":"png","req":{req},"part":1,"of":2,"data":"{}"}}"#,
         &data[half..]
     ));
+    // A part from another page does not count.
+    alice.page_at(
+        "side",
+        &format!(
+            r#"{{"t":"png","req":{req},"part":0,"of":2,"data":"{}"}}"#,
+            &data[..half]
+        ),
+    );
+    assert_eq!(alice.host.images, vec![PNG.len()]);
     alice.page(&format!(
         r#"{{"t":"png","req":{req},"part":0,"of":2,"data":"{}"}}"#,
         &data[..half]
     ));
     assert_eq!(alice.host.images, vec![PNG.len(), PNG.len()]);
-    let tree = alice
-        .last_tree(|s| matches!(s, Slot::Dialog))
-        .expect("dialog");
-    assert!(
-        tree.iter()
-            .any(|t| t.starts_with("Too big for a chat picture")),
-        "{tree:?}"
-    );
+    let note = last_note(&alice);
+    assert!(note.starts_with("Too big for a chat picture"), "{note}");
+    // No Mumcord dialog was involved.
+    assert!(alice.host.dialogs.is_empty());
 }
 
 #[test]
 fn export_saves_vector_files_and_explains_a_refusal() {
     let (mut alice, _bob) = two_on_a_board();
     alice.page(r#"{"t":"create","obj":{"k":"rect","g":[0,0,40,40],"ink":1,"w":1}}"#);
-    alice.page(r#"{"t":"menu","item":"export"}"#);
-    alice.click(Slot::Dialog, "format", ActionValue::Text("svg".into()));
-    alice.click(Slot::Dialog, "save", ActionValue::None);
+    alice.page(r#"{"t":"export","dest":"file","format":"svg","area":"board","scale":1}"#);
     let (name, data) = alice.host.files.pop().expect("saved");
     assert_eq!(name, "Untitled board.svg");
     assert!(String::from_utf8(data).expect("utf8").contains("<svg"));
     alice.host.save_error = Some(Error::NotPermitted);
-    alice.click(Slot::Dialog, "format", ActionValue::Text("board".into()));
-    alice.click(Slot::Dialog, "save", ActionValue::None);
-    let tree = alice
-        .last_tree(|s| matches!(s, Slot::Dialog))
-        .expect("dialog");
-    assert!(
-        tree.iter()
-            .any(|t| t.starts_with("Mumcord did not allow saving")),
-        "{tree:?}"
+    alice.page(r#"{"t":"export","dest":"file","format":"board","area":"board","scale":1}"#);
+    let note = last_note(&alice);
+    assert!(note.starts_with("Mumcord did not allow saving"), "{note}");
+    // Nothing selected: the export explains instead of saving an empty file.
+    alice.page(
+        r#"{"t":"export","dest":"file","format":"pdf","area":"selection","scale":1,"sel":[]}"#,
     );
+    assert!(alice.host.files.is_empty());
+    assert!(!last_note(&alice).is_empty());
 }
 
 #[test]
-fn clearing_asks_first_and_can_be_undone() {
+fn clearing_from_the_board_can_be_undone() {
     let (mut alice, mut bob) = two_on_a_board();
     alice.page(r#"{"t":"create","obj":{"k":"note","g":[0,0,156,112],"text":"keep me"}}"#);
     settle(&mut alice, &mut bob, 12);
-    alice.page(r#"{"t":"menu","item":"clear"}"#);
-    let tree = alice
-        .last_tree(|s| matches!(s, Slot::Dialog))
-        .expect("dialog");
+    // The page asked "Clear the whole board?" itself (mockup 6b); this is its button.
+    alice.page(r#"{"t":"clear"}"#);
     assert!(
-        tree.contains(&"This removes 1 item for all 2 people on the board.".to_owned()),
-        "{tree:?}"
+        alice
+            .posted_of("cleared")
+            .last()
+            .is_some_and(|c| c["until"].as_u64() > Some(0))
     );
-    alice.click(Slot::Dialog, "clear", ActionValue::None);
     settle(&mut alice, &mut bob, 12);
     assert_eq!(bob.app_objects(), 0);
-    alice.click(Slot::Dialog, "undo", ActionValue::None);
+    alice.page(r#"{"t":"undo-clear"}"#);
     settle(&mut alice, &mut bob, 12);
     assert_eq!(bob.app_objects(), 1);
-    // Bob is no host: the page cannot open the clear dialog for him.
-    let before = bob.host.dialogs.len();
+    // Bob is no host: his clear is refused with a reason.
+    bob.page(r#"{"t":"clear"}"#);
+    settle(&mut alice, &mut bob, 12);
+    assert_eq!(alice.app_objects(), 1);
+    assert!(!last_note(&bob).is_empty());
+    // The settings dialog's Clear board opens the page's confirmation.
+    alice.page(r#"{"t":"menu","item":"settings"}"#);
+    alice.click(Slot::Dialog, "clear", ActionValue::None);
+    let dialog = alice.posted_of("dialog").pop().expect("in-board dialog");
+    assert_eq!(dialog["which"], "clear");
+    assert_eq!(
+        dialog["body"],
+        "This removes 1 item for all 2 people on the board."
+    );
+    // Bob is no host: his page gets no Clear confirmation.
     bob.page(r#"{"t":"menu","item":"clear"}"#);
-    assert_eq!(bob.host.dialogs.len(), before);
+    assert!(bob.posted_of("dialog").is_empty());
+    bob.page(r#"{"t":"menu","item":"export","sel":[]}"#);
+    assert_eq!(
+        bob.posted_of("dialog").pop().expect("export")["which"],
+        "export"
+    );
 }
 
 #[test]
@@ -628,7 +666,7 @@ fn the_side_panel_takes_over_while_the_stage_is_hidden() {
     );
     // The mini view gets its own init once ready, within its smaller bridge.
     let before = alice.host.posted.len();
-    alice.page(r#"{"t":"ready"}"#);
+    alice.page_at("side", r#"{"t":"ready"}"#);
     assert!(
         alice.host.posted[before..]
             .iter()
@@ -637,8 +675,14 @@ fn the_side_panel_takes_over_while_the_stage_is_hidden() {
     assert!(
         alice.host.posted[before..]
             .iter()
-            .any(|m| m.contains(r#""t":"init""#))
+            .any(|m| m.starts_with(r#"{"to":"side","t":"init""#))
     );
+    // Up to three web views: the stage page stays open next to the side panel.
+    let shown = alice.host.web.len();
+    alice.event(Event::StageVisibilityChanged(true));
+    assert_eq!(alice.host.web.len(), shown);
+    // A Mumcord that closed the stage page gets it back once the stage is visible.
+    alice.event(Event::SurfaceClosed(Place::Stage));
     alice.event(Event::StageVisibilityChanged(true));
     assert_eq!(
         alice.host.web.last(),

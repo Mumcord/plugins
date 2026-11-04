@@ -212,6 +212,45 @@ button { font: inherit; }
 .wb-keys dd { margin: 0; color: var(--color-text-secondary); }
 .wb-dialog__close { padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-full); background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; cursor: pointer; }
 
+/* --- In-board dialogs: Export or share (mockups 5, 5b) and Clear (mockup 6b) --------------------------------------- */
+.wb-dialog--wide { width: min(56rem, calc(100vw - 2rem)); }
+.wb-dialog--small { width: min(27rem, calc(100vw - 2rem)); }
+.wb-dialog__text { margin: 0; }
+.wb-export { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--space-5); }
+.wb-export__preview { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: repeating-conic-gradient(var(--color-bg-hover) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+.wb-export__canvas { display: block; width: 100%; height: auto; }
+.wb-export__meta { margin: var(--space-2) 0 0; }
+.wb-export__foot { grid-column: 1 / -1; }
+@media (max-width: 40rem) { .wb-export { grid-template-columns: 1fr; } }
+.wb-fs { margin: 0 0 var(--space-3); padding: 0; border: 0; }
+.wb-fs legend { margin-bottom: var(--space-1); padding: 0; font-size: var(--font-size-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
+.wb-opt { display: flex; gap: var(--space-3); align-items: flex-start; padding: 6px 8px; border-radius: var(--radius-md); }
+.wb-opt:has(input:checked) { background: var(--color-bg-selected); }
+.wb-opt:has(input:disabled) { opacity: 0.45; }
+.wb-opt input { margin-top: 3px; accent-color: var(--color-accent); }
+.wb-opt__t { display: flex; flex-direction: column; font-size: var(--font-size-sm); }
+.wb-opt__t span { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.wb-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3); }
+.wb-field { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-muted); }
+.wb-select { padding: var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-size: var(--font-size-sm); font-weight: 400; }
+.wb-switch-row { display: flex; gap: var(--space-3); align-items: flex-start; margin-bottom: var(--space-3); font-size: var(--font-size-sm); }
+.wb-switch-row > span { display: flex; flex-direction: column; }
+.wb-switch { flex: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: 10px; background: var(--color-border-strong); appearance: none; cursor: pointer; }
+.wb-switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 120ms; }
+.wb-switch:checked { background: var(--color-accent); }
+.wb-switch:checked::after { transform: translateX(16px); }
+.wb-switch:disabled { opacity: 0.55; }
+.wb-note { margin: var(--space-3) 0 0; color: var(--color-text-secondary); font-size: var(--font-size-xs); }
+.wb-note:empty { display: none; }
+.wb-note[data-tone="success"] { color: var(--color-success); font-weight: 700; }
+.wb-note[data-tone="warning"] { color: var(--color-warning); font-weight: 700; }
+.wb-note[data-tone="danger"] { color: var(--color-danger); font-weight: 700; }
+.wb-actions { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-4); }
+.wb-button--quiet { border: 1px solid var(--color-border-strong); background: transparent; color: var(--color-text); }
+.wb-button--danger { background: var(--color-danger); color: #fff; }
+.wb-button:disabled { opacity: 0.55; cursor: default; }
+.wb-toast { position: fixed; z-index: 40; left: 50%; bottom: 56px; display: flex; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius-full); box-shadow: var(--shadow-raised); font-size: var(--font-size-sm); transform: translateX(-50%); }
+
 /* --- Side panel mini view ------------------------------------------------------------------------------------------- */
 .wb-panel { overflow: auto; background: var(--color-bg-chat); color: var(--color-text); }
 .wb-mini-view { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
@@ -233,6 +272,6 @@ button { font: inherit; }
 
 /* Reduce motion: no cursor glide (the laser fade and the live-stroke pulse are skipped in the script). */
 @media (prefers-reduced-motion: reduce) {
-  .wb-cursor, .wb-queue__bar i { transition: none; }
+  .wb-cursor, .wb-queue__bar i, .wb-switch::after { transition: none; }
 }
 :root[data-motion="reduce"] .wb-cursor, :root[data-motion="reduce"] .wb-queue__bar i { transition: none; }

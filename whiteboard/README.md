@@ -50,7 +50,7 @@ from this device (only after asking). Export what you want to keep for good.
 | `ui.stage` | required | The board in the media area |
 | `ui.webview` | required | The board is drawn by the plugin's own web page (`web/board/`, no external addresses) |
 | `ui.app-menu` | required | "Start whiteboard" in the Apps menu |
-| `ui.dialog` | required | Export, Post to chat, Board settings, Clear and Saved boards dialogs |
+| `ui.dialog` | required | Board settings, Saved boards and Describe board dialogs (Export, Post to chat and Clear are drawn inside the board) |
 | `peers.messages` | required | Board changes, joins and snapshots over Mumble plugin data |
 | `events.presence` | required | Who is in the channel, joins, leaves and the host hand-over |
 | `random.bytes` | required | Random board ids and per-board author keys |
@@ -109,7 +109,11 @@ is validated (type, ranges, sizes) before it is used.
   256 kbit/s.
 - Flood caps per sender: 1,200 messages and 1,000 changes per 10 seconds, the rest is dropped.
 - Saved boards share the plugin's 1 MiB storage; posted pictures and exports are made only after
-  a click in a dialog.
+  a click on the Save or Post button in the board's own Export dialog. Mumcord counts a genuine
+  click inside the plugin's page as the user's gesture (spec FR-9.45); a page that sends the
+  message without a click gets `not-permitted` from Mumcord.
+- Up to three web views per plugin (stage, side panel, dialog): the stage page and the side
+  panel's mini view tag every message with their place (`p` from the page, `to` to the page).
 
 ## Privacy
 
