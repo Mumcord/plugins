@@ -60,7 +60,8 @@ export function createDialogs(t, send, scope, preview) {
     const toChat = msg.which === "post";
     const dialog = shell("wb-exp-t", "dialog");
     dialog.classList.add("wb-dialog--wide");
-    const form = el("form", { method: "dialog", class: "wb-export" });
+    const form = el("form", { method: "dialog", class: "wb-export-form" });
+    const body = el("div", { class: "wb-export" });
     const note = noteLine();
     const privacy = el("p", { class: "wb-note wb-note--muted" });
     const primary = el("button", { class: "wb-button", type: "submit" });
@@ -70,7 +71,7 @@ export function createDialogs(t, send, scope, preview) {
     const canvas = el("canvas", { class: "wb-export__canvas", width: 480, height: 270, "aria-hidden": "true" });
     const meta = el("p", { class: "wb-muted wb-export__meta" });
     const right = el("div", { class: "wb-export__right" });
-    form.append(el("div", { class: "wb-export__left" }, [el("div", { class: "wb-export__preview" }, [canvas]), meta]), right);
+    body.append(el("div", { class: "wb-export__left" }, [el("div", { class: "wb-export__preview" }, [canvas]), meta]), right);
     right.append(
       fieldset(t("exp.sendTo"), [
         radio("dest", "file", t("exp.toFile"), t("exp.toFileHint"), !toChat),
@@ -96,7 +97,7 @@ export function createDialogs(t, send, scope, preview) {
         el("span", {}, [el("b", { text: t("exp.names") }), el("span", { class: "wb-muted", text: t("exp.namesHint") })]),
       ]),
     );
-    form.append(el("div", { class: "wb-export__foot" }, [note, privacy, el("div", { class: "wb-actions" }, [cancel, primary])]));
+    form.append(body, el("div", { class: "wb-export__foot" }, [note, privacy, el("div", { class: "wb-dlg-actions" }, [cancel, primary])]));
     dialog.append(el("h2", { id: "wb-exp-t", text: msg.title }), form);
 
     const value = (name) => form.querySelector(`input[name="${name}"]:checked`)?.value;
@@ -157,7 +158,7 @@ export function createDialogs(t, send, scope, preview) {
       el("h2", { id: "wb-clr-t", text: t("clr.title") }),
       el("p", { id: "wb-clr-d", class: "wb-dialog__text" }, [msg.body, " ", t("clr.undoHint")]),
       note,
-      el("div", { class: "wb-actions" }, [keep, clear]),
+      el("div", { class: "wb-dlg-actions" }, [keep, clear]),
     );
     open = { dialog, note, primary: clear, busy: false };
     dialog.showModal();
