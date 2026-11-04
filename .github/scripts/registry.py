@@ -11,7 +11,8 @@ Subcommands:
   permission-diff DIFF_BASE      write the Markdown permission diff for a pull request to stdout
   build-missing OUT              rebuild and check every version without a GitHub release into OUT
   release-built OUT              create the GitHub releases for the packages in OUT
-  sequence INDEX_URL             print the next index sequence (above the published one)
+  sequence INDEX_URL...          print the next sequence (above every published one)
+  site-check SITE                check the generated v1 and v1.1 registry data in SITE
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -178,6 +180,25 @@ def check_signature(package: Path, version: dict, author_keys: list[str]) -> Non
                      + " | ".join(errors or ["plugin.toml lists no author_keys"]))
 
 
+def api_minor(value: object) -> str:
+    """The API minor ("1.0", "1.1") a version file or a manifest `api` requirement starts at."""
+    match = re.fullmatch(r"\^?(\d+)(?:\.(\d+))?(?:\.\d+)?", str(value).strip())
+    if match is None:
+        raise CheckError(f"unreadable api {value!r}")
+    return f"{match.group(1)}.{match.group(2) or 0}"
+
+
+def check_declared_api(package: Path, version: dict) -> None:
+    """The `api` of the version file must be the one the package manifest declares. The WIT
+    imports against the manifest are checked by `mumcord-plugin check` (check_signature)."""
+    with zipfile.ZipFile(package) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+    declared, listed = api_minor(manifest.get("api")), api_minor(version["api"])
+    if declared != listed:
+        raise CheckError(f"the version file says api {listed}, the package manifest says "
+                         f"api {declared}")
+
+
 def load_test(package: Path, work: Path) -> None:
     scenario = work / "load.yaml"
     scenario.write_text("name: Loads in the mock host\nsteps: []\n", encoding="utf-8")
@@ -207,6 +228,8 @@ def verify(plugin_id: str, version_name: str, out: Path) -> Path:
         expected = out / f"{plugin_id}-{version_name}.mcplugin"
         if package != expected:
             package = package.rename(expected)
+        step("declared api", plugin_id, version_name)
+        check_declared_api(package, version)
         step("author signature", plugin_id, version_name)
         check_signature(package, version, plugin["author_keys"])
         step("licence scan", plugin_id, version_name)
@@ -317,17 +340,54 @@ def release_built(out: Path) -> None:
         print(f"released {tag}", flush=True)
 
 
-def next_sequence(index_url: str) -> int:
+def next_sequence(*index_urls: str) -> int:
+    """Above every published index: site-data gives both indexes one sequence, and each path keeps
+    its own rollback floor in the client."""
     published = 0
-    try:
-        request = urllib.request.Request(index_url, headers={"User-Agent": "Mumcord"})
-        with urllib.request.urlopen(request, timeout=30) as response:
-            published = int(json.load(response)["sequence"])
-    except urllib.error.HTTPError as error:
-        if error.code != 404:
-            raise
-        print("no published index yet", file=sys.stderr)
+    for index_url in index_urls:
+        try:
+            request = urllib.request.Request(index_url, headers={"User-Agent": "Mumcord"})
+            with urllib.request.urlopen(request, timeout=30) as response:
+                published = max(published, int(json.load(response)["sequence"]))
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+            print(f"no published index at {index_url} yet", file=sys.stderr)
     return max(int(time.time()), published + 1)
+
+
+def check_site(site: Path) -> None:
+    """The generated registry data: v1 stays readable by 0.6.x, v1.1 lists everything."""
+    needed = ["v1/index.json", "v1/revoked.json", "v1/permissions.json", "v1.1/index.json",
+              "v1.1/permissions.json"]
+    missing = [name for name in needed if not (site / name).is_file()]
+    if missing:
+        raise CheckError("site-data did not write " + ", ".join(missing))
+    old = json.loads((site / "v1/index.json").read_text(encoding="utf-8"))
+    new = json.loads((site / "v1.1/index.json").read_text(encoding="utf-8"))
+    if old.get("format") != 1 or new.get("format") != 2:
+        raise CheckError(f"index formats are {old.get('format')} and {new.get('format')}, "
+                         "expected 1 and 2")
+    if old.get("sequence") != new.get("sequence"):
+        raise CheckError("v1 and v1.1 indexes have different sequences")
+    newer = {p["id"]: {v["version"]: v for v in p["versions"]} for p in new["plugins"]}
+    for plugin in old["plugins"]:
+        for entry in plugin["versions"]:
+            if api_minor(entry["api"]) != "1.0":
+                raise CheckError(f"v1 lists {plugin['id']} {entry['version']} with api "
+                                 f"{entry['api']}; 0.6.x clients must only see api 1.0")
+            if entry["version"] not in newer.get(plugin["id"], {}):
+                raise CheckError(f"v1 lists {plugin['id']} {entry['version']}, v1.1 does not")
+    for plugin in new["plugins"]:
+        for entry in plugin["versions"]:
+            minimum = entry.get("min_mumcord")
+            if api_minor(entry["api"]) == "1.1" and minimum is not None:
+                parts = tuple(int(x) for x in minimum.split("."))
+                if parts < (0, 7):
+                    raise CheckError(f"{plugin['id']} {entry['version']}: min_mumcord {minimum} "
+                                     "is below 0.7, the first release with api 1.1")
+    print(f"v1 lists {sum(len(p['versions']) for p in old['plugins'])} versions, "
+          f"v1.1 lists {sum(len(p['versions']) for p in new['plugins'])}")
 
 
 OFFICIAL_FOLDERS = ("poll", "dice", "echolings", "mumbot-music", "eve-fit")
@@ -379,8 +439,10 @@ def main(argv: list[str]) -> int:
             build_missing(Path(args[0]))
         elif command == "release-built" and len(args) == 1:
             release_built(Path(args[0]))
-        elif command == "sequence" and len(args) == 1:
-            print(next_sequence(args[0]))
+        elif command == "sequence" and args:
+            print(next_sequence(*args))
+        elif command == "site-check" and len(args) == 1:
+            check_site(Path(args[0]))
         else:
             print(__doc__, file=sys.stderr)
             return 2

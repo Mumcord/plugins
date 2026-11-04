@@ -11,7 +11,22 @@
       "type": "string",
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
-    "api": { "type": "integer", "const": 1 },
+    "api": {
+      "description": "Plugin API the package is built against: 1 (API 1.0, listed in the v1 index too) or \"1.1\" (listed in the v1.1 index only).",
+      "oneOf": [{ "type": "integer", "const": 1 }, { "type": "string", "const": "1.1" }]
+    },
+    "min_mumcord": {
+      "description": "Lowest Mumcord release that runs this version, \"major.minor\". Never below the first release with the api (0.6 for 1.0, 0.7 for 1.1); site-data enforces that.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "origins": {
+      "description": "The websites the manifest declares in net.origins (shown in the v1.1 index and reviewed, policy/REVIEW.md).",
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^https://" }
+    },
     "size": { "type": "integer", "minimum": 1, "maximum": 67108864 },
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "permissions": {
