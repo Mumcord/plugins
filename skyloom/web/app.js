@@ -441,16 +441,21 @@ function revealHud(v, r) {
       <div class="hud hud--bottom"><span></span><span class="hud-row">${nextControls(v)}</span></div>`;
     }
     const outcome = rv.gold ? "reveal.gold" : rv.woven ? "reveal.woven" : "reveal.loose";
-    const pct = (s) => rv.stars.find((x) => x[0] === s)?.[4] ?? 0;
+    // A player with several stars is named for their best (truest) or worst (loosest) one.
+    const pcts = (s) => rv.stars.filter((x) => x[0] === s).map((x) => x[4]);
     const awards = [];
     if (rv.truest !== null) {
-        awards.push(award(tr("reveal.truest"), `<b>${esc(nameOf(rv.truest))}</b> · ${pct(rv.truest)}%`));
+        const pct = Math.max(...pcts(rv.truest));
+        const note = rv.truestAt ? tr("reveal.truest-note", { pct, where: rv.truestAt }) : `${pct}%`;
+        awards.push(award(tr("reveal.truest"), `<b>${esc(nameOf(rv.truest))}</b> · ${esc(note)}`));
     }
     if (rv.loosest !== null && rv.loosest !== rv.truest) {
-        awards.push(award(tr("reveal.loosest"), `<b>${esc(nameOf(rv.loosest))}</b> · ${pct(rv.loosest)}%`));
+        const note = rv.loosestLost ?? `${Math.min(...pcts(rv.loosest))}%`;
+        awards.push(award(tr("reveal.loosest"), `<b>${esc(nameOf(rv.loosest))}</b> · ${esc(note)}`));
     }
     if (rv.bonus > 0) {
-        awards.push(award(tr("reveal.weaver"), `<b>${esc(nameOf(r.weaver))}</b> · ${esc(tr("reveal.tied-off-early", { bonus: rv.bonus }))}`));
+        const tied = tr("reveal.tied-off-spare", { secs: rv.spare ?? 0, bonus: rv.bonus });
+        awards.push(award(tr("reveal.weaver"), `<b>${esc(nameOf(r.weaver))}</b> · ${esc(tied)}`));
     }
     const guess = rv.guess !== null
         ? `<span class="reveal-title__note">${esc(tr("reveal.your-guess", { text: rv.guess }))}</span>`

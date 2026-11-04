@@ -178,6 +178,50 @@ fn every_figure_has_a_name_in_every_language() {
     assert_eq!(view::english_name(1), "Two Moths");
 }
 
+#[test]
+fn every_figure_part_is_named_in_every_language() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("i18n");
+    let mut languages = 0;
+    for entry in std::fs::read_dir(dir).expect("i18n folder") {
+        let path = entry.expect("i18n file").path();
+        let text = std::fs::read_to_string(&path).expect("language file");
+        let strings: serde_json::Map<String, serde_json::Value> =
+            serde_json::from_str(&text).expect("language json");
+        for figure in &DECK {
+            for part in figure.part_names() {
+                assert!(!part.is_empty(), "{} has an unnamed stroke", figure.id);
+                for form in ["at", "lost"] {
+                    let key = format!("part.{part}.{form}");
+                    assert!(
+                        strings
+                            .get(&key)
+                            .and_then(|v| v.as_str())
+                            .is_some_and(|v| !v.is_empty()),
+                        "{} lacks {key}",
+                        path.display()
+                    );
+                }
+            }
+        }
+        languages += 1;
+    }
+    assert_eq!(languages, 24);
+}
+
+#[test]
+fn every_sampled_point_knows_its_part() {
+    for figure in &DECK {
+        for n in 2..=12 {
+            assert_eq!(figure.parts(n).len(), n, "{}", figure.id);
+        }
+    }
+    // The Heron's beak is its last stroke, so the last of many points lies on it.
+    let parts = DECK[0].parts(24);
+    assert_eq!(parts.first(), Some(&"head"));
+    assert_eq!(parts.last(), Some(&"beak"));
+    assert!(parts.contains(&"foot"));
+}
+
 // ----- Commit–reveal -----
 
 #[test]
@@ -925,6 +969,71 @@ fn a_late_joiner_watches_and_gets_a_star_next_round() {
     let r = t.c(4).app.night.as_ref().unwrap().round.as_ref().unwrap();
     assert!(r.is_threader(4));
     assert_eq!(outcome(&t, 4).2, Verify::Verified);
+}
+
+/// The reveal part of the last view this client's page got.
+fn last_reveal(t: &mut Table, session: u32) -> serde_json::Value {
+    t.c(session)
+        .host
+        .posts
+        .iter()
+        .rev()
+        .filter_map(|p| serde_json::from_str::<serde_json::Value>(p).ok())
+        .find(|v| v["t"] == "view" && v["round"]["reveal"].is_object())
+        .map(|v| v["round"]["reveal"].clone())
+        .expect("a reveal view")
+}
+
+#[test]
+fn the_reveal_names_the_parts_and_the_spare_seconds() {
+    let mut t = Table::new(3);
+    t.open(calm());
+    let weaver = t.next_weaver().unwrap();
+    let c = t.c(weaver);
+    c.app.on_page(&mut c.host, Intent::WeaveReady);
+    t.deliver();
+    t.run(3_500);
+    for s in 1..=3 {
+        let c = t.c(s);
+        c.app.on_page(
+            &mut c.host,
+            Intent::Move {
+                star: 0,
+                x: 300 + s as i32 * 120,
+                y: 200 + (s as i32 % 2) * 300,
+            },
+        );
+    }
+    t.run(20_000);
+    let c = t.c(weaver);
+    c.app.on_page(&mut c.host, Intent::TieOff);
+    t.deliver();
+    t.run(16_000);
+    let reveal = last_reveal(&mut t, 1);
+    let spare = reveal["spare"].as_u64().expect("spare seconds");
+    assert!((30..=40).contains(&spare), "{spare}");
+    let words: Vec<String> = ["at", "lost"]
+        .iter()
+        .flat_map(|form| {
+            DECK.iter()
+                .flat_map(|f| f.part_names())
+                .map(move |p| crate::text::t(&format!("part.{p}.{form}")))
+        })
+        .collect();
+    let at = reveal["truestAt"].as_str().expect("a truest note");
+    let lost = reveal["loosestLost"].as_str().expect("a loosest note");
+    assert!(words.iter().any(|w| w == at), "{at}");
+    assert!(
+        lost.ends_with(" off") && words.iter().any(|w| w == lost),
+        "{lost}"
+    );
+    // Everyone sees the same notes.
+    for s in 2..=3 {
+        let other = last_reveal(&mut t, s);
+        assert_eq!(other["spare"], reveal["spare"]);
+        assert_eq!(other["truestAt"], reveal["truestAt"]);
+        assert_eq!(other["loosestLost"], reveal["loosestLost"]);
+    }
 }
 
 #[test]

@@ -263,12 +263,23 @@ fn reveal_json(app: &App, r: &Round) -> Value {
     let Some(o) = &r.outcome else {
         return Value::Null;
     };
-    let truest = o.stars.iter().max_by_key(|s| s.3).map(|s| s.0);
-    let loosest = o.stars.iter().min_by_key(|s| s.3).map(|s| s.0);
+    let truest = (0..o.stars.len()).max_by_key(|&i| o.stars[i].3);
+    let loosest = (0..o.stars.len()).min_by_key(|&i| o.stars[i].3);
+    // The figure part each star was matched to, for "96% on the beak".
+    let parts = o
+        .figure
+        .and_then(deck::get)
+        .map(|f| f.parts(o.stars.len()))
+        .unwrap_or_default();
+    let note = |star: Option<usize>, form: &str| {
+        let part = parts.get(*o.order.get(star?)?)?;
+        Some(crate::text::t(&format!("part.{part}.{form}")))
+    };
     json!({
         "figure": o.figure.map(figure_name),
         "resonance": o.resonance,
         "bonus": o.bonus,
+        "spare": o.spare,
         "woven": o.resonance >= score::WOVEN,
         "gold": o.resonance >= score::GOLD,
         "stars": o.stars.iter().map(|s| json!([s.0, s.1, s.2.0, s.2.1, s.3])).collect::<Vec<_>>(),
@@ -276,8 +287,10 @@ fn reveal_json(app: &App, r: &Round) -> Value {
         "order": o.order,
         "ghost": o.ghost.iter().map(|l| round_pts(l)).collect::<Vec<_>>(),
         "verify": verify_key(&o.verify),
-        "truest": truest,
-        "loosest": loosest,
+        "truest": truest.map(|i| o.stars[i].0),
+        "loosest": loosest.map(|i| o.stars[i].0),
+        "truestAt": note(truest, "at"),
+        "loosestLost": note(loosest, "lost"),
         "guess": if app.guess.is_empty() { Value::Null } else { json!(app.guess) },
     })
 }

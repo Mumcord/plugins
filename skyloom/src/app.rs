@@ -134,6 +134,8 @@ pub struct Outcome {
     /// The true figure's lines fitted onto the stars.
     pub ghost: Vec<Vec<(f64, f64)>>,
     pub bonus: u8,
+    /// Seconds the Weaver had left when tying off early.
+    pub spare: Option<u8>,
     pub resonance: u8,
     pub hash: [u8; 8],
     pub verify: Verify,
@@ -161,6 +163,7 @@ pub struct Round {
     pub locks: BTreeMap<u32, Vec<Pos>>,
     pub lock_mask: Option<u16>,
     pub bonus: u8,
+    pub spare: Option<u8>,
     pub hashes: BTreeMap<u32, [u8; 8]>,
     pub outcome: Option<Outcome>,
     pub burst: bool,
@@ -552,6 +555,7 @@ impl App {
                 if ok {
                     if let Some(r) = self.round_mut(round) {
                         r.bonus = rules::tie_off_bonus(spare);
+                        r.spare = Some(spare);
                     }
                     self.enter_dawn(host);
                 }
@@ -815,6 +819,7 @@ impl App {
             locks: BTreeMap::new(),
             lock_mask: None,
             bonus: 0,
+            spare: None,
             hashes: BTreeMap::new(),
             outcome: None,
             burst: false,
@@ -1079,6 +1084,7 @@ impl App {
         }
         let spare = (r.deadline.saturating_sub(now) / 1000).min(255) as u8;
         r.bonus = rules::tie_off_bonus(spare);
+        r.spare = Some(spare);
         host.send(&Message::TieOff { round: r.no, spare }, false);
         self.enter_dawn(host);
     }
@@ -1571,6 +1577,7 @@ impl App {
             order: result.matched.clone(),
             ghost,
             bonus: r.bonus,
+            spare: r.spare,
             resonance,
             hash,
             verify,
