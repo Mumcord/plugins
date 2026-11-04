@@ -9,6 +9,9 @@ import { $, browser, expect } from "@wdio/globals";
 import { app, apps, registry, testenv } from "../../helpers/index.ts";
 import {
   action,
+  boardButton,
+  boardDialog,
+  boardToast,
   dialogButton,
   dialogControl,
   inBoard,
@@ -111,22 +114,29 @@ describe("Whiteboard: host settings and presenting", () => {
 
   it("clearing needs confirmation, clears for both and can be undone", async () => {
     const before = await inBoard(outline);
-    await inBoard(() => action("Clear board").click());
-    await pluginDialog("Clear the whole board?").waitForDisplayed({ timeout: 15_000 });
-    await dialogButton("Keep the board").click();
+    // The confirmation is drawn inside the board (mockup 6b); clearing needs no gesture.
+    await inBoard(async () => {
+      await action("Clear board").click();
+      await boardDialog("Clear the whole board?").waitForDisplayed({ timeout: 15_000 });
+      await expect(boardDialog("Clear the whole board?")).toHaveText(
+        expect.stringContaining("for all 2 people on the board"),
+      );
+      await boardButton("Keep the board").click();
+    });
     await browser.pause(2_000);
     await waitSameBoard([onA, apps.onB], objects);
 
-    await inBoard(() => action("Clear board").click());
-    await dialogButton("Clear board").click();
-    await pluginDialog("Board cleared").waitForDisplayed({ timeout: 15_000 });
+    await inBoard(async () => {
+      await action("Clear board").click();
+      await boardButton("Clear board").click();
+      await expect(boardToast()).toHaveText(expect.stringContaining("The board is empty for everyone."), {
+        wait: 15_000,
+      });
+    });
     await waitSameBoard([onA, apps.onB], 0);
-    await dialogButton("Undo").click();
+    await inBoard(() => boardToast().$("button=Undo").click());
     const after = await waitSameBoard([onA, apps.onB], objects);
     expect(after).toEqual(before);
-    await $("//div[@role='dialog']").waitForExist({ reverse: true, timeout: 15_000 }).catch(() =>
-      browser.keys("Escape"),
-    );
   });
 
   it("presenting: B follows and stops following, Esc ends it", async () => {

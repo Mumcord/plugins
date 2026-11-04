@@ -3,24 +3,28 @@
 //   default, and the plugin never sees a path.
 // - Post to chat sends the whole board as a PNG with one click; Mumcord shows it inline and a
 //   standard client (mumbot) gets the image message.
+// Both start from the board's own Export dialog (mockups 5, 5b); its Save and Post buttons are the
+// user's gesture (FR-9.45).
 import { existsSync, readdirSync } from "node:fs";
-import { $, browser, expect } from "@wdio/globals";
+import { $, expect } from "@wdio/globals";
 import { app, registry, testenv } from "../../helpers/index.ts";
 import { ScriptBot } from "../../helpers/chat-ui.ts";
 import {
   action,
-  dialogButton,
-  dialogControl,
+  boardButton,
+  boardDialog,
+  boardNote,
+  boardOption,
   inBoard,
   noteAt,
-  pluginDialog,
   setUpClient,
   startFromAppsMenu,
   stroke,
 } from "./board.ts";
 
-/** Why these tests are skipped until the host has the APIs. */
-const BLOCKED = "blocked by host task HX1: files.save and chat.post-image are not in Mumcord yet";
+/** Why these tests are skipped until the host counts clicks in the page as a gesture. */
+const BLOCKED = "blocked by host task GX: a click inside the plugin's page is not a user gesture yet";
+const EXPORT_TITLE = 'Export or share "Untitled board"';
 
 describe("Whiteboard: export and post to chat", () => {
   let fixtures: registry.FixtureRegistry;
@@ -50,16 +54,17 @@ describe("Whiteboard: export and post to chat", () => {
   it.skip(`exports PNG, SVG, PDF and the board file without names (${BLOCKED})`, async () => {
     const downloads = app.downloadsDir();
     for (const format of ["PNG image", "SVG drawing", "PDF document", "Board file"]) {
-      await inBoard(() => action("Export").click());
-      await pluginDialog('Export "Untitled board"').waitForDisplayed({ timeout: 15_000 });
-      await dialogControl(format).click();
-      await expect(dialogControl("Add names of who drew what")).not.toBeSelected();
-      await dialogButton("Save").click();
-      // Mumcord's save window; the test backend saves into the downloads folder.
-      await expect($("//div[@role='dialog']")).toHaveText(expect.stringContaining("Saved"), {
-        wait: 30_000,
+      await inBoard(async () => {
+        await action("Export").click();
+        await boardDialog(EXPORT_TITLE).waitForDisplayed({ timeout: 15_000 });
+        await boardOption("Save to a file").click();
+        await boardOption(format).click();
+        await expect(boardOption("Add names of who drew what")).not.toBeSelected();
+        await boardButton("Save").click();
+        // Mumcord's save window; the test backend saves into the downloads folder.
+        await expect(boardNote()).toHaveText(expect.stringContaining("Saved"), { wait: 30_000 });
+        await boardButton("Cancel").click();
       });
-      await browser.keys("Escape");
     }
     const files = existsSync(downloads) ? readdirSync(downloads) : [];
     for (const ext of [".png", ".svg", ".pdf"]) {
@@ -71,14 +76,16 @@ describe("Whiteboard: export and post to chat", () => {
     carol = new ScriptBot({ name: "Carol", timeout: 60 });
     await carol.connected();
     const picture = carol.run("expect message --from Alice --contains \"<img\"", 60_000);
-    await inBoard(() => action("Post board to chat").click());
-    await pluginDialog("Post to chat").waitForDisplayed({ timeout: 15_000 });
-    await dialogButton("Post to chat").click();
-    await expect($("//div[@role='dialog']")).toHaveText(
-      expect.stringContaining("Posted to chat as a picture."),
-      { wait: 30_000 },
-    );
-    await browser.keys("Escape");
+    await inBoard(async () => {
+      await action("Post board to chat").click();
+      await boardDialog(EXPORT_TITLE).waitForDisplayed({ timeout: 15_000 });
+      await expect(boardOption("Post to chat")).toBeSelected();
+      await boardButton("Post to chat").click();
+      await expect(boardNote()).toHaveText(expect.stringContaining("Posted to chat as a picture."), {
+        wait: 30_000,
+      });
+      await boardButton("Cancel").click();
+    });
     await expect($("//li[contains(@class,'chat-message')]//img")).toBeDisplayed({ wait: 15_000 });
     await picture;
   });

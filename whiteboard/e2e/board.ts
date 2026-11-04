@@ -287,3 +287,21 @@ export function dialogControl(label: string) {
 /** A button in an open plugin dialog of Mumcord. */
 export const dialogButton = (label: string) =>
   $(`//div[@role='dialog']//button[normalize-space(.)='${label}']`);
+
+/** An in-board dialog of the Whiteboard page (Export or share, Clear), by its heading. */
+export const boardDialog = (title: string) =>
+  $(`//dialog[@open][.//h2[normalize-space(.)='${title}']]`);
+
+/** A button in the open in-board dialog. */
+export const boardButton = (label: string) =>
+  $(`//dialog[@open]//button[normalize-space(.)='${label}']`);
+
+/** A radio or switch in the open in-board dialog, by its bold label. */
+export const boardOption = (label: string) =>
+  $(`//dialog[@open]//label[.//b[normalize-space(.)='${label}']]//input`);
+
+/** The outcome line of the open in-board dialog. */
+export const boardNote = () => $("//dialog[@open]//p[@role='status']");
+
+/** The page's notice under the board (cleared with Undo, or an outcome after a dialog closed). */
+export const boardToast = () => $(".wb-toast");
