@@ -19,7 +19,7 @@ mod tests;
 use std::cell::{Cell, RefCell};
 
 use mumcord_plugin_sdk::{
-    Plugin, audio, chat, clock,
+    Plugin, audio, bovnar, chat, clock,
     events::{ActionSource, Event},
     log, notify, peers, random, relay, stage, storage, theme, timers,
     types::StartInfo,
@@ -43,6 +43,19 @@ thread_local! {
     static RELAY_OK: Cell<bool> = const { Cell::new(false) };
 }
 
+/// Decodes an incoming document; a bad one is dropped with its reason and size, never its content.
+fn decode(bytes: &[u8]) -> Option<Message> {
+    Message::decode(bytes)
+        .inspect_err(|e| {
+            log::warn(&format!(
+                "dropped a game message: {} ({} bytes)",
+                e.reason(),
+                bytes.len()
+            ));
+        })
+        .ok()
+}
+
 struct Mumcord;
 
 impl Host for Mumcord {
@@ -53,21 +66,22 @@ impl Host for Mumcord {
     }
 
     fn send(&mut self, message: &Message, live: bool) {
-        let bytes = message.encode();
-        if live {
-            if let Err(e) = relay::send_channel(&bytes, false) {
-                log::debug(&format!("relay send failed: {e:?}"));
-            }
-            return;
-        }
-        if let Err(e) = peers::send(peers::Target::Channel, wire::KIND, &bytes) {
-            log::debug(&format!("could not send a game message: {e:?}"));
+        let to = if live {
+            bovnar::Destination::RelayChannel { fallback: false }
+        } else {
+            Message::peers(peers::Target::Channel)
+        };
+        if let Err(e) = bovnar::send_document(to, message) {
+            log::debug(&format!("could not send a game message: {}", e.reason()));
         }
     }
 
     fn send_direct(&mut self, to: u32, message: &Message) {
-        if let Err(e) = peers::send(peers::Target::Direct(to), wire::KIND, &message.encode()) {
-            log::warn(&format!("could not reach the second Weaver: {e:?}"));
+        if let Err(e) = bovnar::send_document(Message::peers(peers::Target::Direct(to)), message) {
+            log::warn(&format!(
+                "could not reach the second Weaver: {}",
+                e.reason()
+            ));
         }
     }
 
@@ -274,12 +288,12 @@ fn handle(app: &mut App, event: Event) {
             None => log::debug("ignored an unexpected message from the page"),
         },
         Event::PeerMessage(message) if message.kind == wire::KIND => {
-            if let Some(m) = Message::decode(&message.payload) {
+            if let Some(m) = decode(&message.payload) {
                 app.on_message(host, message.sender.session, m);
             }
         }
         Event::RelayMessage((peer, data)) => {
-            if let Some(m) = Message::decode(&data) {
+            if let Some(m) = decode(&data) {
                 app.on_message(host, peer.session, m);
             }
         }

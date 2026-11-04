@@ -7,7 +7,8 @@ use crate::fair;
 use crate::rules::{self, Twist};
 use crate::score;
 use crate::view::{self, Intent};
-use crate::wire::{FORMAT, LOOM_H, LOOM_W, MAX_LEN, Message, Settings};
+use crate::wire::{LOOM_H, LOOM_W, Message, Settings, VERSION};
+use mumcord_plugin_sdk::bovnar::{self, Error as BovnarError, MUMBLE_LIMIT, RELAY_LIMIT};
 
 // ----- Scoring -----
 
@@ -227,6 +228,16 @@ fn figure_draw_is_fair_and_skips_used_figures() {
 
 // ----- Wire -----
 
+trait Encode {
+    fn encode(&self, limit: usize) -> Result<Vec<u8>, BovnarError>;
+}
+
+impl Encode for Message {
+    fn encode(&self, limit: usize) -> Result<Vec<u8>, BovnarError> {
+        bovnar::encode(self, limit)
+    }
+}
+
 fn all_messages() -> Vec<Message> {
     vec![
         Message::Roster {
@@ -291,36 +302,127 @@ fn all_messages() -> Vec<Message> {
 }
 
 #[test]
-fn messages_round_trip_and_stay_tiny() {
+fn messages_round_trip_within_the_mumble_limit() {
     for m in all_messages() {
-        let bytes = m.encode();
-        assert_eq!(bytes[0], FORMAT);
-        assert!(bytes.len() <= MAX_LEN, "{m:?} is {} bytes", bytes.len());
-        assert_eq!(Message::decode(&bytes), Some(m));
+        let bytes = m.encode(MUMBLE_LIMIT).expect("encodes");
+        assert!(
+            bytes.len() <= MUMBLE_LIMIT,
+            "{m:?} is {} bytes",
+            bytes.len()
+        );
+        assert_eq!(Message::decode(&bytes), Ok(m));
     }
 }
 
 #[test]
-fn bad_messages_are_ignored() {
-    for m in all_messages() {
-        let bytes = m.encode();
-        let mut other_format = bytes.clone();
-        other_format[0] = 2;
-        assert_eq!(Message::decode(&other_format), None);
-        let mut longer = bytes.clone();
-        longer.push(0);
-        assert_eq!(Message::decode(&longer), None);
-        if bytes.len() > 2 {
-            assert_eq!(Message::decode(&bytes[..bytes.len() - 1]), None);
-        }
+fn messages_carry_the_layout_version() {
+    let bytes = Message::Leave.encode(MUMBLE_LIMIT).unwrap();
+    let received = bovnar::decode::<Message>(&bytes).unwrap();
+    assert_eq!(received.version, VERSION);
+}
+
+#[test]
+fn star_stream_stays_far_below_the_relay_limit() {
+    // About 12 updates per second, each at most four stars.
+    let stars = Message::Stars {
+        round: 255,
+        stars: vec![(LOOM_W, LOOM_H); 4],
+    };
+    let len = stars.encode(RELAY_LIMIT).unwrap().len();
+    assert!(len <= MUMBLE_LIMIT, "{len} bytes");
+    assert!(len * 12 < RELAY_LIMIT, "{} bytes per second", len * 12);
+}
+
+#[test]
+fn bad_documents_are_refused() {
+    let bytes = Message::Ready { round: 4, rev: 9 }
+        .encode(MUMBLE_LIMIT)
+        .unwrap();
+    assert_eq!(
+        Message::decode(&bytes[..bytes.len() - 3]),
+        Err(BovnarError::Malformed)
+    );
+    assert!(Message::decode(&[]).is_err());
+    assert!(Message::decode(b"not a document").is_err());
+    // Bytes of an old binary-format client are no document either.
+    assert!(Message::decode(&[1, 8, 1, 1, 0, 0, 0, 0]).is_err());
+    // A document of another layout version is ignored.
+    let newer = bovnar::encode(&Newer(Message::Leave), MUMBLE_LIMIT).unwrap();
+    assert_eq!(Message::decode(&newer), Err(BovnarError::WrongType));
+    // A valid document of another shape.
+    let other = bovnar::encode(&Other { hello: 1 }, MUMBLE_LIMIT).unwrap();
+    assert_eq!(Message::decode(&other), Err(BovnarError::WrongType));
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Newer(Message);
+
+impl bovnar::Message for Newer {
+    fn version() -> u32 {
+        VERSION + 1
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Other {
+    hello: u8,
+}
+
+impl bovnar::Message for Other {
+    fn version() -> u32 {
+        VERSION
+    }
+}
+
+#[test]
+fn values_out_of_range_are_refused() {
     let off_loom = Message::Stars {
         round: 1,
         stars: vec![(LOOM_W + 1, 0)],
     };
-    assert_eq!(Message::decode(&off_loom.encode()), None);
-    assert_eq!(Message::decode(&[FORMAT, 99]), None);
-    assert_eq!(Message::decode(&[]), None);
+    assert_eq!(
+        Message::decode(&off_loom.encode(MUMBLE_LIMIT).unwrap()),
+        Err(BovnarError::WrongType)
+    );
+    let no_stars = Message::Lock {
+        round: 1,
+        stars: vec![],
+    };
+    assert!(Message::decode(&no_stars.encode(MUMBLE_LIMIT).unwrap()).is_err());
+    let bad_time = Message::Roster {
+        night: 1,
+        rev: 0,
+        round: 0,
+        settings: Settings {
+            weave_secs: 45,
+            mixed: true,
+        },
+        weaved: 0,
+        players: vec![1],
+    };
+    assert!(Message::decode(&bad_time.encode(MUMBLE_LIMIT).unwrap()).is_err());
+    let crowd = Message::Roster {
+        night: 1,
+        rev: 0,
+        round: 0,
+        settings: Settings::default(),
+        weaved: 0,
+        players: (1..=13).collect(),
+    };
+    assert!(Message::decode(&crowd.encode(MUMBLE_LIMIT).unwrap()).is_err());
+}
+
+#[test]
+fn oversized_documents_are_not_sent() {
+    let stars = Message::Stars {
+        round: 1,
+        stars: vec![(1, 1)],
+    };
+    assert_eq!(stars.encode(10), Err(BovnarError::TooLarge));
+    assert_eq!(
+        Message::decode(&vec![0; RELAY_LIMIT + 1]),
+        Err(BovnarError::TooLarge)
+    );
 }
 
 // ----- Rules -----
@@ -399,7 +501,8 @@ impl Host for Mock {
         Some(h.finalize()[..len as usize].to_vec())
     }
     fn send(&mut self, message: &Message, live: bool) {
-        assert!(message.encode().len() <= MAX_LEN);
+        let limit = if live { RELAY_LIMIT } else { MUMBLE_LIMIT };
+        assert!(message.encode(limit).is_ok(), "{message:?} does not fit");
         if live {
             assert!(self.live, "streamed without a relay");
             assert!(matches!(message, Message::Stars { .. }));

@@ -1,16 +1,18 @@
-//! The messages between Skyloom clients. Binary and tiny (at most 64 bytes), so they fit Mumble
-//! plugin data and the relay alike. Byte 0 is the format version, byte 1 the message type; a
-//! later version can change the layout behind a new format byte, and older clients ignore it.
+//! The messages between Skyloom clients. Each one is a Bovnar document (sent through the SDK's
+//! `bovnar` module) with a `type` field naming the message and the fields of that message. They
+//! stay small, so they fit Mumble plugin data (997 bytes) and the relay alike. A later layout
+//! raises [`VERSION`]; clients ignore documents of another version, and fields they do not know.
 //!
 //! The sender is the Mumble session the server attributes the message to; no payload ever names
 //! its own sender.
 
-/// Format of every message this version sends and accepts.
-pub const FORMAT: u8 = 1;
+use mumcord_plugin_sdk::bovnar;
+use serde::{Deserialize, Serialize};
+
+/// Layout version of every message this version sends and accepts.
+pub const VERSION: u32 = 1;
 /// The `kind` byte for Mumble plugin data.
 pub const KIND: u8 = 1;
-/// Largest encoded message.
-pub const MAX_LEN: usize = 64;
 /// Loom size in loom units (16:9). Star positions are clamped to it.
 pub const LOOM_W: u16 = 1600;
 pub const LOOM_H: u16 = 900;
@@ -24,7 +26,7 @@ pub type Nonce = [u8; 16];
 pub type Pos = (u16, u16);
 
 /// Night settings, chosen by the Lamplighter in the lobby.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Settings {
     /// Weave time: 60, 90 or 120 seconds.
     pub weave_secs: u8,
@@ -47,7 +49,8 @@ impl Settings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Message {
     /// The night's players in join order (the first is the Lamplighter) and its settings. Sent
     /// by the Lamplighter whenever they change; `rev` counts the changes.
@@ -69,11 +72,16 @@ pub enum Message {
     /// The Weaver's commitment to its secret, and the figures used so far this night.
     Seal {
         round: u8,
+        #[serde(with = "hex")]
         commit: [u8; 32],
         used: u64,
     },
     /// A Threader's randomness for the figure draw.
-    Witness { round: u8, nonce: Nonce },
+    Witness {
+        round: u8,
+        #[serde(with = "hex")]
+        nonce: Nonce,
+    },
     /// Weaving starts; `witnesses` is the roster slots whose witness counts.
     Weave { round: u8, witnesses: u16 },
     /// The sender's own stars, in star order.
@@ -87,254 +95,90 @@ pub enum Message {
     /// The Weaver's secret, and the roster slots whose locks are scored.
     Reveal {
         round: u8,
+        #[serde(with = "hex")]
         secret: Secret,
         locks: u16,
     },
     /// A digest of the sender's computed round result, to compare.
-    Result { round: u8, hash: [u8; 8] },
+    Result {
+        round: u8,
+        #[serde(with = "hex")]
+        hash: [u8; 8],
+    },
     /// Sent directly to the second Weaver in a Twin Weavers round.
-    Share { round: u8, secret: Secret },
+    Share {
+        round: u8,
+        #[serde(with = "hex")]
+        secret: Secret,
+    },
     /// The Lamplighter ends the night: everyone sees the tapestry.
     End { night: u32 },
 }
 
-fn put_stars(out: &mut Vec<u8>, stars: &[Pos]) {
-    out.push(stars.len() as u8);
-    for &(x, y) in stars {
-        out.extend_from_slice(&x.to_be_bytes());
-        out.extend_from_slice(&y.to_be_bytes());
+impl bovnar::Message for Message {
+    fn version() -> u32 {
+        VERSION
     }
 }
 
 impl Message {
-    fn tag(&self) -> u8 {
-        match self {
-            Message::Roster { .. } => 1,
-            Message::Join { .. } => 2,
-            Message::Leave => 3,
-            Message::Ready { .. } => 4,
-            Message::Seal { .. } => 5,
-            Message::Witness { .. } => 6,
-            Message::Weave { .. } => 7,
-            Message::Stars { .. } => 8,
-            Message::Lock { .. } => 9,
-            Message::Pluck { .. } => 10,
-            Message::TieOff { .. } => 11,
-            Message::Reveal { .. } => 12,
-            Message::Result { .. } => 13,
-            Message::Share { .. } => 14,
-            Message::End { .. } => 15,
-        }
+    /// The Mumble plugin data destination of a message for the whole channel or one player.
+    pub fn peers(to: mumcord_plugin_sdk::peers::Target) -> bovnar::Destination {
+        bovnar::Destination::Peers { to, kind: KIND }
     }
 
-    pub fn encode(&self) -> Vec<u8> {
-        let mut out = vec![FORMAT, self.tag()];
+    /// Parses an untrusted document. Errs for bytes that are no Bovnar document, another
+    /// layout version, an unknown type, or values out of range.
+    pub fn decode(bytes: &[u8]) -> Result<Message, bovnar::Error> {
+        let received = bovnar::decode::<Message>(bytes)?;
+        if received.version != VERSION || !received.message.valid() {
+            return Err(bovnar::Error::WrongType);
+        }
+        Ok(received.message)
+    }
+
+    fn valid(&self) -> bool {
+        let on_loom = |stars: &[Pos]| {
+            !stars.is_empty()
+                && stars.len() <= MAX_STARS
+                && stars.iter().all(|&(x, y)| x <= LOOM_W && y <= LOOM_H)
+        };
         match self {
             Message::Roster {
-                night,
-                rev,
-                round,
-                settings,
-                weaved,
-                players,
-            } => {
-                out.extend_from_slice(&night.to_be_bytes());
-                out.extend_from_slice(&[
-                    *rev,
-                    *round,
-                    settings.weave_secs,
-                    u8::from(settings.mixed),
-                ]);
-                out.extend_from_slice(&weaved.to_be_bytes());
-                out.push(players.len() as u8);
-                for p in players {
-                    out.extend_from_slice(&p.to_be_bytes());
-                }
-            }
-            Message::Join { play } => out.push(u8::from(*play)),
-            Message::Leave => {}
-            Message::Ready { round, rev } => out.extend_from_slice(&[*round, *rev]),
-            Message::Seal {
-                round,
-                commit,
-                used,
-            } => {
-                out.push(*round);
-                out.extend_from_slice(commit);
-                out.extend_from_slice(&used.to_be_bytes());
-            }
-            Message::Witness { round, nonce } => {
-                out.push(*round);
-                out.extend_from_slice(nonce);
-            }
-            Message::Weave { round, witnesses } => {
-                out.push(*round);
-                out.extend_from_slice(&witnesses.to_be_bytes());
-            }
-            Message::Stars { round, stars } | Message::Lock { round, stars } => {
-                out.push(*round);
-                put_stars(&mut out, stars);
-            }
-            Message::Pluck {
-                round,
-                target,
-                star,
-            } => {
-                out.push(*round);
-                out.extend_from_slice(&target.to_be_bytes());
-                out.push(*star);
-            }
-            Message::TieOff { round, spare } => out.extend_from_slice(&[*round, *spare]),
-            Message::Reveal {
-                round,
-                secret,
-                locks,
-            } => {
-                out.push(*round);
-                out.extend_from_slice(secret);
-                out.extend_from_slice(&locks.to_be_bytes());
-            }
-            Message::Result { round, hash } => {
-                out.push(*round);
-                out.extend_from_slice(hash);
-            }
-            Message::Share { round, secret } => {
-                out.push(*round);
-                out.extend_from_slice(secret);
-            }
-            Message::End { night } => out.extend_from_slice(&night.to_be_bytes()),
+                settings, players, ..
+            } => settings.valid() && !players.is_empty() && players.len() <= MAX_PLAYERS,
+            Message::Stars { stars, .. } | Message::Lock { stars, .. } => on_loom(stars),
+            _ => true,
         }
-        out
-    }
-
-    /// Parses an untrusted message. None for another format, an unknown type, a wrong length
-    /// or values out of range.
-    pub fn decode(bytes: &[u8]) -> Option<Message> {
-        if bytes.len() > MAX_LEN {
-            return None;
-        }
-        let (&format, rest) = bytes.split_first()?;
-        if format != FORMAT {
-            return None;
-        }
-        let (&tag, body) = rest.split_first()?;
-        let mut r = Reader(body);
-        let message = match tag {
-            1 => {
-                let night = r.u32()?;
-                let rev = r.u8()?;
-                let round = r.u8()?;
-                let settings = Settings {
-                    weave_secs: r.u8()?,
-                    mixed: r.bool()?,
-                };
-                let weaved = r.u16()?;
-                let count = usize::from(r.u8()?);
-                if !settings.valid() || count == 0 || count > MAX_PLAYERS {
-                    return None;
-                }
-                let players = (0..count).map(|_| r.u32()).collect::<Option<Vec<_>>>()?;
-                Message::Roster {
-                    night,
-                    rev,
-                    round,
-                    settings,
-                    weaved,
-                    players,
-                }
-            }
-            2 => Message::Join { play: r.bool()? },
-            3 => Message::Leave,
-            4 => Message::Ready {
-                round: r.u8()?,
-                rev: r.u8()?,
-            },
-            5 => Message::Seal {
-                round: r.u8()?,
-                commit: r.array()?,
-                used: u64::from_be_bytes(r.array()?),
-            },
-            6 => Message::Witness {
-                round: r.u8()?,
-                nonce: r.array()?,
-            },
-            7 => Message::Weave {
-                round: r.u8()?,
-                witnesses: r.u16()?,
-            },
-            8 | 9 => {
-                let round = r.u8()?;
-                let stars = r.stars()?;
-                if tag == 8 {
-                    Message::Stars { round, stars }
-                } else {
-                    Message::Lock { round, stars }
-                }
-            }
-            10 => Message::Pluck {
-                round: r.u8()?,
-                target: r.u32()?,
-                star: r.u8()?,
-            },
-            11 => Message::TieOff {
-                round: r.u8()?,
-                spare: r.u8()?,
-            },
-            12 => Message::Reveal {
-                round: r.u8()?,
-                secret: r.array()?,
-                locks: r.u16()?,
-            },
-            13 => Message::Result {
-                round: r.u8()?,
-                hash: r.array()?,
-            },
-            14 => Message::Share {
-                round: r.u8()?,
-                secret: r.array()?,
-            },
-            15 => Message::End { night: r.u32()? },
-            _ => return None,
-        };
-        r.0.is_empty().then_some(message)
     }
 }
 
-struct Reader<'a>(&'a [u8]);
+/// Fixed-size byte arrays travel as hex text, which stays compact in a Bovnar document.
+mod hex {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
 
-impl Reader<'_> {
-    fn array<const N: usize>(&mut self) -> Option<[u8; N]> {
-        let (head, tail) = self.0.split_first_chunk::<N>()?;
-        self.0 = tail;
-        Some(*head)
-    }
-    fn u8(&mut self) -> Option<u8> {
-        self.array::<1>().map(|a| a[0])
-    }
-    fn bool(&mut self) -> Option<bool> {
-        match self.u8()? {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
+    pub fn serialize<S: Serializer, const N: usize>(
+        bytes: &[u8; N],
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut text = String::with_capacity(N * 2);
+        for b in bytes {
+            text.push_str(&format!("{b:02x}"));
         }
+        s.serialize_str(&text)
     }
-    fn u16(&mut self) -> Option<u16> {
-        self.array().map(u16::from_be_bytes)
-    }
-    fn u32(&mut self) -> Option<u32> {
-        self.array().map(u32::from_be_bytes)
-    }
-    fn stars(&mut self) -> Option<Vec<Pos>> {
-        let count = usize::from(self.u8()?);
-        if count == 0 || count > MAX_STARS {
-            return None;
+
+    pub fn deserialize<'de, D: Deserializer<'de>, const N: usize>(
+        d: D,
+    ) -> Result<[u8; N], D::Error> {
+        let text = String::deserialize(d)?;
+        if text.len() != N * 2 || !text.is_ascii() {
+            return Err(D::Error::custom("wrong hex length"));
         }
-        (0..count)
-            .map(|_| {
-                let x = self.u16()?;
-                let y = self.u16()?;
-                (x <= LOOM_W && y <= LOOM_H).then_some((x, y))
-            })
-            .collect()
+        let mut out = [0u8; N];
+        for (i, byte) in out.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&text[i * 2..i * 2 + 2], 16).map_err(D::Error::custom)?;
+        }
+        Ok(out)
     }
 }
