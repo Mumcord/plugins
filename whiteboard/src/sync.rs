@@ -1556,7 +1556,11 @@ impl Session {
 
     fn on_snap(&mut self, s: SessionId, sn: Snap) {
         let now = self.now;
-        let expected = self.expect_any_until > now || self.expect.get(&s).is_some_and(|&u| u > now);
+        // A transfer that started while expected may take longer than the expectation (a long
+        // snapshot without a relay spans several game bursts); the stall timeout ends it instead.
+        let expected = self.expect_any_until > now
+            || self.expect.get(&s).is_some_and(|&u| u > now)
+            || self.inbound.contains_key(&s);
         if !expected || sn.of == 0 || sn.part >= sn.of || sn.of > MAX_SNAP_PARTS {
             self.dropped += 1;
             return;
@@ -2889,10 +2893,15 @@ mod tests {
 
     #[test]
     fn snapshot_of_150_kib_board_loads_in_time() {
-        // Without a relay one game burst carries about 43 parts (~42 KB of deflated delta) in
-        // 10 s; a 150 KiB state deflates to ~54 KB and needs the normal rate for the rest.
-        assert!(join_time(false, 110) <= 15_000);
-        assert!(join_time(false, 150) <= 60_000);
+        // Without a relay one game burst carries about 43 parts in 10 s, then the normal rate
+        // (1 per 2 s) and the next burst a minute later carry the rest. Each Mumble message is
+        // a Bovnar document with the body as base-85 text, so a part holds ~750 bytes of
+        // deflated delta: 90 KiB (~33 KB) fits one burst, 150 KiB (~54 KB, ~72 parts) needs a
+        // second one. The relay carries everything at once.
+        assert!(join_time(false, 90) <= 15_000);
+        assert!(join_time(false, 120) <= 45_000);
+        // Longer than the expectation window after HELLO: the transfer must still complete.
+        assert!(join_time(false, 150) <= 80_000);
         assert!(join_time(true, 150) <= 3_000);
     }
 
