@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "abgeschlossen mit {{secs}} s Reserve (+{{bonus}}%)",
+  "page.results.another": "Noch eine Nacht",
   "part.antenna.at": "am Fühler",
   "part.antenna.lost": "der Fühler ist abgewandert",
   "part.arch.at": "am Bogen",

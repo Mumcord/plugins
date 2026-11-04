@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "sõlmitud {{secs}} s varuga (+{{bonus}}%)",
+  "page.results.another": "Veel üks öö",
   "part.antenna.at": "antennil",
   "part.antenna.lost": "antenn uitas minema",
   "part.arch.at": "kaarel",

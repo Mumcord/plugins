@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "pabeigts ar {{secs}} s rezervē (+{{bonus}}%)",
+  "page.results.another": "Vēl viena nakts",
   "part.antenna.at": "uz taustekļa",
   "part.antenna.lost": "tausteklis aizklīda",
   "part.arch.at": "uz arkas",

@@ -515,6 +515,10 @@ fn page_intents_are_parsed_strictly() {
             "a heron with a very very long ne".to_string()
         ))
     );
+    assert_eq!(
+        Intent::parse(r#"{"t":"another-night"}"#),
+        Some(Intent::AnotherNight)
+    );
     assert_eq!(Intent::parse(r#"{"t":"place","to":"elsewhere"}"#), None);
     assert_eq!(Intent::parse("not json"), None);
 }
@@ -1074,6 +1078,48 @@ fn a_full_night_posts_exactly_start_rounds_and_summary() {
     assert_eq!(t.c(2).host.saved.as_ref().unwrap().skies.len(), 1);
     let team = t.c(1).app.night.as_ref().unwrap().team();
     assert_eq!(team, t.c(3).app.night.as_ref().unwrap().team());
+}
+
+#[test]
+fn another_night_starts_over_with_the_same_group() {
+    let mut t = Table::new(3);
+    t.open(calm());
+    let first = t.c(1).app.night.as_ref().unwrap().id;
+    // Only once the night is over.
+    let c = t.c(1);
+    c.app.on_page(&mut c.host, Intent::AnotherNight);
+    t.deliver();
+    assert_eq!(t.c(2).app.night.as_ref().unwrap().id, first);
+    for _ in 0..3 {
+        t.play_round();
+    }
+    let c = t.c(1);
+    c.app.on_page(&mut c.host, Intent::Tapestry);
+    t.deliver();
+    // Only the Lamplighter.
+    let c = t.c(2);
+    c.app.on_page(&mut c.host, Intent::AnotherNight);
+    t.deliver();
+    assert!(t.c(3).app.night.as_ref().unwrap().ended);
+    let c = t.c(1);
+    c.app.on_page(&mut c.host, Intent::AnotherNight);
+    t.deliver();
+    let second = t.c(1).app.night.as_ref().unwrap().id;
+    assert_ne!(second, first);
+    for s in 1..=3 {
+        let night = t.c(s).app.night.as_ref().unwrap();
+        assert_eq!(night.id, second);
+        assert!(!night.ended);
+        assert!(night.history.is_empty());
+        assert_eq!(night.players, vec![1, 2, 3]);
+        assert_eq!(night.settings, calm());
+    }
+    // The new night plays like the first, and the old sky stays kept.
+    t.play_round();
+    let a = outcome(&t, 1);
+    assert_eq!(a, outcome(&t, 3));
+    assert_eq!(a.2, Verify::Verified);
+    assert_eq!(t.c(2).host.saved.as_ref().unwrap().skies.len(), 1);
 }
 
 #[test]

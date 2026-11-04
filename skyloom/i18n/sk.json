@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "uzavreté s rezervou {{secs}} s (+{{bonus}}%)",
+  "page.results.another": "Ďalšia noc",
   "part.antenna.at": "na anténe",
   "part.antenna.lost": "anténa sa zatúlala",
   "part.arch.at": "na oblúku",

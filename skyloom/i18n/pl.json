@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "zamknięte z zapasem {{secs}} s (+{{bonus}}%)",
+  "page.results.another": "Kolejna noc",
   "part.antenna.at": "na czułku",
   "part.antenna.lost": "czułek poszedł w świat",
   "part.arch.at": "na łuku",

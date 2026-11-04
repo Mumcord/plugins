@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}} % {{where}}",
   "page.reveal.tied-off-spare": "bouclé avec {{secs}} s d'avance (+{{bonus}} %)",
+  "page.results.another": "Une autre nuit",
   "part.antenna.at": "sur l'antenne",
   "part.antenna.lost": "l'antenne s'est égarée",
   "part.arch.at": "sur l'arche",

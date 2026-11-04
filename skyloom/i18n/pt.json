@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "atado com {{secs}} s de sobra (+{{bonus}}%)",
+  "page.results.another": "Outra noite",
   "part.antenna.at": "na antena",
   "part.antenna.lost": "a antena fugiu",
   "part.arch.at": "no arco",

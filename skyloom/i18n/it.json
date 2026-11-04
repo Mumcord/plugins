@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "chiuso con {{secs}} s di anticipo (+{{bonus}}%)",
+  "page.results.another": "Un'altra notte",
   "part.antenna.at": "sull'antenna",
   "part.antenna.lost": "l'antenna se n'è andata a spasso",
   "part.arch.at": "sull'arco",

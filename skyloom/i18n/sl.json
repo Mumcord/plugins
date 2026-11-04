@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "zaključeno s {{secs}} s rezerve (+{{bonus}}%)",
+  "page.results.another": "Še ena noč",
   "part.antenna.at": "na anteni",
   "part.antenna.lost": "antena je odtavala",
   "part.arch.at": "na loku",

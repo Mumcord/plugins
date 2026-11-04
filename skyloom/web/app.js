@@ -561,6 +561,7 @@ function results(v) {
         ${honour("results.wanderer", h.wanderer, tr("results.wanderer-detail"))}
       </ul>
       <div class="col-actions">
+        ${lamp ? button(tr("results.another"), "another-night", "", "sky-button sky-button--gold") : ""}
         ${lamp ? button(tr(res.summaryPosted ? "results.posted" : "results.post"), "post-summary", res.summaryPosted ? "disabled" : "") : ""}
         ${lamp ? button(tr("results.close"), "close-night") : ""}
       </div>

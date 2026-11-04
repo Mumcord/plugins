@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "solmittu {{secs}} s ennen aikarajaa (+{{bonus}}%)",
+  "page.results.another": "Uusi yö",
   "part.antenna.at": "tuntosarvessa",
   "part.antenna.lost": "tuntosarvi vaelsi pois",
   "part.arch.at": "kaaressa",

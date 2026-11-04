@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "uzavřeno s {{secs}} s k dobru (+{{bonus}}%)",
+  "page.results.another": "Další noc",
   "part.antenna.at": "na tykadle",
   "part.antenna.lost": "tykadlo se zatoulalo",
   "part.arch.at": "na oblouku",

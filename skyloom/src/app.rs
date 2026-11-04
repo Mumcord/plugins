@@ -266,6 +266,30 @@ pub struct Night {
 }
 
 impl Night {
+    fn new(id: u32, rev: u8, settings: Settings, players: Vec<u32>) -> Night {
+        Night {
+            id,
+            rev,
+            settings,
+            revs: vec![(rev, players.clone())],
+            players,
+            weaved: Vec::new(),
+            used: 0,
+            history: Vec::new(),
+            round: None,
+            round_no: 0,
+            ended: false,
+            spectators: BTreeSet::new(),
+            pending: Vec::new(),
+            roster_due: false,
+            travel: BTreeMap::new(),
+            posted_rounds: BTreeSet::new(),
+            summary_posted: false,
+            ended_at: 0,
+            sky_name: String::new(),
+        }
+    }
+
     pub fn lamplighter(&self) -> Option<u32> {
         self.players.first().copied()
     }
@@ -413,27 +437,7 @@ impl App {
         };
         self.joined = true;
         self.place = Some(Place::Stage);
-        self.night = Some(Night {
-            id,
-            rev: 0,
-            settings: Settings::default(),
-            players: vec![self.me],
-            revs: vec![(0, vec![self.me])],
-            weaved: Vec::new(),
-            used: 0,
-            history: Vec::new(),
-            round: None,
-            round_no: 0,
-            ended: false,
-            spectators: BTreeSet::new(),
-            pending: Vec::new(),
-            roster_due: false,
-            travel: BTreeMap::new(),
-            posted_rounds: BTreeSet::new(),
-            summary_posted: false,
-            ended_at: 0,
-            sky_name: String::new(),
-        });
+        self.night = Some(Night::new(id, 0, Settings::default(), vec![self.me]));
         self.send_roster(host);
         // The click is the consent for the one plain line standard clients see.
         host.chat_send(&view::start_line(&self.name(self.me)));
@@ -659,27 +663,18 @@ impl App {
                 }
             }
             _ => {
-                self.night = Some(Night {
-                    id,
-                    rev,
-                    settings,
-                    players: players.clone(),
-                    revs: vec![(rev, players.clone())],
-                    weaved,
-                    used: 0,
-                    history: Vec::new(),
-                    round: None,
-                    round_no: round,
-                    ended: false,
-                    spectators: BTreeSet::new(),
-                    pending: Vec::new(),
-                    roster_due: false,
-                    travel: BTreeMap::new(),
-                    posted_rounds: BTreeSet::new(),
-                    summary_posted: false,
-                    ended_at: 0,
-                    sky_name: String::new(),
-                });
+                let mut fresh = Night::new(id, rev, settings, players.clone());
+                fresh.weaved = weaved;
+                fresh.round_no = round;
+                // Another night of the same group keeps its spectators.
+                if let Some(old) = self.night.take() {
+                    fresh.spectators = old
+                        .spectators
+                        .into_iter()
+                        .filter(|s| !players.contains(s))
+                        .collect();
+                }
+                self.night = Some(fresh);
             }
         }
         for p in &players {
@@ -1007,6 +1002,7 @@ impl App {
             Intent::Seat { play } => self.seat(host, play),
             Intent::Tapestry => self.tapestry(host),
             Intent::PostSummary => self.post_summary(host),
+            Intent::AnotherNight => self.another_night(host),
             Intent::Name(name) => {
                 if let Some(night) = &mut self.night {
                     night.sky_name = name;
@@ -1185,6 +1181,26 @@ impl App {
         }
         self.save_sky(host);
         self.announce(host, "results");
+        self.refresh(host);
+    }
+
+    /// The Lamplighter starts a new night with the same group once this one is over. The new
+    /// night id in the roster tells everyone else to start over too.
+    fn another_night(&mut self, host: &mut dyn Host) {
+        let me = self.me;
+        let Some(night) = &self.night else {
+            return;
+        };
+        if !night.ended || night.lamplighter() != Some(me) {
+            return;
+        }
+        let Some(id) = Self::random_array::<4>(host).map(u32::from_be_bytes) else {
+            return;
+        };
+        let mut fresh = Night::new(id, 0, night.settings, night.players.clone());
+        fresh.spectators = night.spectators.clone();
+        self.night = Some(fresh);
+        self.send_roster(host);
         self.refresh(host);
     }
 

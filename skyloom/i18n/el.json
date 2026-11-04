@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "ολοκληρώθηκε με {{secs}} δ περιθώριο (+{{bonus}}%)",
+  "page.results.another": "Άλλη μια νύχτα",
   "part.antenna.at": "στην κεραία",
   "part.antenna.lost": "η κεραία ξεστράτισε",
   "part.arch.at": "στην αψίδα",

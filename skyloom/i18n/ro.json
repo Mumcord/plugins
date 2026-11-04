@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "încheiat cu {{secs}} s în plus (+{{bonus}}%)",
+  "page.results.another": "Încă o noapte",
   "part.antenna.at": "pe antenă",
   "part.antenna.lost": "antena a rătăcit",
   "part.arch.at": "pe arc",

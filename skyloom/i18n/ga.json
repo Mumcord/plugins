@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "ceangailte le {{secs}} s fágtha (+{{bonus}}%)",
+  "page.results.another": "Oíche eile",
   "part.antenna.at": "ar an tadhlaí",
   "part.antenna.lost": "chuaigh an tadhlaí ar fán",
   "part.arch.at": "ar an áirse",

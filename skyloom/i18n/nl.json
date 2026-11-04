@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "afgerond met {{secs}} s over (+{{bonus}}%)",
+  "page.results.another": "Nog een nacht",
   "part.antenna.at": "op de voelspriet",
   "part.antenna.lost": "de voelspriet dwaalde af",
   "part.arch.at": "op de boog",

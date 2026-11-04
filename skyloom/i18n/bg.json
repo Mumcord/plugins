@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "завършено с {{secs}} с запас (+{{bonus}}%)",
+  "page.results.another": "Още една нощ",
   "part.antenna.at": "на антената",
   "part.antenna.lost": "антената се отдалечи",
   "part.arch.at": "на арката",

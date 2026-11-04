@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "magħluq b'{{secs}} s żejda (+{{bonus}}%)",
+  "page.results.another": "Lejl ieħor",
   "part.antenna.at": "fuq l-antenna",
   "part.antenna.lost": "l-antenna telqet",
   "part.arch.at": "fuq l-arka",

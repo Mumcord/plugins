@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "tied off with {{secs}} s to spare (+{{bonus}}%)",
+  "page.results.another": "Another night",
   "part.antenna.at": "on the antenna",
   "part.antenna.lost": "the antenna wandered off",
   "part.arch.at": "on the arch",

@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "avslutat med {{secs}} s över (+{{bonus}}%)",
+  "page.results.another": "En natt till",
   "part.antenna.at": "på antennen",
   "part.antenna.lost": "antennen vandrade iväg",
   "part.arch.at": "på bågen",

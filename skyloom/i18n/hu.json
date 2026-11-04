@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "megkötve {{secs}} mp-pel a határidő előtt (+{{bonus}}%)",
+  "page.results.another": "Újabb éjszaka",
   "part.antenna.at": "az antennán",
   "part.antenna.lost": "az antenna elkóborolt",
   "part.arch.at": "az íven",

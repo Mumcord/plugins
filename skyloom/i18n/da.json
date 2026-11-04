@@ -259,6 +259,7 @@
   "page.results.close": "Close",
   "page.reveal.truest-note": "{{pct}}% {{where}}",
   "page.reveal.tied-off-spare": "bundet af med {{secs}} s tilbage (+{{bonus}}%)",
+  "page.results.another": "Endnu en nat",
   "part.antenna.at": "på følehornet",
   "part.antenna.lost": "følehornet vandrede væk",
   "part.arch.at": "på buen",
