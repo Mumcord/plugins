@@ -4,6 +4,19 @@
  * thread, light = a star chart printed on linen with indigo ink. Player colours are never the
  * only signal: every star also has its own shape and initial.
  */
+/* The app's own type pair, bundled because the web view cannot load the app's fonts. */
+@font-face {
+  font-family: "Instrument Sans Variable";
+  font-style: normal;
+  font-weight: 400 700;
+  src: url("fonts/instrument-sans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bricolage Grotesque Variable";
+  font-style: normal;
+  font-weight: 200 800;
+  src: url("fonts/bricolage-grotesque.woff2") format("woff2");
+}
 @font-face {
   font-family: "Fraunces";
   font-style: italic;
@@ -12,18 +25,34 @@
 }
 :root {
   --font-family:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
-  --font-family-display: var(--font-family);
+    "Instrument Sans Variable", "Segoe UI", system-ui, -apple-system,
+    "Noto Sans", sans-serif;
+  --font-family-display: "Bricolage Grotesque Variable", var(--font-family);
   color-scheme: dark;
 }
 :root[data-theme="light"] {
   color-scheme: light;
 }
 html,
+/* The app's base rules, which the mockups were drawn with. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 body {
   margin: 0;
   height: 100%;
   background: #07061a;
+  font-family: var(--font-family);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-family-display);
+  letter-spacing: -0.01em;
 }
 :root[data-theme="light"] body {
   background: #f7f2e6;

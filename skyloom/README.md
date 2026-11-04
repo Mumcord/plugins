@@ -113,8 +113,9 @@ motion removes the twinkle, the ripples and the thread run, and makes dawn a ste
   chat cards and lines, `lib.rs` the host glue, `tests.rs` unit and multi-client tests.
 - `web-src/`: the page's TypeScript; `npm ci && npm run build` writes `web/app.js` (committed, so
   the plugin builds without Node). `npm run check` verifies it is current, `npm run lint` lints.
-- `web/`: the page, its stylesheet and the bundled Fraunces Italic font (SIL OFL 1.1, see
-  `web/fonts/OFL-Fraunces.html`).
+- `web/`: the page, its stylesheet and the bundled fonts, all under the SIL OFL 1.1: Fraunces
+  Italic for figure names and the app's own Instrument Sans and Bricolage Grotesque for the rest
+  (see `web/fonts/OFL-*.html`).
 - `sounds/`: the effects, synthesised by `sounds-src/make.sh`.
 - `e2e/`: end-to-end specs for the plugins repository's harness.
 
