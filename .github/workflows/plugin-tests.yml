@@ -2,7 +2,9 @@
 # `mumcord-plugin test`) and E2E in a real Mumcord against a local Mumble server (e2e/run.sh).
 # Only the plugins whose folder changed run; a change to the harness runs all of them
 # (e2e/changed-plugins.sh). Mumcord is the release tag in e2e/mumcord-version: its app, E2E image
-# and CLI are built once per tag and kept in the cache.
+# and CLI are built once per tag and kept in the cache. A plugin that needs a newer Mumcord than the
+# pinned tag (e2e/mumcord-gate.sh) only runs `cargo test`; its scenarios and E2E specs are skipped
+# with a notice until the pin moves.
 name: Plugin tests
 on:
   pull_request:
@@ -27,6 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       plugins: ${{ steps.select.outputs.plugins }}
+      e2e: ${{ steps.select.outputs.e2e }}
       tag: ${{ steps.select.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
@@ -38,9 +41,21 @@ jobs:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           plugins="$(e2e/changed-plugins.sh "$BASE")"
+          e2e=()
+          for id in $(jq -r '.[]' <<<"$plugins"); do
+            skip="$(e2e/mumcord-gate.sh --e2e "$id")"
+            if [ -n "$skip" ]; then
+              echo "::notice title=E2E skipped::$skip"
+              echo "E2E $skip" >> "$GITHUB_STEP_SUMMARY"
+            else
+              e2e+=("$id")
+            fi
+          done
+          if [ ${#e2e[@]} -eq 0 ]; then e2e_json="[]"; else e2e_json="$(printf '%s\n' "${e2e[@]}" | jq -R . | jq -cs .)"; fi
           echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+          echo "e2e=$e2e_json" >> "$GITHUB_OUTPUT"
           echo "tag=$(tr -d '[:space:]' < e2e/mumcord-version)" >> "$GITHUB_OUTPUT"
-          echo "Plugins under test: $plugins" >> "$GITHUB_STEP_SUMMARY"
+          echo "Plugins under test: $plugins (E2E: $e2e_json)" >> "$GITHUB_STEP_SUMMARY"
 
   # The mumcord-plugin CLI of the pinned tag (build, mock host), shared by the jobs below.
   cli:
@@ -88,7 +103,19 @@ jobs:
       - name: Unit tests
         working-directory: ${{ matrix.plugin }}
         run: cargo test --quiet
+      # The pinned CLI cannot build or host a plugin on a newer plugin API.
+      - name: Plugin API gate
+        id: gate
+        env:
+          PLUGIN: ${{ matrix.plugin }}
+        run: |
+          skip="$(e2e/mumcord-gate.sh "$PLUGIN")"
+          if [ -n "$skip" ]; then
+            echo "::notice title=Mock host skipped::$skip"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Scenarios in the mock host
+        if: steps.gate.outputs.skip != 'true'
         env:
           PLUGIN: ${{ matrix.plugin }}
         run: |
@@ -99,7 +126,7 @@ jobs:
   mumcord:
     name: Mumcord ${{ needs.changes.outputs.tag }} E2E build
     needs: changes
-    if: needs.changes.outputs.plugins != '[]'
+    if: needs.changes.outputs.e2e != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -145,12 +172,13 @@ jobs:
   e2e:
     name: E2E (${{ matrix.plugin }})
     needs: [changes, cli, mumcord]
+    if: needs.changes.outputs.e2e != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        plugin: ${{ fromJSON(needs.changes.outputs.plugins) }}
+        plugin: ${{ fromJSON(needs.changes.outputs.e2e) }}
     env:
       RUSTUP_AUTO_INSTALL: 1
     steps:

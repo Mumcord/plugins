@@ -78,6 +78,19 @@ To move to a newer Mumcord:
 Plugins that need a newer plugin API need a Mumcord release that has it: plugins on API 1.1
 (for example Skyloom and Whiteboard) need `v0.7.0` or later.
 
+### Plugins that need a newer Mumcord
+
+`e2e/mumcord-gate.sh [--e2e] <plugin>` prints why a plugin cannot be tested with the pinned tag:
+
+- its manifest `api` is newer than the tag supports (`^1.1` needs `v0.7.0`; the table is in the
+  script), or
+- with `--e2e`: `<plugin>/e2e/min-mumcord` names a newer tag. That one-line file (e.g. `v0.7.0`)
+  is for specs that need host features of a later release.
+
+Such a plugin still runs `cargo test` in CI. Its mock-host scenarios, its E2E specs and
+`e2e/run.sh` (also `--check`) are skipped with a notice that names the needed tag. Once
+`e2e/mumcord-version` reaches that tag, everything runs again with no other change.
+
 ### Run the E2E tests locally
 
 Needs Docker, Node.js 24 and Rust (the plugins pin their toolchain). The first run clones and builds
@@ -89,8 +102,20 @@ e2e/run.sh                 # every plugin with an e2e/ folder
 e2e/run.sh --check poll    # type-check and lint the specs only
 ```
 
-The specs run as part of Mumcord's suite: `e2e/run.sh` copies them to
-`e2e/specs/official-<plugin>/` in the Mumcord checkout and the shared helpers in `e2e/helpers/` to
+To test against unreleased Mumcord code (e.g. a host feature that is still on a branch), set
+`MUMCORD_REF` to a branch or a full commit hash of `Mumcord/mumcord`. It turns the version gate off
+and builds in its own work folder (`~/.cache/mumcord-build/plugins-e2e/ref`, with its own E2E cache
+and the image `mumcord-e2e-ref`), so the tag's build stays untouched. Local runs only; CI always
+uses the pinned tag.
+
+```sh
+MUMCORD_REF=feat/09-host e2e/run.sh whiteboard
+MUMCORD_REF=feat/09-host e2e/run.sh --check whiteboard
+```
+
+The specs run as part of Mumcord's suite: `e2e/run.sh` copies them (and any other `.ts`
+file in `<plugin>/e2e/`, the plugin's own helpers) to `e2e/specs/official-<plugin>/` in the Mumcord
+checkout and the shared helpers in `e2e/helpers/` to
 `e2e/specs/official-shared/`, so their imports resolve to Mumcord's E2E helpers (see its
 `e2e/README.md`).
 
