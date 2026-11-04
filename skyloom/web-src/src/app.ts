@@ -897,7 +897,7 @@ function loomSvg(v: View): string {
   const withCard = v.phase === "weave" && r.card !== null && (r.weaver === v.me || r.twin === v.me);
   return `<svg class="loom${withCard ? " loom--with-card" : ""}" id="loom" viewBox="0 0 ${LOOM_W} ${LOOM_H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${label}">
     <defs><filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter></defs>
-    ${figure}<g id="stars">${starsMarkup(v, r)}</g><g id="ripples"></g></svg>`;
+    ${figure}<g id="trails" aria-hidden="true"></g><g id="stars">${starsMarkup(v, r)}</g><g id="ripples"></g></svg>`;
 }
 
 /** Gold threads between stars that follow each other along the figure's lines. */
@@ -1010,6 +1010,7 @@ function moveOwn(index: number, to: Pt, force = false): void {
   shown.set(key, p);
   target.set(key, p);
   ownMovedAt = performance.now();
+  noteTrail(key, p, ownMovedAt);
   const el = document.getElementById(`star-${key}`);
   el?.setAttribute("transform", `translate(${p[0]},${p[1]})`);
   const now = performance.now();
@@ -1067,6 +1068,44 @@ function whereAmI(index: number): void {
   );
 }
 
+// ----- Star trails -----
+
+/** How long a moving star's dotted trail lingers behind it. */
+const TRAIL_MS = 1500;
+/** Recent positions of moving stars, oldest first. */
+const trails = new Map<string, { p: Pt; at: number }[]>();
+
+function noteTrail(key: string, p: Pt, now: number): void {
+  // A trail is motion too: with reduced motion the stars simply move without one.
+  if (reduceMotion() || view?.phase !== "weave") return;
+  const list = trails.get(key) ?? [];
+  const last = list[list.length - 1];
+  if (last && now - last.at < 40) return;
+  list.push({ p: [p[0], p[1]], at: now });
+  trails.set(key, list);
+}
+
+/** Draws each trail from where the star was a moment ago up to where it is now. */
+function drawTrails(now: number): void {
+  const g = document.getElementById("trails");
+  if (!g) return;
+  let out = "";
+  for (const [key, list] of trails) {
+    while (list.length > 0 && now - (list[0]?.at ?? now) > TRAIL_MS) list.shift();
+    const head = shown.get(key);
+    if (list.length === 0 || !head || reduceMotion() || view?.phase !== "weave") {
+      trails.delete(key);
+      continue;
+    }
+    const d = [...list.map((e) => e.p), head]
+      .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(0)},${p[1].toFixed(0)}`)
+      .join("");
+    out += `<path class="star__trail" d="${d}" style="--c:${colourOf(Number(key.split("-")[0]))}"/>`;
+  }
+  // Rewrites the group only while there is something to draw or to clear.
+  if (out !== "" || g.childElementCount > 0) g.innerHTML = out;
+}
+
 function animate(): void {
   const v = view;
   if (v?.round) {
@@ -1079,10 +1118,12 @@ function animate(): void {
       const next: Pt = [from[0] + (to[0] - from[0]) * k, from[1] + (to[1] - from[1]) * k];
       if (Math.abs(next[0] - from[0]) < 0.05 && Math.abs(next[1] - from[1]) < 0.05) continue;
       shown.set(key, next);
+      noteTrail(key, next, now);
       document
         .getElementById(`star-${key}`)
         ?.setAttribute("transform", `translate(${next[0].toFixed(1)},${next[1].toFixed(1)})`);
     }
+    drawTrails(now);
     updateTimer();
   }
   window.requestAnimationFrame(animate);
@@ -1172,6 +1213,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       if (roundChanged) {
         shown.clear();
         target.clear();
+        trails.clear();
       }
       view = msg;
       viewAt = performance.now();
