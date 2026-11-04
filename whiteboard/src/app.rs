@@ -1066,6 +1066,10 @@ impl App {
 
     /// Another Mumcord's plain-text line: hide it behind that person's invite card.
     fn on_line<H: Host>(&mut self, host: &mut H, from: &PeerInfo, payload: &[u8]) {
+        let Ok(payload) = codec::decode_other(KIND_LINE, payload) else {
+            host.log(Level::Debug, "dropped a malformed chat line notice");
+            return;
+        };
         if payload.len() != LINE_LEN || payload[0] != FORMAT || payload[1] > 1 {
             host.log(Level::Debug, "dropped a malformed chat line notice");
             return;
@@ -2350,8 +2354,14 @@ impl App {
                 payload.extend_from_slice(&hash.to_le_bytes());
                 payload.extend_from_slice(&id);
                 // Lets other Mumcord clients show the invite card instead of the text line.
-                if let Err(e) = host.peers_send(Target::Channel, KIND_LINE, &payload) {
-                    host.log(Level::Debug, &format!("line notice not sent: {e:?}"));
+                let sent = codec::encode_other(KIND_LINE, &payload)
+                    .map_err(|e| format!("{e:?}"))
+                    .and_then(|doc| {
+                        host.peers_send(Target::Channel, KIND_LINE, &doc)
+                            .map_err(|e| format!("{e:?}"))
+                    });
+                if let Err(e) = sent {
+                    host.log(Level::Debug, &format!("line notice not sent: {e}"));
                 }
                 (Tone::Success, t("dialog.lines.posted"))
             }

@@ -772,10 +772,9 @@ fn the_scenario_board_payload_matches_the_codec() {
         started_ms: 1_700_000_000_000,
     });
     let (kind, payload) = codec::encode_peers(&m).expect("encodes");
-    let hex: Vec<String> = payload.iter().map(|b| format!("{b:02x}")).collect();
     assert_eq!(kind, 6);
     assert_eq!(
-        hex.join(" "),
-        "01 ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab 04 50 6c 61 6e 04 03 02 01 80 d0 95 ff bc 31"
+        String::from_utf8(payload).unwrap(),
+        r#".v=1;.msg={.d="Te&q4Te&q4Te&q4Te&q41w&]yzuH4y0F5KZ%gy5";.k=6;};"#
     );
 }

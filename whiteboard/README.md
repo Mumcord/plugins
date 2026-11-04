@@ -70,7 +70,7 @@ Mumble connection, no side panel means no mini view, no chat lines, no command, 
 
 The board is a CRDT (`src/model.rs`): every object field and board setting is a last-writer-wins
 register, so all copies end up identical whatever order changes arrive in. `src/sync.rs` keeps
-the copies in sync, `src/codec.rs` is the strict binary wire format, `src/store.rs` saves boards,
+the copies in sync, `src/codec.rs` is the strict wire format, `src/store.rs` saves boards,
 `src/export/` writes SVG and PDF, and `src/app.rs` connects all of it to Mumcord's events. The web
 page holds no authority: every edit goes to the plugin as a message and comes back as the updated
 objects. Who may draw is checked by every participant's Mumcord when a change arrives; a
@@ -78,10 +78,13 @@ modified client could ignore the rules, but nobody else would show its changes.
 
 ### Wire format
 
-Every payload starts with the format byte `1`. On `peers.messages` the message kind travels as
-Mumble's plugin data type and the payload is at most 997 bytes; on the relay the kind is the
-second byte and the payload at most 60 KiB. Integers are LEB128 varints, coordinates are quarter
-pixels, author keys 4 bytes, board ids 16 bytes.
+Every payload is a [Bovnar](https://github.com/sothis/bovnar) document made with the SDK's
+`bovnar` module: layout version `1` and a message with the kind `k` and the binary body `d`, for
+example `.v=1;.msg={.d="Te&q4…";.k=6;};`. Bovnar has no byte-string type, so the compact binary
+body travels as base-85 text (Z85 alphabet, 4 bytes become 5 characters). Receivers ignore fields
+they do not know. On `peers.messages` the kind also travels as Mumble's plugin data type and the
+document is at most 997 bytes; on the relay it is at most 60 KiB. In the body, integers are
+LEB128 varints, coordinates are quarter pixels, author keys 4 bytes, board ids 16 bytes.
 
 | Kind | Name | Content |
 |---|---|---|

@@ -13,6 +13,7 @@ pub mod model;
 pub mod store;
 pub mod sync;
 mod text;
+pub mod text85;
 
 #[cfg(test)]
 mod tests;

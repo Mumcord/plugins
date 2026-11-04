@@ -1,5 +1,6 @@
 # Bob posted the "[Whiteboard] … started a whiteboard" line and tells the channel its hash
-# (kind 0x20: format 1, line 0 = start, hash u32 LE, board id). Alice's Mumcord shows the invite
+# (kind 0x20, a Bovnar document whose base-85 body is: format 1, line 0 = start, hash u32 LE,
+# board id). Alice's Mumcord shows the invite
 # card in its place (chat.supersede).
 name: A plain-text start line is replaced by the invite card
 grant: [ui.stage, ui.webview, ui.app-menu, ui.dialog, peers.messages, events.presence, random.bytes, ui.chat-card, chat.supersedes]
@@ -8,8 +9,8 @@ peers:
   - {session: 2, name: Bob}
 
 steps:
-  - event: {peer-message: {from: 2, kind: 32, hex: "01 00 78563412 abababababababababababababababab"}}
+  - event: {peer-message: {from: 2, kind: 32, hex: "2e763d313b2e6d73673d7b2e643d223072767642672e4d3c2654652671345465267134546526713454653d223b2e6b3d33323b7d3b"}}
   - expect: {tree: {slot: {chat-card: wb-1}, text: "Bob started a whiteboard"}}
   # A malformed notice (wrong length) is dropped.
-  - event: {peer-message: {from: 2, kind: 32, hex: "01 00 7856"}}
+  - event: {peer-message: {from: 2, kind: 32, hex: "2e763d313b2e6d73673d7b2e643d223072767642223b2e6b3d33323b7d3b"}}
   - expect: {log: {contains: dropped a malformed chat line notice}}

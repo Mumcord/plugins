@@ -12,5 +12,5 @@ steps:
   - event: {peer-message: {from: 2, kind: 1, hex: ""}}
   - expect: nothing
   # Still alive: a real announcement afterwards works.
-  - event: {peer-message: {from: 2, kind: 6, hex: "01 abababababababababababababababab 04 506c616e 04030201 80d095ffbc31"}}
+  - event: {peer-message: {from: 2, kind: 6, hex: "2e763d313b2e6d73673d7b2e643d2254652671345465267134546526713454652671343177265d797a754834793046354b5a25677935223b2e6b3d363b7d3b"}}
   - expect: {tree: {slot: {chat-card: wb-1}, text: "Bob started a whiteboard"}}

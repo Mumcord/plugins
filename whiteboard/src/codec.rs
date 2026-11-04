@@ -1,8 +1,14 @@
 //! WB2: the wire codec for whiteboard messages.
 //!
-//! Peers transport (Mumble plugin data): the message kind travels separately and the payload is
-//! `[FORMAT][body]`, at most 997 bytes. Relay transport: the payload is `[FORMAT][kind][body]`,
-//! at most 60 KiB. Integers are LEB128 varints (signed ones zigzag), strings are a varint byte
+//! Every payload, on both transports, is one Bovnar document made with the SDK's `bovnar`
+//! module (spec FR-9.93): the message layout version [`FORMAT`] plus a [`Wire`] message with the
+//! message kind `k` and the binary body `d` as base-85 text ([`crate::text85`]), because Bovnar
+//! has no byte-string type. Peers transport (Mumble plugin data): the document is at most 997
+//! bytes and the kind also travels as the Mumble message kind. Relay transport: at most 60 KiB.
+//! The body keeps the compact binary layout below; Bovnar adds about 25 bytes and the text
+//! encoding 25 % per message.
+//!
+//! Body layout: integers are LEB128 varints (signed ones zigzag), strings are a varint byte
 //! length plus UTF-8, author keys are 4 fixed bytes (they are random, so a varint would only
 //! grow them) and board ids 16 bytes. Decoding is strict: overlong varints, out-of-range values,
 //! over-long strings, unknown tags and trailing bytes are all errors, and nothing panics.
@@ -21,12 +27,15 @@
 
 use miniz_oxide::deflate::compress_to_vec;
 use miniz_oxide::inflate::decompress_to_vec_with_limit;
+use mumcord_plugin_sdk::bovnar;
+use serde::{Deserialize, Serialize};
 
 use crate::model::{
     AuthorInfo, AuthorKey, BoardField, Body, Field, Fields, Geom, Host, Kind, MAX_ALLOWED_PER_OP,
     MAX_ALT_CHARS, MAX_COORD, MAX_KEY_CHARS, MAX_NAME_CHARS, MAX_POINTS, MAX_TEXT_CHARS,
     MAX_TITLE_CHARS, MAX_VV_ENTRIES, MAX_Z_LEN, ObjId, Op, Policy, Stamp, Vv, Write,
 };
+use crate::text85;
 
 pub const FORMAT: u8 = 1;
 pub const MAX_PEERS_PAYLOAD: usize = 997;
@@ -67,11 +76,28 @@ impl Transport {
         }
     }
 
-    fn header_len(self) -> usize {
-        match self {
-            Transport::Peers => 1,
-            Transport::Relay => 2,
-        }
+    /// The largest binary body whose document fits the payload limit.
+    pub fn body_room(self) -> usize {
+        text85::max_bytes(self.max_payload() - DOC_OVERHEAD)
+    }
+}
+
+/// Bovnar framing around the body text: `.v=1;.msg={.d="";.k=19;};` (kinds have two digits at
+/// most, the version one).
+const DOC_OVERHEAD: usize = 25;
+
+/// The Bovnar message every payload carries.
+#[derive(Serialize, Deserialize)]
+struct Wire {
+    /// The message kind (`KIND_*`).
+    k: u8,
+    /// The binary body, base-85 text.
+    d: String,
+}
+
+impl bovnar::Message for Wire {
+    fn version() -> u32 {
+        u32::from(FORMAT)
     }
 }
 
@@ -208,6 +234,8 @@ pub enum EncodeError {
     WrongTransport,
     /// More entries than a decoder accepts.
     TooMany,
+    /// The Bovnar document could not be written.
+    Document,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -218,6 +246,8 @@ pub enum DecodeError {
     BadUtf8,
     TooLong,
     UnknownFormat,
+    /// Not a Bovnar document of the [`Wire`] shape, or its body text is not base 85.
+    Document,
     UnknownKind,
     WrongTransport,
     TrailingBytes,
@@ -848,7 +878,7 @@ pub fn pack_ops(
     let chunks = op_chunks(author, ops)?;
     let mut cur = W::new();
     cursor_part(&mut cur, cursor);
-    let room = transport.max_payload() - transport.header_len();
+    let room = transport.body_room();
     // Raw sizes add up, so the raw fit is found by counting; deflate only extends it.
     let fixed = 16 + 4 + 1 + cur.0.len();
     let mut raw_fit = 0;
@@ -874,7 +904,7 @@ pub fn pack_ops(
         return Err(EncodeError::TooLarge);
     }
     let body = ops_body(board, author, &cur.0, &chunks[..lo]);
-    Ok((frame(transport, KIND_OPS, &body), lo))
+    Ok((frame(transport, KIND_OPS, &body)?, lo))
 }
 
 // ---- deltas and snapshots ----------------------------------------------------------------------
@@ -995,9 +1025,9 @@ pub fn snap_messages(
 ) -> Result<Vec<Snap>, EncodeError> {
     let mut vv_w = W::new();
     vv_w.vv(vv)?;
-    // Header: format (+ kind), board id, part and count (3-byte varints at most).
-    let header = transport.header_len() + 16 + 3 + 3;
-    let room = transport.max_payload();
+    // Header: board id, part and count (3-byte varints at most).
+    let header = 16 + 3 + 3;
+    let room = transport.body_room();
     let first = room
         .checked_sub(header + vv_w.0.len())
         .filter(|&n| n > 0)
@@ -1095,21 +1125,23 @@ fn body(msg: &Msg) -> Result<Vec<u8>, EncodeError> {
     Ok(w.0)
 }
 
-fn frame(transport: Transport, kind: u8, body: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(body.len() + 2);
-    out.push(FORMAT);
-    if transport == Transport::Relay {
-        out.push(kind);
-    }
-    out.extend_from_slice(body);
-    out
+fn frame(transport: Transport, kind: u8, body: &[u8]) -> Result<Vec<u8>, EncodeError> {
+    let wire = Wire {
+        k: kind,
+        d: text85::encode(body),
+    };
+    bovnar::encode(&wire, transport.max_payload()).map_err(|e| match e {
+        bovnar::Error::TooLarge => EncodeError::TooLarge,
+        // The body text only uses the base-85 alphabet, so nothing else can fail.
+        _ => EncodeError::Document,
+    })
 }
 
 fn encode(msg: &Msg, transport: Transport) -> Result<Vec<u8>, EncodeError> {
     if transport == Transport::Peers && relay_only(msg.kind()) {
         return Err(EncodeError::WrongTransport);
     }
-    let out = frame(transport, msg.kind(), &body(msg)?);
+    let out = frame(transport, msg.kind(), &body(msg)?)?;
     if out.len() > transport.max_payload() {
         return Err(EncodeError::TooLarge);
     }
@@ -1214,31 +1246,54 @@ fn read_body(kind: u8, r: &mut R) -> DResult<Msg> {
     Ok(msg)
 }
 
-fn check_format(payload: &[u8], transport: Transport) -> DResult<&[u8]> {
+/// Unwraps the Bovnar document: the message kind and the binary body.
+fn unframe(payload: &[u8], transport: Transport) -> DResult<(u8, Vec<u8>)> {
     if payload.len() > transport.max_payload() {
         return Err(DecodeError::TooLarge);
     }
-    match payload.split_first() {
-        Some((&FORMAT, rest)) => Ok(rest),
-        Some(_) => Err(DecodeError::UnknownFormat),
-        None => Err(DecodeError::Truncated),
+    let received = bovnar::decode::<Wire>(payload).map_err(|e| match e {
+        bovnar::Error::TooLarge => DecodeError::TooLarge,
+        _ => DecodeError::Document,
+    })?;
+    if received.version != u32::from(FORMAT) {
+        return Err(DecodeError::UnknownFormat);
     }
+    let body = text85::decode(&received.message.d).ok_or(DecodeError::Document)?;
+    Ok((received.message.k, body))
 }
 
 /// Decodes a `peers.messages` payload of the given kind.
 pub fn decode_peers(kind: u8, payload: &[u8]) -> DResult<Msg> {
-    let rest = check_format(payload, Transport::Peers)?;
     if relay_only(kind) {
         return Err(DecodeError::WrongTransport);
     }
-    read_body(kind, &mut R::new(rest))
+    let (inner, body) = unframe(payload, Transport::Peers)?;
+    // The Mumble message kind and the document must agree.
+    if inner != kind {
+        return Err(DecodeError::BadValue);
+    }
+    read_body(kind, &mut R::new(&body))
 }
 
-/// Decodes a relay payload (`[FORMAT][kind][body]`).
+/// Wraps the binary body of a message the app sends itself on `peers.messages` (the chat line
+/// notice) in the same Bovnar document as every other message.
+pub fn encode_other(kind: u8, body: &[u8]) -> Result<Vec<u8>, EncodeError> {
+    frame(Transport::Peers, kind, body)
+}
+
+/// Unwraps a payload from [`encode_other`]; the binary body is the caller's to check.
+pub fn decode_other(kind: u8, payload: &[u8]) -> DResult<Vec<u8>> {
+    let (inner, body) = unframe(payload, Transport::Peers)?;
+    if inner != kind {
+        return Err(DecodeError::BadValue);
+    }
+    Ok(body)
+}
+
+/// Decodes a relay payload.
 pub fn decode_relay(payload: &[u8]) -> DResult<Msg> {
-    let rest = check_format(payload, Transport::Relay)?;
-    let (&kind, body) = rest.split_first().ok_or(DecodeError::Truncated)?;
-    read_body(kind, &mut R::new(body))
+    let (kind, body) = unframe(payload, Transport::Relay)?;
+    read_body(kind, &mut R::new(&body))
 }
 
 #[cfg(test)]
@@ -1437,25 +1492,40 @@ mod tests {
             decode_peers(KIND_CURSOR, &relay[..1]),
             Err(DecodeError::WrongTransport)
         );
-        let (kind, mut payload) = encode_peers(&Msg::Need(Need {
+        let need = Msg::Need(Need {
             board: BOARD,
             author: 1,
             from_seq: 1,
             to_seq: 1,
-        }))
-        .unwrap();
-        assert_eq!(decode_peers(0x7f, &payload), Err(DecodeError::UnknownKind));
-        payload[0] = 2;
+        });
+        let (kind, payload) = encode_peers(&need).unwrap();
+        // The Mumble message kind must match the document.
+        assert_eq!(decode_peers(0x7f, &payload), Err(DecodeError::BadValue));
+        let unknown = frame(Transport::Relay, 0x7f, &[]).unwrap();
+        assert_eq!(decode_relay(&unknown), Err(DecodeError::UnknownKind));
+        let mut body = body(&need).unwrap();
+        body.push(0);
+        let long = frame(Transport::Peers, kind, &body).unwrap();
+        assert_eq!(decode_peers(kind, &long), Err(DecodeError::TrailingBytes));
+        // A newer layout version, raw bytes and bad body text are refused.
+        let newer = String::from_utf8(payload.clone())
+            .unwrap()
+            .replacen(".v=1;", ".v=2;", 1);
         assert_eq!(
-            decode_peers(kind, &payload),
+            decode_peers(kind, newer.as_bytes()),
             Err(DecodeError::UnknownFormat)
         );
-        payload[0] = FORMAT;
-        payload.push(0);
         assert_eq!(
-            decode_peers(kind, &payload),
-            Err(DecodeError::TrailingBytes)
+            decode_peers(kind, &[FORMAT, 1, 2, 3]),
+            Err(DecodeError::Document)
         );
+        let bad_text = br#".v=1;.msg={.d="a";.k=3;};"#;
+        assert_eq!(decode_peers(kind, bad_text), Err(DecodeError::Document));
+        // Unknown fields from a newer sender are ignored.
+        let extra = String::from_utf8(payload)
+            .unwrap()
+            .replacen(".k=", ".z=7;.k=", 1);
+        assert_eq!(decode_peers(kind, extra.as_bytes()), Ok(need));
         assert_eq!(
             decode_peers(kind, &vec![FORMAT; MAX_PEERS_PAYLOAD + 1]),
             Err(DecodeError::TooLarge)
@@ -1560,7 +1630,12 @@ mod tests {
         // the message header (board id, author, cursor) is shared by every op of a batch.
         let op_bytes = op_chunks(board.me(), &ops).unwrap()[0].len();
         assert!(op_bytes <= 120, "{op_bytes} bytes per stroke");
-        assert!(payload.len() <= op_bytes + 30, "{} bytes", payload.len());
+        // Bovnar framing and base-85 text add about a quarter plus 25 bytes.
+        assert!(
+            payload.len() <= (op_bytes + 30) * 5 / 4 + 25,
+            "{} bytes",
+            payload.len()
+        );
     }
 
     #[test]
