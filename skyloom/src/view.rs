@@ -310,6 +310,8 @@ fn honours(app: &App) -> Value {
     json!({
         "silver": silver.map(|s| app.name(s)),
         "truest": truest.map(|s| app.name(s)),
+        "truestCount": truest.and_then(|s| truest_counts.get(&s)).copied().unwrap_or(0),
+        "truestOf": night.history.iter().filter(|r| r.truest.is_some()).count(),
         "wanderer": wanderer.map(|s| app.name(s)),
     })
 }
