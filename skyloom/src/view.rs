@@ -13,7 +13,7 @@ use crate::text::{t, t_with};
 
 /// Longest night name and spectator guess, in characters.
 pub const MAX_NAME: usize = 40;
-pub const MAX_GUESS: usize = 60;
+pub const MAX_GUESS: usize = 32;
 
 /// What the page may ask for. Everything is checked again by the app.
 #[derive(Debug, Clone, PartialEq)]

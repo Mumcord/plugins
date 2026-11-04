@@ -468,7 +468,7 @@ fn page_intents_are_parsed_strictly() {
             r#"{"t":"guess","text":"a heron\u0007 with a very very long neck that goes on and on and on"}"#
         ),
         Some(Intent::Guess(
-            "a heron with a very very long neck that goes on and on and o".to_string()
+            "a heron with a very very long ne".to_string()
         ))
     );
     assert_eq!(Intent::parse(r#"{"t":"place","to":"elsewhere"}"#), None);
