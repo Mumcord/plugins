@@ -18,7 +18,7 @@ const PAGE_KEYS: &str = include_str!("../web/board/strings-keys.json");
 pub const MAX_UI_CHARS: usize = 200;
 
 thread_local! {
-    static STRINGS: RefCell<Strings> = RefCell::new(Strings::new(mumcord_plugin_sdk::i18n_embed!["en"]));
+    static STRINGS: RefCell<Strings> = RefCell::new(Strings::new(mumcord_plugin_sdk::i18n_all!()));
     static LANG: RefCell<String> = RefCell::new("en".to_owned());
 }
 
