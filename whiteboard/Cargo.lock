@@ -168,7 +168,7 @@ dependencies = [
 [[package]]
 name = "mumcord-plugin-sdk"
 version = "0.6.2"
-source = "git+https://github.com/Mumcord/mumcord.git?branch=feat%2F09-host#1ed974803d08bb3a4ef63652ad54c55a809c388b"
+source = "git+https://github.com/Mumcord/mumcord.git?branch=feat%2F09-host#45f6be292b8ab51bfa5dd28c7a8404d134e646eb"
 dependencies = [
  "serde",
  "serde_json",
