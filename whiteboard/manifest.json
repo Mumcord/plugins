@@ -11,7 +11,7 @@
   "icon": "assets/icon.svg",
   "permissions": {
     "required": ["ui.stage", "ui.webview", "ui.app-menu", "ui.dialog", "peers.messages", "events.presence", "random.bytes"],
-    "optional": ["peers.relay", "ui.side-panel", "events.voice", "chat.send", "chat.supersedes", "ui.chat-card", "commands"]
+    "optional": ["peers.relay", "ui.side-panel", "events.voice", "chat.send", "chat.supersedes", "ui.chat-card", "commands", "files.save", "chat.post-image"]
   },
   "app_menu": [{ "id": "start", "label": "Start whiteboard" }],
   "commands": [{ "name": "whiteboard", "description": "Start a whiteboard in this channel" }],

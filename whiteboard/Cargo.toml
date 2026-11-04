@@ -21,6 +21,9 @@ crate-type = ["cdylib", "rlib"]
 mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord.git", branch = "feat/09-host", features = ["1.1"] }
 # Deflate for op batches and snapshots: small, pure Rust, builds for wasm32.
 miniz_oxide = "0.8"
+# The page bridge speaks JSON; both already come with the SDK.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [dev-dependencies]
 proptest = { version = "1", default-features = false, features = ["std"] }

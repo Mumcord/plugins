@@ -140,6 +140,7 @@ export const EN = {
   "boards.label": "Saved boards",
   "boards.continue": "Continue {title}",
   "boards.new": "New board",
+  "boards.manage": "Manage saved boards",
   "mini.label": "Whiteboard {title}, live preview.",
   "mini.live": "Live · read-only preview",
   "mini.open": "Open on stage",

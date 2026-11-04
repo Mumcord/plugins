@@ -378,6 +378,8 @@ dependencies = [
  "miniz_oxide",
  "mumcord-plugin-sdk",
  "proptest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

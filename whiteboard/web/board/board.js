@@ -141,7 +141,12 @@ const act = {
   fit: fitBoard,
   present: (on) => send({ t: "present", on }),
   follow: (on) => send({ t: "follow", on }),
-  menu: (item) => send({ t: "menu", item }),
+  // The plugin's dialogs need what the page knows: the view (export "what I see now") and the
+  // selection (export or post the selection).
+  menu: (item) => {
+    const v = viewRect(app.cam, app.vw, app.vh);
+    send({ t: "menu", item, view: [v.x, v.y, v.w, v.h].map(q), sel: [...app.selected].slice(0, 2000) });
+  },
   toggleOutline: () => chrome.toggleOutline(),
   openHelp: () => chrome.openHelp(),
   selectOnly(id, reveal) {
@@ -412,6 +417,9 @@ function showBoards(list) {
   const fresh = el("button", { class: "wb-banner__btn", type: "button", text: app.t("boards.new") });
   fresh.addEventListener("click", () => send({ t: "new-board", title: "" }));
   boardsEl.append(fresh);
+  const manage = el("button", { class: "wb-banner__btn", type: "button", text: app.t("boards.manage") });
+  manage.addEventListener("click", () => send({ t: "menu", item: "boards" }));
+  boardsEl.append(manage);
   wb.append(boardsEl);
 }
 
