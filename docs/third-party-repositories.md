@@ -16,6 +16,27 @@ is private to a community or needs a different review process.
 | `<id>-<ver>.mcplugin` | Any URL listed in the index. |
 | `<id>-<ver>.mcplugin.minisig` | Detached signature by an author key listed in `author_keys`. |
 
+## Plugins for API 1.1: the sibling `v1.1` index
+
+Mumcord 0.7.0 and newer read an additional index next to yours. When the address a user added ends
+in `/v1/index.json`, Mumcord first fetches the sibling `/v1.1/index.json` (same host and path, `v1`
+replaced by `v1.1`). It must be signed by the same repository key and follows the same size,
+signature and rollback rules, with its own `sequence`. On HTTP 404 Mumcord uses the address the
+user added, so a repository without a `v1.1` index keeps working unchanged.
+
+| Index | Read by | Lists |
+|---|---|---|
+| `v1/index.json` (format 1) | all Mumcord versions | only plugin versions with API 1.0 |
+| `v1.1/index.json` (format 2) | Mumcord 0.7.0 and newer | all versions; each may have `api: "1.1"`, `min_mumcord`, `origins` |
+
+**Publish versions that need API 1.1 only in the `v1.1` index.** Mumcord 0.6.x never reads it, so
+it never sees a version it cannot run. If a 1.1 version is listed in `v1/index.json`, a 0.6.x client
+may install it and then fails at load time. The `v1.1` index should also list the API 1.0 versions
+so 0.7.0 sees every plugin in one place; a plugin whose newest version needs 1.1 keeps its last 1.0
+version in `v1`. `mumcord-plugin site-data` writes both indexes from one source, as the official
+registry does. The fields are in the
+[registry format](https://github.com/Mumcord/mumcord/blob/main/docs/plugin-registry-format.md).
+
 Use `https`. Plain `http` is accepted only for localhost in Developer mode. The complete field list
 for the index is in the
 [registry format](https://github.com/Mumcord/mumcord/blob/main/docs/plugin-registry-format.md#indexjson);
