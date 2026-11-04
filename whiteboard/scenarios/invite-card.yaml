@@ -1,0 +1,15 @@
+# Bob announces board "Plan" (BOARD, kind 6): Alice, who is not on a board, gets an invite card.
+# Payload: format 1, board id (16 × ab), title "Plan", host author key, started at (varint ms).
+name: A board announcement shows an invite card
+grant: [ui.stage, ui.webview, ui.app-menu, ui.dialog, peers.messages, events.presence, random.bytes, ui.chat-card]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 abababababababababababababababab 04 506c616e 04030201 80d095ffbc31"}}
+  - expect: {tree: {slot: {chat-card: wb-1}, text: "Bob started a whiteboard"}}
+  # The same board again only updates the card; no second card appears.
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 abababababababababababababababab 04 506c616e 04030201 80d095ffbc31"}}
+  - expect: {tree: {slot: {chat-card: wb-1}, text: "Plan"}}
+  - expect: nothing

@@ -1,0 +1,10 @@
+# Without ui.chat-card the plugin degrades quietly: no card, no error.
+name: Without chat cards a board announcement shows nothing
+grant: [ui.stage, ui.webview, ui.app-menu, ui.dialog, peers.messages, events.presence, random.bytes]
+me: {session: 1, name: Alice}
+peers:
+  - {session: 2, name: Bob}
+
+steps:
+  - event: {peer-message: {from: 2, kind: 6, hex: "01 abababababababababababababababab 04 506c616e 04030201 80d095ffbc31"}}
+  - expect: nothing

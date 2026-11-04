@@ -1,0 +1,11 @@
+# The stage only starts in a voice channel and after a click; when Mumcord refuses, the plugin
+# explains why instead of failing silently. (This mock host refuses every stage start.)
+name: /whiteboard explains a refused start
+grant: [ui.stage, ui.webview, ui.app-menu, ui.dialog, peers.messages, events.presence, random.bytes, commands]
+me: {session: 1, name: Alice}
+
+steps:
+  - event: {ui-action: {action: whiteboard, command: true, value: ""}}
+  - expect: {log: {contains: could not start the stage}}
+  - expect: {dialog: {title: "Couldn't start the whiteboard"}}
+  - expect: {tree: {slot: dialog, text: "Join a voice channel first"}}
