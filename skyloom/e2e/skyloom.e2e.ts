@@ -97,7 +97,7 @@ async function waitGameText(text: string, timeout = 30_000): Promise<string> {
   return seen;
 }
 
-/** The figure name and resonance shown at dawn, e.g. ["The Heron", "87% resonance"]. */
+/** The figure name and resonance shown at dawn, e.g. ["The Heron", "87%"]. */
 async function revealed(): Promise<[string, string]> {
   await waitGameText("Verified", 40_000);
   const name = await $(".reveal-title__name").getText();
@@ -109,7 +109,7 @@ async function revealed(): Promise<[string, string]> {
 async function weaverOfRound(): Promise<Client> {
   for (const c of ALL) {
     const weaving = await on(c, () =>
-      inGame(async () => (await gameText()).includes("You are weaving")),
+      inGame(async () => (await gameText()).includes("You are the Weaver")),
     );
     if (weaving) return c;
   }
@@ -166,7 +166,7 @@ describe("plugins: Skyloom night with three Mumcord clients and a standard Mumbl
     );
     await item.waitForClickable({ timeout: 10_000 });
     await item.click();
-    await inGame(() => waitGameText("Begin the night"));
+    await inGame(() => waitGameText("Light the loom"));
     await lines[0];
   });
 
@@ -179,7 +179,7 @@ describe("plugins: Skyloom night with three Mumcord clients and a standard Mumbl
         await join.waitForClickable({ timeout: 30_000 });
         await join.click();
         await inGame(() =>
-          waitGameText("Waiting for Alice to begin the night"),
+          waitGameText("waiting for Alice to light the loom"),
         );
       });
     }
@@ -274,7 +274,7 @@ describe("plugins: Skyloom night with three Mumcord clients and a standard Mumbl
     );
     await inGame(() => clickInGame("button[data-intent='tapestry']"));
     for (const c of ALL)
-      await on(c, () => inGame(() => waitGameText("The night's tapestry")));
+      await on(c, () => inGame(() => waitGameText("Little honours")));
   });
 
   it("D sees exactly the start line, one line per round and the summary", async () => {
@@ -296,8 +296,8 @@ describe("plugins: Skyloom night with three Mumcord clients and a standard Mumbl
 
   it("the game moves to the side panel and back without losing its state", async () => {
     await inGame(() => clickInGame("button[data-intent='place-side']"));
-    await inGame(() => waitGameText("The night's tapestry"));
+    await inGame(() => waitGameText("Little honours"));
     await inGame(() => clickInGame("button[data-intent='place-stage']"));
-    await inGame(() => waitGameText("The night's tapestry"));
+    await inGame(() => waitGameText("Little honours"));
   });
 });
