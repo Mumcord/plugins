@@ -35,7 +35,9 @@ jobs:
           if (( ${#plugin_files[@]} )); then schema schemas/plugin.schema.json "${plugin_files[@]}"; fi
           if (( ${#version_files[@]} )); then schema schemas/version.schema.json "${version_files[@]}"; fi
           # The generator is the authoritative check: it refuses anything Mumcord would ignore.
+          # It also refuses a min_mumcord below the first release with the version's api (FR-9.20).
           mumcord-plugin site-data --repo . --out "$RUNNER_TEMP/site" --sequence 1
+          python3 .github/scripts/registry.py site-check "$RUNNER_TEMP/site"
       - name: Changed versions
         id: changed
         run: |
