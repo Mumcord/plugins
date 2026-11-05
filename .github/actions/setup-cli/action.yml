@@ -1,9 +1,11 @@
 name: Set up mumcord-plugin
 description: Installs the Rust toolchain with the plugin target and the mumcord-plugin CLI (cached per CLI commit).
 inputs:
-  branch:
-    description: Branch of Mumcord/mumcord the CLI is installed from.
-    default: main
+  ref:
+    description: >-
+      Branch or tag of Mumcord/mumcord the CLI is installed from. Empty: the first line of
+      .github/mumcord-cli-ref.
+    default: ''
 runs:
   using: composite
   steps:
@@ -14,10 +16,16 @@ runs:
       id: cli
       shell: bash
       env:
-        BRANCH: ${{ inputs.branch }}
+        REF: ${{ inputs.ref }}
       run: |
-        commit=$(git ls-remote https://github.com/Mumcord/mumcord.git "refs/heads/$BRANCH" | cut -f1)
-        test -n "$commit" || { echo "::error::branch $BRANCH not found in Mumcord/mumcord"; exit 1; }
+        # The CLI of the 1.1 registry (site-data with v1.1) is not released yet, so it is built from
+        # a branch. The pin moves to the tag v0.7.0 when that release ships (README, "CLI pin").
+        [ -n "$REF" ] || REF=$(head -n 1 "$GITHUB_WORKSPACE/.github/mumcord-cli-ref" | tr -d '[:space:]')
+        test -n "$REF" || { echo "::error::no CLI ref: .github/mumcord-cli-ref is empty"; exit 1; }
+        # `^{}` resolves an annotated tag to its commit; a branch has no such line.
+        commit=$(git ls-remote https://github.com/Mumcord/mumcord.git "refs/heads/$REF" "refs/tags/$REF" "refs/tags/$REF^{}" | tail -n 1 | cut -f1)
+        test -n "$commit" || { echo "::error::$REF not found in Mumcord/mumcord"; exit 1; }
+        echo "Installing mumcord-plugin from $REF ($commit)"
         echo "commit=$commit" >> "$GITHUB_OUTPUT"
     - uses: actions/cache@v4
       id: cache

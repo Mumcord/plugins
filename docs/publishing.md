@@ -63,7 +63,8 @@ folder.
 ## 4. After the merge
 
 The publish workflow rebuilds the package, attaches it to the release `my-plugin-v1.0.0`, signs
-`index.json` and updates the website data at `https://mumcord.github.io/plugins/`. Users see the
+the indexes and updates the website data at `https://mumcord.github.io/plugins/`: `v1/` for Mumcord
+0.6.x (API 1.0 versions only) and `v1.1/` for Mumcord 0.7.0 and newer. Users see the
 plugin in Settings > Plugins > Browse.
 
 ## Updates
