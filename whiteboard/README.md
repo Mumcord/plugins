@@ -14,11 +14,10 @@ PNG, SVG, PDF or a board file (Mumcord/mumcord#397).
   pointer, each with a shortcut letter. Undo and redo only touch your own changes.
 - **Together:** everyone's cursor shows their name, colour and shape, and you see strokes grow
   live.
-- **Needs a relay:** the whiteboard travels only through the server's relay for plugin data or
-  through direct connections between Mumcord users. It does not use Mumble plugin data, so
-  without either you cannot start or load a board: the Apps entry is disabled, `/whiteboard`
-  explains why, and the board page shows a notice. The fix is a server relay or turning on
-  direct connections in Settings → Privacy.
+- **Needs a relay:** the whiteboard travels only through the server's relay for plugin data. It
+  does not use Mumble plugin data, so without a relay you cannot start or load a board: the Apps
+  entry is disabled, `/whiteboard` explains why, and the board page shows a notice ("Whiteboard
+  needs a relay on this server."). The fix is a relay on the server.
 - **Present:** the presenter's view is followed by the others, the laser leaves a fading trail,
   and anyone can stop following. Esc ends presenting.
 - **Side panel:** while something else (say a screen share) is on the stage, the side panel shows
@@ -58,7 +57,7 @@ from this device (only after asking). Export what you want to keep for good.
 | `ui.dialog` | required | Board settings, Saved boards and Describe board dialogs (Export, Post to chat and Clear are drawn inside the board) |
 | `events.presence` | required | Who is in the channel, joins, leaves and the host hand-over |
 | `random.bytes` | required | Random board ids and per-board author keys |
-| `peers.relay` | required | Everything the board sends: changes, joins, snapshots, live strokes, cursors and the laser, over the community relay or direct connections |
+| `peers.relay` | required | Everything the board sends: changes, joins, snapshots, live strokes, cursors and the laser, over the community relay |
 | `ui.side-panel` | optional | The mini view next to a screen share |
 | `events.voice` | optional | A speaking ring on people's cursors |
 | `chat.send` + `chat.supersedes` | optional | The two plain-text lines for standard Mumble clients, hidden for Mumcord users |
@@ -121,7 +120,7 @@ is validated (type, ranges, sizes) before it is used.
 ## Privacy
 
 - No network access at all: no `net.*` permission, no external fonts, scripts or images.
-- The board is end-to-end encrypted on the relay and on direct connections. It never travels as
+- The board is end-to-end encrypted on the relay. It never travels as
   Mumble plugin data, so the server operator cannot read it.
 - Names are Mumble names; exports leave author names out unless you choose them. Cursors are
   only shared while your pointer is over the board.

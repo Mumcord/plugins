@@ -6,4 +6,4 @@ me: {session: 1, name: Alice}
 steps:
   - event: {ui-action: {action: whiteboard, command: true, value: ""}}
   - expect: {dialog: {title: "Couldn't start the whiteboard"}}
-  - expect: {tree: {slot: dialog, text: "Whiteboard needs a relay or direct connections."}}
+  - expect: {tree: {slot: dialog, text: "Whiteboard needs a relay on this server."}}
