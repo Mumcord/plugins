@@ -12,8 +12,13 @@ PNG, SVG, PDF or a board file (Mumcord/mumcord#397).
   Join button). People who join late get the whole board from the others.
 - **Draw:** select and move, pen, highlighter, eraser, shapes, arrow, sticky note, text and laser
   pointer, each with a shortcut letter. Undo and redo only touch your own changes.
-- **Together:** everyone's cursor shows their name, colour and shape; with a relay you see
-  strokes grow live, otherwise they arrive when the pen lifts and cursors show "2 s ago".
+- **Together:** everyone's cursor shows their name, colour and shape, and you see strokes grow
+  live.
+- **Needs a relay:** the whiteboard travels only through the server's relay for plugin data or
+  through direct connections between Mumcord users. It does not use Mumble plugin data, so
+  without either you cannot start or load a board: the Apps entry is disabled, `/whiteboard`
+  explains why, and the board page shows a notice. The fix is a server relay or turning on
+  direct connections in Settings → Privacy.
 - **Present:** the presenter's view is followed by the others, the laser leaves a fading trail,
   and anyone can stop following. Esc ends presenting.
 - **Side panel:** while something else (say a screen share) is on the stage, the side panel shows
@@ -51,10 +56,9 @@ from this device (only after asking). Export what you want to keep for good.
 | `ui.webview` | required | The board is drawn by the plugin's own web page (`web/board/`, no external addresses) |
 | `ui.app-menu` | required | "Start whiteboard" in the Apps menu |
 | `ui.dialog` | required | Board settings, Saved boards and Describe board dialogs (Export, Post to chat and Clear are drawn inside the board) |
-| `peers.messages` | required | Board changes, joins and snapshots over Mumble plugin data |
 | `events.presence` | required | Who is in the channel, joins, leaves and the host hand-over |
 | `random.bytes` | required | Random board ids and per-board author keys |
-| `peers.relay` | optional | Live strokes, smooth cursors, laser and fast loading over the community relay |
+| `peers.relay` | required | Everything the board sends: changes, joins, snapshots, live strokes, cursors and the laser, over the community relay or direct connections |
 | `ui.side-panel` | optional | The mini view next to a screen share |
 | `events.voice` | optional | A speaking ring on people's cursors |
 | `chat.send` + `chat.supersedes` | optional | The two plain-text lines for standard Mumble clients, hidden for Mumcord users |
@@ -63,8 +67,9 @@ from this device (only after asking). Export what you want to keep for good.
 | `files.save` | optional | Saving exports through Mumcord's own save window |
 | `chat.post-image` | optional | Post to chat |
 
-Without an optional permission the matching feature is simply missing: no relay means the slower
-Mumble connection, no side panel means no mini view, no chat lines, no command, no card.
+Without an optional permission the matching feature is simply missing: no side panel means no
+mini view, no chat lines, no command, no card. The plugin does not request `peers.messages`:
+board data never goes through Mumble plugin data.
 
 ## How it works
 
@@ -82,19 +87,19 @@ Every payload is a [Bovnar](https://github.com/sothis/bovnar) document made with
 `bovnar` module: layout version `1` and a message with the kind `k` and the binary body `d`, for
 example `.v=1;.msg={.d="Te&q4…";.k=6;};`. Bovnar has no byte-string type, so the compact binary
 body travels as base-85 text (Z85 alphabet, 4 bytes become 5 characters). Receivers ignore fields
-they do not know. On `peers.messages` the kind also travels as Mumble's plugin data type and the
-document is at most 997 bytes; on the relay it is at most 60 KiB. In the body, integers are
+they do not know. Every message is one document of at most 60 KiB, sent over the relay (the
+community relay or a direct connection). In the body, integers are
 LEB128 varints, coordinates are quarter pixels, author keys 4 bytes, board ids 16 bytes.
 
 | Kind | Name | Content |
 |---|---|---|
-| 0x01 | HELLO | board, author, name and identity, version vector, host flag, joined-at |
+| 0x01 | HELLO | board, author, name and identity, version vector, host flag, joined-at, trailing `direct` byte (1 = sent to one person: an introduction or a resync request; 0 = sent to the channel: a join) |
 | 0x02 | OPS | board, author, a batch of changes (deflated when smaller), last cursor |
 | 0x03 | NEED | board, author, missing sequence range |
 | 0x04 | DIGEST | board, hash of the version vector, total changes |
 | 0x05 | SNAP | board, part / parts, version vector (part 0), deflated state |
 | 0x06 | BOARD | board, title, host, started-at (announce and re-share) |
-| 0x10–0x13 | CURSOR, LIVE, LASER, VIEW | relay only (VIEW also once over Mumble) |
+| 0x10–0x13 | CURSOR, LIVE, LASER, VIEW | live cursor, stroke, laser and view updates |
 | 0x20 | LINE | which plain-text line was posted and its chat line hash |
 
 The plugin and its page talk in JSON (`src/bridge.rs`, `web/board/bridge.js`); every page message
@@ -104,9 +109,7 @@ is validated (type, ranges, sizes) before it is used.
 
 - 5,000 objects and about 4 MiB per board; 2,000 points per stroke; 500 characters per note or
   text, 200 per description, 64 per board title.
-- Without a relay: one board message per 2 seconds (bursts of 3, and short game bursts for
-  snapshots and the laser); with a relay changes go out several times a second within
-  256 kbit/s.
+- Changes go out several times a second within 256 kbit/s.
 - Flood caps per sender: 1,200 messages and 1,000 changes per 10 seconds, the rest is dropped.
 - Saved boards share the plugin's 1 MiB storage; posted pictures and exports are made only after
   a click on the Save or Post button in the board's own Export dialog. Mumcord counts a genuine
@@ -118,8 +121,8 @@ is validated (type, ranges, sizes) before it is used.
 ## Privacy
 
 - No network access at all: no `net.*` permission, no external fonts, scripts or images.
-- With a relay the board is end-to-end encrypted; without one it travels as Mumble plugin data
-  through the server, which its operator can read, like text chat.
+- The board is end-to-end encrypted on the relay and on direct connections. It never travels as
+  Mumble plugin data, so the server operator cannot read it.
 - Names are Mumble names; exports leave author names out unless you choose them. Cursors are
   only shared while your pointer is over the board.
 - Saving and posting go through Mumcord's own windows: the plugin hands over bytes and never sees
