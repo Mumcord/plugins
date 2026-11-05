@@ -1,0 +1,31 @@
+[package]
+name = "skyloom"
+description = "Mumcord plugin: a voice-first party game of describing hidden constellations"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Mumcord/plugins"
+publish = false
+
+# Built on its own, not as part of a larger workspace.
+[workspace]
+
+[lib]
+# cdylib is the plugin module; rlib lets `cargo test` run the logic natively.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Plugin API 1.1 is not released yet; the SDK comes from the Mumcord branch that adds it.
+mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord", branch = "feat/09-host", features = ["1.1"] }
+hmac = "0.13"
+sha2 = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

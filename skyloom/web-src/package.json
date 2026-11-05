@@ -1,0 +1,21 @@
+{
+  "name": "skyloom-web",
+  "private": true,
+  "type": "module",
+  "description": "Builds Skyloom's web/app.js from TypeScript: the loom the plugin shows in the media area, the side panel and its dialog.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --outFile ../target/web-check/app.js && cmp ../target/web-check/app.js ../web/app.js",
+    "lint": "eslint src && prettier --check src ../web/index.html ../web/skyloom.css"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.4"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
