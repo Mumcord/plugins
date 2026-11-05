@@ -1,0 +1,36 @@
+[package]
+name = "whiteboard"
+description = "Mumcord plugin: a shared whiteboard for everyone in a voice channel"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Mumcord/plugins"
+publish = false
+
+# Built on its own, not as part of a larger workspace.
+[workspace]
+
+[lib]
+# cdylib is the plugin module; rlib lets `cargo test` run the logic natively.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Plugin API 1.1 is not released yet: the SDK comes from Mumcord's feat/09-host branch, pinned
+# by Cargo.lock. Switch to the crates.io release once Mumcord 0.7.0 ships.
+mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord.git", branch = "feat/09-host", features = ["1.1"] }
+# Deflate for op batches and snapshots: small, pure Rust, builds for wasm32.
+miniz_oxide = "0.8"
+# The page bridge speaks JSON; both already come with the SDK.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

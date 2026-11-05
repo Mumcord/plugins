@@ -1,0 +1,9 @@
+# Board data only travels over Mumcord's relay. This mock host has none, so /whiteboard does not
+# start a stage but explains what is missing instead of failing silently.
+name: /whiteboard explains that it needs a relay
+grant: [ui.stage, ui.webview, ui.app-menu, ui.dialog, peers.relay, events.presence, random.bytes, commands]
+me: {session: 1, name: Alice}
+steps:
+  - event: {ui-action: {action: whiteboard, command: true, value: ""}}
+  - expect: {dialog: {title: "Couldn't start the whiteboard"}}
+  - expect: {tree: {slot: dialog, text: "Whiteboard needs a relay on this server."}}
