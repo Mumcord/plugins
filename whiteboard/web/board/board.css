@@ -112,8 +112,6 @@ button { font: inherit; }
 .wb-cursor__label { position: absolute; left: 14px; top: 16px; display: inline-flex; gap: 5px; align-items: center; padding: 1px 8px 1px 6px; border-radius: var(--radius-full);
   background: var(--c); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 4px rgb(0 0 0 / 35%); }
 .wb-cursor__tag { font-weight: 500; opacity: 0.92; padding-left: 5px; border-left: 1px solid rgb(255 255 255 / 55%); }
-.wb-cursor--stale { opacity: 0.7; }
-.wb-cursor--stale .wb-cursor__label { left: 0; top: 0; background: color-mix(in srgb, var(--c) 75%, #777); }
 .wb-cursor--mini .wb-cursor__arrow { width: 12px; height: 13px; }
 .wb-cursor--mini .wb-cursor__label { left: 8px; top: 10px; font-size: 9px; padding: 0 5px 0 4px; }
 .wb-cursor--mini .wb-cursor__label svg { width: 8px; height: 8px; }
@@ -185,7 +183,7 @@ button { font: inherit; }
 .wb-queue__bar { width: 90px; height: 6px; border-radius: 3px; background: var(--wb-chrome-border); overflow: hidden; }
 .wb-queue__bar i { display: block; height: 100%; background: var(--wb-accent); transition: width 200ms; }
 
-/* No-relay notice: a strip between the stage header and the board, so it never covers drawings. */
+/* Blocking notice without a relay: a strip between the stage header and the board, so it never covers drawings. */
 .wb-strip { display: flex; flex: none; gap: var(--space-3); align-items: center; padding: 6px var(--space-3); border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 55%, transparent);
   background: color-mix(in srgb, var(--color-warning) 14%, var(--color-bg-elevated)); color: var(--color-text); font-size: var(--font-size-sm); }
 .wb-strip svg { flex: none; color: var(--color-warning); }

@@ -54,11 +54,10 @@ test("outline describes objects for screen readers in reading order", () => {
 });
 
 test("peers are validated", () => {
-  const list = normalizePeers([{ author: 3, name: "Zoe", shape: 9, color: 2, cursor: [1, 2], ago: 4, status: "typing" }, { name: "no author" }, null]);
+  const list = normalizePeers([{ author: 3, name: "Zoe", shape: 9, color: 2, cursor: [1, 2], status: "typing" }, { name: "no author" }, null]);
   assert.equal(list.length, 1);
   assert.equal(list[0].shape, 0);
   assert.deepEqual(list[0].cursor, [1, 2]);
-  assert.equal(list[0].ago, 4);
   assert.deepEqual(normalizePeers("x"), []);
   assert.equal(normalizePeers([{ author: 1, cursor: [1, Number.NaN] }])[0].cursor, null);
   assert.equal(personColour(0), "#0b6fb8");

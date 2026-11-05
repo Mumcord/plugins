@@ -1,5 +1,5 @@
 // The stage's controls: tool column, context bar, history/zoom, board actions, presenter banner
-// and bar, no-relay strip, queue chip, outline and help. State lives in `app`; user actions call
+// and bar, relay-required strip, queue chip, outline and help. State lives in `app`; user actions call
 // back into `act`, which turns them into bridge messages.
 
 import { el, icon, roving, setTabStop, shapeGlyph } from "./dom.js";
@@ -355,7 +355,10 @@ export function createChrome(app, act) {
     if (s.saved) saved.replaceChildren(icon(ICONS.check, 12), document.createTextNode(` ${s.saved}`));
     // Queue chip: "Sending n strokes…" with a bar that fills as the queue drains; also loading progress.
     const queue = $("queue");
-    if (s.loading !== null) {
+    if (!s.relay) {
+      // The strip blocks the board; there is nothing loading or queued behind it.
+      queue.hidden = true;
+    } else if (s.loading !== null) {
       queue.hidden = false;
       $("queue-text").textContent = app.t("loading", { n: s.loading });
       $("queue-bar").style.width = `${s.loading}%`;

@@ -2,19 +2,23 @@
 //!
 //! A [`Session`] is one opened board. It never calls the host: the glue feeds it local edits,
 //! incoming messages, presence snapshots and timer ticks, and carries out the returned
-//! [`Outgoing`] list (send on `peers.messages` or the relay, start a game burst, update the page).
+//! [`Outgoing`] list (send on the relay, update the page).
+//!
+//! Board data only travels through Mumcord's relay (`peers.relay`: the community relay or a
+//! direct peer-to-peer connection), never as Mumble plugin data: a board is too large and too
+//! busy for Mumble's plugin-data rate. While the relay is unavailable nothing is sent; own ops
+//! wait in the queue and go out once it is back.
 //!
 //! How it keeps everyone on the same board:
 //! - Own ops are logged and queued. Unsent field writes that a newer own op overwrites are
-//!   stripped (coalescing), then the queue goes out as OPS: over the relay every 50 ms (at most
-//!   20 messages per second), otherwise packed into 997-byte messages at the `peers.messages`
-//!   rate (1 per 2 s, burst 3). Without a relay each OPS carries the sender's last cursor.
+//!   stripped (coalescing), then the queue goes out as OPS every 50 ms (at most 20 messages per
+//!   second) within the relay budget.
 //! - A joiner sends HELLO with its version vector. The participant who has been on the board the
-//!   longest answers with SNAP: the state delta since that vector, sent directly to the joiner
-//!   (using a game burst when it is long and there is no relay). If nothing arrived after 3 s the
-//!   joiner repeats HELLO, and the second-longest participant answers too. Every participant also
-//!   introduces itself with a direct HELLO; the joiner answers that with whatever its own older
-//!   copy holds that the participant lacks, so older copies merge in.
+//!   longest answers with SNAP: the state delta since that vector, sent directly to the joiner.
+//!   If nothing arrived after 3 s the joiner repeats HELLO, and the second-longest participant
+//!   answers too. Every participant also introduces itself with a direct HELLO; the joiner
+//!   answers that with whatever its own older copy holds that the participant lacks, so older
+//!   copies merge in.
 //! - A receiver that sees a seq gap asks the author with NEED; the author resends the ops to the
 //!   channel. A DIGEST (hash of the version vector) goes out every 30 s and after a reconnect;
 //!   on a mismatch the side with fewer ops asks the other for a delta with a direct HELLO.
@@ -34,20 +38,15 @@
 //!   they come from a participant that already filtered them.
 //! - SNAP is always sent directly: a delta is only complete for the vector it was computed
 //!   from, so it is accepted only from sessions this replica asked (or introduced itself to).
-//! - Control messages (HELLO, NEED, BOARD) use the relay when it is available, except direct
-//!   HELLOs (introductions and resync requests) and DIGEST, which always use `peers.messages`:
-//!   relay events carry no "direct" flag, and a peer without the relay still notices a
-//!   mismatch through the digest. Answers use the transport the request came on.
-//! - An own op too large for `peers.messages` is skipped without a relay; receivers notice the
-//!   gap and heal it with a resync (state delta).
+//! - Relay events carry no "direct" flag, so a HELLO says itself whether it was sent directly
+//!   (an introduction or a resync request) or to the channel (a join).
 //! - Flood caps: per sender at most [`FLOOD_MSGS`] messages and [`FLOOD_OPS`] ops per 10 s; the
 //!   rest is dropped and counted ([`Session::dropped`]).
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use crate::codec::{
-    self, BoardId, BoardMsg, Cursor, Digest, Hello, KIND_OPS, KIND_SNAP, KIND_VIEW, Laser, Live,
-    Msg, Need, OpsMsg, Snap, Transport, View,
+    self, BoardId, BoardMsg, Cursor, Digest, Hello, Laser, Live, Msg, Need, OpsMsg, Snap, View,
 };
 use crate::model::{
     AuthorInfo, AuthorKey, Board, BoardField, Body, Edit, Fields, Host, MAX_TITLE_CHARS, ObjId,
@@ -57,13 +56,6 @@ use crate::model::{
 /// A Mumble session id as the host reports it.
 pub type SessionId = u32;
 
-/// `peers.messages`: one message per 2 s sustained, burst 3.
-const PEERS_COST_MS: u64 = 2_000;
-const PEERS_CAP_MS: u64 = 3 * PEERS_COST_MS;
-/// A game burst: 4 messages per second for 10 s, at most once per minute.
-const BURST_RATE: usize = 4;
-const BURST_MS: u64 = 10_000;
-const BURST_EVERY_MS: u64 = 60_000;
 /// Relay: 256 kbit/s sustained with a 1 MiB burst.
 const RELAY_BYTES_PER_MS: u64 = 32;
 const RELAY_CAP_BYTES: u64 = 1 << 20;
@@ -72,14 +64,6 @@ const CURSOR_EVERY_MS: u64 = 66;
 const LIVE_EVERY_MS: u64 = 50;
 const LASER_EVERY_MS: u64 = 50;
 const VIEW_EVERY_MS: u64 = 200;
-/// Without a relay: the laser shares the game burst with everything else.
-const PEERS_LASER_EVERY_MS: u64 = 500;
-/// Without a relay the presenter's view goes out once it has stopped moving.
-const VIEW_SETTLE_MS: u64 = 1_000;
-/// Without a relay an idle cursor rides on an empty OPS at most this often.
-const IDLE_CURSOR_EVERY_MS: u64 = 5_000;
-/// A pause in laser input longer than this counts as a new "laser on".
-const LASER_PRESS_GAP_MS: u64 = 1_000;
 const DIGEST_EVERY_MS: u64 = 30_000;
 const HELLO_RETRY_MS: u64 = 3_000;
 const LOADING_GIVE_UP_MS: u64 = 6_000;
@@ -110,8 +94,6 @@ const MAX_GAPS: usize = 64;
 const MAX_LIVE_STROKES: usize = 4;
 /// How many unsent own ops coalescing looks back at.
 const COALESCE_WINDOW: usize = 64;
-/// Snapshots with more parts than this ask for a game burst.
-const SNAP_BURST_PARTS: usize = 3;
 
 /// Where a message goes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -182,17 +164,7 @@ pub enum Ui {
 /// What the glue has to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outgoing {
-    PeersSend {
-        kind: u8,
-        payload: Vec<u8>,
-        target: Target,
-    },
-    RelaySend {
-        payload: Vec<u8>,
-        target: Target,
-    },
-    /// Call `peers.start-game-burst` and report the result with [`Session::game_burst_result`].
-    StartGameBurst,
+    RelaySend { payload: Vec<u8>, target: Target },
     Ui(Ui),
 }
 
@@ -250,8 +222,6 @@ pub struct PeerView {
     pub shape: u8,
     pub color: u8,
     pub cursor: Option<(i32, i32)>,
-    /// Seconds since the cursor last moved; only without a relay ("2 s ago").
-    pub ago_s: Option<u64>,
     pub status: u8,
     pub host: bool,
     pub can_draw: bool,
@@ -263,7 +233,6 @@ struct PeerCursor {
     x: i32,
     y: i32,
     status: u8,
-    at: u64,
 }
 
 #[derive(Debug)]
@@ -306,73 +275,8 @@ impl Peer {
     }
 }
 
-/// `peers.messages` budget as documented by the host, plus the game burst.
-#[derive(Debug)]
-struct Limiter {
-    credit: u64,
-    at: u64,
-    burst_until: u64,
-    window: VecDeque<u64>,
-}
-
-impl Limiter {
-    fn new(now: u64) -> Limiter {
-        Limiter {
-            credit: PEERS_CAP_MS,
-            at: now,
-            burst_until: 0,
-            window: VecDeque::new(),
-        }
-    }
-
-    fn refill(&mut self, now: u64) {
-        if now > self.at {
-            self.credit = (self.credit + (now - self.at)).min(PEERS_CAP_MS);
-            self.at = now;
-        }
-    }
-
-    fn in_burst(&self, now: u64) -> bool {
-        now < self.burst_until
-    }
-
-    fn can_send(&mut self, now: u64) -> bool {
-        self.refill(now);
-        if self.in_burst(now) {
-            while self.window.front().is_some_and(|&t| now - t >= 1_000) {
-                self.window.pop_front();
-            }
-            self.window.len() < BURST_RATE
-        } else {
-            self.credit >= PEERS_COST_MS
-        }
-    }
-
-    /// Burst messages drain the normal bucket too, so whatever the host counts, the rate after
-    /// the burst stays within the sustained limit.
-    fn sent(&mut self, now: u64) {
-        self.credit = self.credit.saturating_sub(PEERS_COST_MS);
-        if self.in_burst(now) {
-            self.window.push_back(now);
-        }
-    }
-
-    fn full(&mut self, now: u64) -> bool {
-        self.refill(now);
-        !self.in_burst(now) && self.credit == PEERS_CAP_MS
-    }
-}
-
-#[derive(Debug, Default)]
-struct Burst {
-    wanted: bool,
-    requested: bool,
-    last_try: Option<u64>,
-}
-
 struct SnapOut {
     to: SessionId,
-    transport: Transport,
     parts: VecDeque<Vec<u8>>,
 }
 
@@ -416,7 +320,6 @@ struct LocalCursor {
     status: u8,
     tool: u8,
     dirty: bool,
-    idle_dirty: bool,
 }
 
 struct LiveOut {
@@ -431,9 +334,7 @@ struct ViewOut {
     x: i32,
     y: i32,
     zoom: u32,
-    changed_at: u64,
-    relay_dirty: bool,
-    peers_dirty: bool,
+    dirty: bool,
 }
 
 /// A participant on the board, for ranking and host election.
@@ -459,21 +360,15 @@ pub struct Session {
     following: bool,
     own_log: BTreeMap<u32, Op>,
     unsent: VecDeque<u32>,
-    resend_peers: BTreeSet<u32>,
     resend_relay: BTreeSet<u32>,
-    peers_ctrl: VecDeque<(u8, Vec<u8>, Target)>,
     relay_ctrl: VecDeque<(Vec<u8>, Target)>,
     snap_out: VecDeque<SnapOut>,
-    limiter: Limiter,
     relay_credit: u64,
     relay_at: u64,
-    burst: Burst,
     last_relay_ops: u64,
     last_relay_resend: u64,
     last_cursor: u64,
-    last_idle_cursor: u64,
     last_laser: u64,
-    last_laser_input: Option<u64>,
     last_view: u64,
     cursor: Option<LocalCursor>,
     live: BTreeMap<u16, LiveOut>,
@@ -492,7 +387,6 @@ pub struct Session {
     peers_dirty: bool,
     added: BTreeMap<AuthorKey, u32>,
     last_added: u64,
-    last_ago: u64,
     last_status: Option<Status>,
     last_host: Option<AuthorKey>,
     last_presenter: Option<AuthorKey>,
@@ -547,13 +441,6 @@ fn neutral(op: &Op) -> Op {
     }
 }
 
-fn encode_for(msg: &Msg, t: Transport) -> Option<Vec<u8>> {
-    match t {
-        Transport::Peers => codec::encode_peers(msg).ok().map(|(_, p)| p),
-        Transport::Relay => codec::encode_relay(msg).ok(),
-    }
-}
-
 impl Session {
     /// `board` is the replica to start from: empty, or the local saved copy.
     pub fn new(cfg: Config, board: Board, now_ms: u64) -> Session {
@@ -573,21 +460,15 @@ impl Session {
             following: false,
             own_log: BTreeMap::new(),
             unsent: VecDeque::new(),
-            resend_peers: BTreeSet::new(),
             resend_relay: BTreeSet::new(),
-            peers_ctrl: VecDeque::new(),
             relay_ctrl: VecDeque::new(),
             snap_out: VecDeque::new(),
-            limiter: Limiter::new(now_ms),
             relay_credit: RELAY_CAP_BYTES,
             relay_at: now_ms,
-            burst: Burst::default(),
             last_relay_ops: 0,
             last_relay_resend: 0,
             last_cursor: 0,
-            last_idle_cursor: 0,
             last_laser: 0,
-            last_laser_input: None,
             last_view: 0,
             cursor: None,
             live: BTreeMap::new(),
@@ -606,7 +487,6 @@ impl Session {
             peers_dirty: false,
             added: BTreeMap::new(),
             last_added: now_ms,
-            last_ago: now_ms,
             last_status: None,
             last_host: None,
             last_presenter: None,
@@ -685,10 +565,6 @@ impl Session {
                     shape: info.map_or(0, |i| i.shape),
                     color: info.map_or(0, |i| i.color),
                     cursor: p.cursor.map(|c| (c.x, c.y)),
-                    ago_s: p
-                        .cursor
-                        .filter(|_| !self.relay)
-                        .map(|c| self.now.saturating_sub(c.at) / 1_000),
                     status: p.cursor.map_or(0, |c| c.status),
                     host: host == Some(author),
                     can_draw: self.can_draw(author, p.key.as_deref()),
@@ -774,7 +650,7 @@ impl Session {
             host: self.effective_host().unwrap_or(self.me),
             started_ms,
         });
-        self.send_ctrl(&msg, Target::Channel, self.ctrl_transport());
+        self.send_ctrl(&msg, Target::Channel);
         self.flush()
     }
 
@@ -936,7 +812,6 @@ impl Session {
             status: status.min(3),
             tool,
             dirty: true,
-            idle_dirty: true,
         });
         self.flush()
     }
@@ -971,18 +846,10 @@ impl Session {
         self.flush()
     }
 
-    /// Laser trail points (quarter pixels). Without a relay a new "laser on" asks for a game
-    /// burst and the trail only goes out during it.
+    /// Laser trail points (quarter pixels).
     pub fn local_laser(&mut self, points: &[(i32, i32)], now: u64) -> Vec<Outgoing> {
         self.now = now;
         if self.may_laser(self.me, self.info.cert_key.as_deref()) {
-            let new_press = self
-                .last_laser_input
-                .is_none_or(|t| now.saturating_sub(t) > LASER_PRESS_GAP_MS);
-            self.last_laser_input = Some(now);
-            if new_press && !self.relay {
-                self.burst.wanted = true;
-            }
             self.laser.extend_from_slice(points);
             if self.laser.len() > codec::MAX_LASER_POINTS {
                 self.laser
@@ -1000,9 +867,7 @@ impl Session {
                 x,
                 y,
                 zoom: zoom_permille,
-                changed_at: now,
-                relay_dirty: true,
-                peers_dirty: true,
+                dirty: true,
             });
         }
         self.flush()
@@ -1044,28 +909,11 @@ impl Session {
         self.flush()
     }
 
-    /// A `peer-message` event.
-    pub fn on_peer_message(
-        &mut self,
-        from: &PeerInfo,
-        kind: u8,
-        payload: &[u8],
-        direct: bool,
-        now: u64,
-    ) -> Vec<Outgoing> {
-        self.now = now;
-        match codec::decode_peers(kind, payload) {
-            Ok(msg) => self.receive(from, msg, direct, Transport::Peers),
-            Err(_) => self.dropped += 1,
-        }
-        self.flush()
-    }
-
     /// A `relay-message` event.
     pub fn on_relay_message(&mut self, from: &PeerInfo, payload: &[u8], now: u64) -> Vec<Outgoing> {
         self.now = now;
         match codec::decode_relay(payload) {
-            Ok(msg) => self.receive(from, msg, false, Transport::Relay),
+            Ok(msg) => self.receive(from, msg),
             Err(_) => self.dropped += 1,
         }
         self.flush()
@@ -1092,13 +940,6 @@ impl Session {
                 })));
             }
         }
-        if !self.relay
-            && now.saturating_sub(self.last_ago) >= 1_000
-            && self.peers.values().any(|p| p.cursor.is_some())
-        {
-            self.last_ago = now;
-            self.peers_dirty = true;
-        }
         self.expect.retain(|_, until| *until > now);
         self.flush()
     }
@@ -1107,25 +948,20 @@ impl Session {
         self.now = now;
         if self.relay != on {
             self.relay = on;
-            if !on {
+            if on {
+                // Whatever went missing meanwhile: introduce again and compare digests.
+                self.send_hello(Target::Channel, false);
+                self.send_digest();
+                self.last_digest = now;
+            } else {
+                // Stale by the time the relay is back; the digest heals what they carried.
                 self.relay_ctrl.clear();
                 self.live.clear();
-                let moved = std::mem::take(&mut self.resend_relay);
-                self.resend_peers.extend(moved);
-                self.snap_out.retain(|o| o.transport == Transport::Peers);
+                self.laser.clear();
+                self.snap_out.clear();
+                self.resend_relay.clear();
             }
             self.peers_dirty = true;
-        }
-        self.flush()
-    }
-
-    /// The result of `peers.start-game-burst` after [`Outgoing::StartGameBurst`].
-    pub fn game_burst_result(&mut self, ok: bool, now: u64) -> Vec<Outgoing> {
-        self.now = now;
-        self.burst.requested = false;
-        self.burst.wanted = false;
-        if ok {
-            self.limiter.burst_until = now + BURST_MS;
         }
         self.flush()
     }
@@ -1349,7 +1185,7 @@ impl Session {
 
     // ---- receiving -----------------------------------------------------------------------------
 
-    fn receive(&mut self, from: &PeerInfo, msg: Msg, direct: bool, t: Transport) {
+    fn receive(&mut self, from: &PeerInfo, msg: Msg) {
         if from.session == self.my_session || !self.touch_peer(from) {
             self.dropped += 1;
             return;
@@ -1357,9 +1193,9 @@ impl Session {
         let s = from.session;
         match msg {
             Msg::Board(b) => self.out.push(Outgoing::Ui(Ui::BoardSeen(b))),
-            Msg::Hello(h) if h.board == self.id => self.on_hello(s, h, direct, t),
+            Msg::Hello(h) if h.board == self.id => self.on_hello(s, h),
             Msg::Ops(m) if m.board == self.id => self.on_ops(s, m),
-            Msg::Need(n) if n.board == self.id => self.on_need(n, t),
+            Msg::Need(n) if n.board == self.id => self.on_need(n),
             Msg::Digest(d) if d.board == self.id => self.on_digest(s, d),
             Msg::Snap(sn) if sn.board == self.id => self.on_snap(s, sn),
             Msg::Cursor(c) => {
@@ -1417,14 +1253,8 @@ impl Session {
     }
 
     fn set_peer_cursor(&mut self, s: SessionId, author: AuthorKey, x: i32, y: i32, status: u8) {
-        let now = self.now;
         if let Some(p) = self.peers.get_mut(&s) {
-            p.cursor = Some(PeerCursor {
-                x,
-                y,
-                status,
-                at: now,
-            });
+            p.cursor = Some(PeerCursor { x, y, status });
             self.out.push(Outgoing::Ui(Ui::Cursor {
                 author,
                 x,
@@ -1434,7 +1264,7 @@ impl Session {
         }
     }
 
-    fn on_hello(&mut self, s: SessionId, h: Hello, direct: bool, t: Transport) {
+    fn on_hello(&mut self, s: SessionId, h: Hello) {
         if !self.bind(s, h.author, true) {
             self.dropped += 1;
             return;
@@ -1451,13 +1281,13 @@ impl Session {
                 .push(Outgoing::Ui(Ui::Announce(Announce::Joined(h.author))));
             self.peers_dirty = true;
         }
-        if direct {
+        if h.direct {
             self.answer_direct_hello(s, &h.vv);
             return;
         }
         if new_participant {
             // Introduce myself so the joiner learns my rank and can push its older copy.
-            self.send_hello(Target::Direct(s), Transport::Peers);
+            self.send_hello(Target::Direct(s), true);
             self.expect_from(s);
         }
         let retry = prev.is_some_and(|t0| {
@@ -1466,7 +1296,7 @@ impl Session {
         });
         let rank = self.my_rank(s);
         if rank == 0 || (retry && rank == 1) {
-            self.queue_snapshot(s, &h.vv, false, t);
+            self.queue_snapshot(s, &h.vv, false);
         }
     }
 
@@ -1475,8 +1305,8 @@ impl Session {
     fn answer_direct_hello(&mut self, s: SessionId, vv: &Vv) {
         let mine = self.board.vv().get(&self.me).copied().unwrap_or(0);
         let theirs = vv.get(&self.me).copied().unwrap_or(0);
-        let own_in_log = theirs >= mine || self.queue_resend(theirs + 1, mine, Transport::Peers);
-        self.queue_snapshot(s, vv, own_in_log, Transport::Peers);
+        let own_in_log = theirs >= mine || self.queue_resend(theirs + 1, mine);
+        self.queue_snapshot(s, vv, own_in_log);
         if !vv_le(vv, self.board.vv()) && self.loading.is_none() {
             self.resync_with(s);
         }
@@ -1535,11 +1365,11 @@ impl Session {
         }
     }
 
-    fn on_need(&mut self, n: Need, t: Transport) {
+    fn on_need(&mut self, n: Need) {
         if n.author != self.me || n.from_seq == 0 || n.from_seq > n.to_seq {
             return;
         }
-        if !self.queue_resend(n.from_seq, n.to_seq, t) {
+        if !self.queue_resend(n.from_seq, n.to_seq) {
             // Not in the log (too old or too large): the requester resyncs with a state delta.
             self.dropped += 1;
         }
@@ -1556,8 +1386,8 @@ impl Session {
 
     fn on_snap(&mut self, s: SessionId, sn: Snap) {
         let now = self.now;
-        // A transfer that started while expected may take longer than the expectation (a long
-        // snapshot without a relay spans several game bursts); the stall timeout ends it instead.
+        // A transfer that started while expected may take longer than the expectation (a large
+        // board on a busy relay); the stall timeout ends it instead.
         let expected = self.expect_any_until > now
             || self.expect.get(&s).is_some_and(|&u| u > now)
             || self.inbound.contains_key(&s);
@@ -1629,7 +1459,7 @@ impl Session {
     // ---- timers --------------------------------------------------------------------------------
 
     fn join(&mut self) {
-        self.send_hello(Target::Channel, self.ctrl_transport());
+        self.send_hello(Target::Channel, false);
         self.loading = Some(Loading {
             since: self.now,
             retried: false,
@@ -1650,7 +1480,7 @@ impl Session {
             l.retried = true;
             l.since = now;
             self.expect_any_until = now + EXPECT_SNAP_MS;
-            self.send_hello(Target::Channel, self.ctrl_transport());
+            self.send_hello(Target::Channel, false);
         } else if l.retried && idle >= LOADING_GIVE_UP_MS - HELLO_RETRY_MS {
             self.loading = None;
         }
@@ -1714,7 +1544,7 @@ impl Session {
                 from_seq,
                 to_seq,
             });
-            self.send_ctrl(&msg, Target::Direct(s), self.ctrl_transport());
+            self.send_ctrl(&msg, Target::Direct(s));
         }
         if resync && let Some(s) = self.participants().iter().find_map(|p| p.session) {
             self.resync_with(s);
@@ -1723,15 +1553,7 @@ impl Session {
 
     // ---- sending -------------------------------------------------------------------------------
 
-    fn ctrl_transport(&self) -> Transport {
-        if self.relay {
-            Transport::Relay
-        } else {
-            Transport::Peers
-        }
-    }
-
-    fn send_hello(&mut self, target: Target, t: Transport) {
+    fn send_hello(&mut self, target: Target, direct: bool) {
         let msg = Msg::Hello(Hello {
             board: self.id,
             author: self.me,
@@ -1739,8 +1561,9 @@ impl Session {
             vv: self.board.vv().clone(),
             host: self.is_host(self.me),
             joined_at_ms: self.joined_at,
+            direct,
         });
-        self.send_ctrl(&msg, target, t);
+        self.send_ctrl(&msg, target);
     }
 
     fn send_digest(&mut self) {
@@ -1749,7 +1572,7 @@ impl Session {
             vv_hash: vv_hash(self.board.vv()),
             total_ops: self.board.total_ops(),
         });
-        self.send_ctrl(&msg, Target::Channel, Transport::Peers);
+        self.send_ctrl(&msg, Target::Channel);
     }
 
     /// Asks `s` for what it has and I lack (direct HELLO), at most every 20 s per peer.
@@ -1767,7 +1590,7 @@ impl Session {
             self.last_resync.retain(|s, _| peers.contains_key(s));
         }
         self.last_resync.insert(s, now);
-        self.send_hello(Target::Direct(s), Transport::Peers);
+        self.send_hello(Target::Direct(s), true);
         self.expect_from(s);
     }
 
@@ -1777,41 +1600,17 @@ impl Session {
         }
     }
 
-    fn send_ctrl(&mut self, msg: &Msg, target: Target, t: Transport) {
-        // Newer HELLO, DIGEST and VIEW replace a queued one to the same target.
-        let replaces = matches!(msg, Msg::Hello(_) | Msg::Digest(_) | Msg::View(_));
-        match t {
-            Transport::Peers => match codec::encode_peers(msg) {
-                Ok((kind, payload)) => {
-                    if replaces {
-                        self.peers_ctrl.retain(|q| !(q.0 == kind && q.2 == target));
-                    } else if self
-                        .peers_ctrl
-                        .iter()
-                        .any(|q| q.0 == kind && q.1 == payload && q.2 == target)
-                    {
-                        return;
-                    }
-                    if self.peers_ctrl.len() >= MAX_CTRL {
-                        self.dropped += 1;
-                        return;
-                    }
-                    self.peers_ctrl.push_back((kind, payload, target));
-                }
-                Err(_) if self.relay => self.send_ctrl(msg, target, Transport::Relay),
-                Err(_) => self.dropped += 1,
-            },
-            Transport::Relay => match codec::encode_relay(msg) {
-                Ok(payload) if self.relay_ctrl.len() < MAX_CTRL => {
-                    self.relay_ctrl.push_back((payload, target));
-                }
-                _ => self.dropped += 1,
-            },
+    fn send_ctrl(&mut self, msg: &Msg, target: Target) {
+        match codec::encode_relay(msg) {
+            Ok(payload) if self.relay_ctrl.len() < MAX_CTRL => {
+                self.relay_ctrl.push_back((payload, target));
+            }
+            _ => self.dropped += 1,
         }
     }
 
     /// Queues own ops `from..=to` for a resend to the channel. False if some are not in the log.
-    fn queue_resend(&mut self, from: u32, to: u32, t: Transport) -> bool {
+    fn queue_resend(&mut self, from: u32, to: u32) -> bool {
         let to = to.min(from.saturating_add(MAX_RESEND - 1));
         let first_unsent = self.unsent.front().copied().unwrap_or(u32::MAX);
         let mut complete = true;
@@ -1823,10 +1622,7 @@ impl Session {
                 complete = false;
                 continue;
             }
-            match t {
-                Transport::Relay if self.relay => self.resend_relay.insert(seq),
-                _ => self.resend_peers.insert(seq),
-            };
+            self.resend_relay.insert(seq);
         }
         complete
     }
@@ -1834,12 +1630,7 @@ impl Session {
     /// Queues a direct SNAP with the state `to` lacks given its vector `base`. With
     /// `exclude_own` my own ops are left out (they go as OPS) and nothing is sent if that leaves
     /// the delta empty.
-    fn queue_snapshot(&mut self, to: SessionId, base: &Vv, exclude_own: bool, t: Transport) {
-        let t = if t == Transport::Relay && !self.relay {
-            Transport::Peers
-        } else {
-            t
-        };
+    fn queue_snapshot(&mut self, to: SessionId, base: &Vv, exclude_own: bool) {
         let mut from = base.clone();
         let mut claim = self.board.vv().clone();
         if exclude_own {
@@ -1859,26 +1650,19 @@ impl Session {
             return;
         }
         let parts = codec::encode_delta(&writes)
-            .and_then(|data| codec::snap_messages(&self.id, &claim, &data, t));
+            .and_then(|data| codec::snap_messages(&self.id, &claim, &data));
         let Ok(parts) = parts else {
             self.dropped += 1;
             return;
         };
         let parts: VecDeque<Vec<u8>> = parts
             .into_iter()
-            .filter_map(|p| encode_for(&Msg::Snap(p), t))
+            .filter_map(|p| codec::encode_relay(&Msg::Snap(p)).ok())
             .collect();
         if self.snap_out.len() >= MAX_SNAP_OUT {
             self.snap_out.pop_front();
         }
-        if t == Transport::Peers && parts.len() > SNAP_BURST_PARTS {
-            self.burst.wanted = true;
-        }
-        self.snap_out.push_back(SnapOut {
-            to,
-            transport: t,
-            parts,
-        });
+        self.snap_out.push_back(SnapOut { to, parts });
         self.expect_from(to);
     }
 
@@ -1972,126 +1756,17 @@ impl Session {
     }
 
     fn pump(&mut self) {
-        let now = self.now;
         if self.relay {
             self.pump_relay();
         }
-        // While a burst is being started, wait for its result: messages sent after the request
-        // count against the burst at the host.
-        while !self.burst.requested && self.limiter.can_send(now) {
-            let Some((kind, payload, target)) = self.next_peers_msg() else {
-                break;
-            };
-            self.limiter.sent(now);
-            self.out.push(Outgoing::PeersSend {
-                kind,
-                payload,
-                target,
-            });
-        }
-        // Asked only once the normal budget is used up: the burst replaces the rate, so the
-        // tokens left before it would otherwise be wasted.
-        if self.burst.wanted
-            && !self.burst.requested
-            && !self.limiter.in_burst(now)
-            && self
-                .burst
-                .last_try
-                .is_none_or(|t| now.saturating_sub(t) >= BURST_EVERY_MS)
-        {
-            self.burst.requested = true;
-            self.burst.last_try = Some(now);
-            self.out.push(Outgoing::StartGameBurst);
-        }
-    }
-
-    /// The next `peers.messages` payload by priority: control, own ops, laser (in a burst),
-    /// snapshot parts, resends, presenter view, idle cursor.
-    fn next_peers_msg(&mut self) -> Option<(u8, Vec<u8>, Target)> {
-        let now = self.now;
-        if let Some(m) = self.peers_ctrl.pop_front() {
-            return Some(m);
-        }
-        if !self.relay
-            && let Some(p) = self.take_ops(false, Transport::Peers)
-        {
-            if let Some(c) = &mut self.cursor {
-                c.idle_dirty = false;
-            }
-            return Some((KIND_OPS, p, Target::Channel));
-        }
-        if !self.relay
-            && self.limiter.in_burst(now)
-            && !self.laser.is_empty()
-            && now.saturating_sub(self.last_laser) >= PEERS_LASER_EVERY_MS
-            && let Some(p) = self.laser_payload(Transport::Peers)
-        {
-            self.last_laser = now;
-            return Some((codec::KIND_LASER, p, Target::Channel));
-        }
-        while let Some(o) = self
-            .snap_out
-            .iter_mut()
-            .find(|o| o.transport == Transport::Peers)
-        {
-            let to = o.to;
-            if let Some(p) = o.parts.pop_front() {
-                return Some((KIND_SNAP, p, Target::Direct(to)));
-            }
-            self.snap_out.retain(|o| !o.parts.is_empty());
-        }
-        if let Some(p) = self.take_ops(true, Transport::Peers) {
-            return Some((KIND_OPS, p, Target::Channel));
-        }
-        if !self.relay
-            && let Some(v) = &mut self.view
-            && v.peers_dirty
-            && now.saturating_sub(v.changed_at) >= VIEW_SETTLE_MS
-        {
-            v.peers_dirty = false;
-            let msg = Msg::View(View {
-                author: self.me,
-                x: v.x,
-                y: v.y,
-                zoom_permille: v.zoom,
-            });
-            if let Ok((_, p)) = codec::encode_peers(&msg) {
-                return Some((KIND_VIEW, p, Target::Channel));
-            }
-        }
-        if !self.relay
-            && self.cursor.is_some_and(|c| c.idle_dirty)
-            && now.saturating_sub(self.last_idle_cursor) >= IDLE_CURSOR_EVERY_MS
-            && self.limiter.full(now)
-        {
-            self.last_idle_cursor = now;
-            let cursor = self.cursor.map(|c| (c.x, c.y));
-            if let Some(c) = &mut self.cursor {
-                c.idle_dirty = false;
-            }
-            let msg = Msg::Ops(OpsMsg {
-                board: self.id,
-                author: self.me,
-                ops: Vec::new(),
-                cursor,
-            });
-            if let Ok((_, p)) = codec::encode_peers(&msg) {
-                return Some((KIND_OPS, p, Target::Channel));
-            }
-        }
-        None
     }
 
     /// Packs the next own ops (the unsent queue, or resends) into one OPS payload. Ops too large
     /// for the transport are skipped; receivers heal the gap with a state delta.
-    fn take_ops(&mut self, resend: bool, t: Transport) -> Option<Vec<u8>> {
+    fn take_ops(&mut self, resend: bool) -> Option<Vec<u8>> {
         loop {
             let seqs: Vec<u32> = if resend {
-                let set = match t {
-                    Transport::Peers => &self.resend_peers,
-                    Transport::Relay => &self.resend_relay,
-                };
-                set.iter().take(MAX_BATCH).copied().collect()
+                self.resend_relay.iter().take(MAX_BATCH).copied().collect()
             } else {
                 self.unsent.iter().take(MAX_BATCH).copied().collect()
             };
@@ -2102,15 +1777,10 @@ impl Session {
                 .iter()
                 .map_while(|s| self.own_log.get(s).cloned())
                 .collect();
-            let cursor = if t == Transport::Peers && !resend {
-                self.cursor.map(|c| (c.x, c.y))
-            } else {
-                None
-            };
             let packed = if ops.is_empty() {
                 Err(codec::EncodeError::BadOp)
             } else {
-                codec::pack_ops(&self.id, self.me, &ops, cursor, t)
+                codec::pack_ops(&self.id, self.me, &ops)
             };
             let (payload, n) = match packed {
                 Ok((payload, n)) => (Some(payload), n),
@@ -2121,7 +1791,6 @@ impl Session {
             };
             for s in &seqs[..n.min(seqs.len())] {
                 if resend {
-                    self.resend_peers.remove(s);
                     self.resend_relay.remove(s);
                 } else {
                     self.unsent.pop_front();
@@ -2131,22 +1800,6 @@ impl Session {
                 return payload;
             }
         }
-    }
-
-    fn laser_payload(&mut self, t: Transport) -> Option<Vec<u8>> {
-        let mut points = std::mem::take(&mut self.laser);
-        // A trail that does not fit is shortened to its newest points.
-        while !points.is_empty() {
-            let msg = Msg::Laser(Laser {
-                author: self.me,
-                points: points.clone(),
-            });
-            if let Some(p) = encode_for(&msg, t) {
-                return Some(p);
-            }
-            points.drain(..points.len().div_ceil(2));
-        }
-        None
     }
 
     fn relay_send(&mut self, payload: Vec<u8>, target: Target) {
@@ -2174,7 +1827,7 @@ impl Session {
         if !self.unsent.is_empty()
             && now.saturating_sub(self.last_relay_ops) >= RELAY_OPS_EVERY_MS
             && bulk_ok(self.relay_credit)
-            && let Some(p) = self.take_ops(false, Transport::Relay)
+            && let Some(p) = self.take_ops(false)
         {
             self.last_relay_ops = now;
             self.relay_send(p, Target::Channel);
@@ -2182,17 +1835,13 @@ impl Session {
         if !self.resend_relay.is_empty()
             && now.saturating_sub(self.last_relay_resend) >= RELAY_OPS_EVERY_MS
             && bulk_ok(self.relay_credit)
-            && let Some(p) = self.take_ops(true, Transport::Relay)
+            && let Some(p) = self.take_ops(true)
         {
             self.last_relay_resend = now;
             self.relay_send(p, Target::Channel);
         }
         while bulk_ok(self.relay_credit) {
-            let Some(o) = self
-                .snap_out
-                .iter_mut()
-                .find(|o| o.transport == Transport::Relay)
-            else {
+            let Some(o) = self.snap_out.front_mut() else {
                 break;
             };
             let to = o.to;
@@ -2256,10 +1905,10 @@ impl Session {
             }));
         }
         if let Some(v) = &mut self.view
-            && v.relay_dirty
+            && v.dirty
             && now.saturating_sub(self.last_view) >= VIEW_EVERY_MS
         {
-            v.relay_dirty = false;
+            v.dirty = false;
             self.last_view = now;
             msgs.push(Msg::View(View {
                 author: self.me,
@@ -2326,23 +1975,11 @@ mod tests {
         max_delay: 1_500,
     };
 
-    enum Wire {
-        Peers {
-            kind: u8,
-            payload: Vec<u8>,
-            direct: bool,
-        },
-        Relay(Vec<u8>),
-    }
-
     struct Client {
         s: Session,
         session: SessionId,
         key: String,
         online: bool,
-        peers_sends: Vec<u64>,
-        /// Approved game bursts: (time, sends recorded before it).
-        bursts: Vec<(u64, usize)>,
         last_ui: Vec<Ui>,
     }
 
@@ -2351,9 +1988,8 @@ mod tests {
         seq: u64,
         rng: Rng,
         chaos: Chaos,
-        relay: bool,
         clients: Vec<Client>,
-        queue: BTreeMap<(u64, u64), (usize, usize, Wire)>,
+        queue: BTreeMap<(u64, u64), (usize, usize, Vec<u8>)>,
     }
 
     fn author_key(i: usize) -> AuthorKey {
@@ -2370,13 +2006,12 @@ mod tests {
     }
 
     impl Net {
-        fn new(seed: u64, chaos: Chaos, relay: bool) -> Net {
+        fn new(seed: u64, chaos: Chaos) -> Net {
             Net {
                 now: 0,
                 seq: 0,
                 rng: Rng(seed | 1),
                 chaos,
-                relay,
                 clients: Vec::new(),
                 queue: BTreeMap::new(),
             }
@@ -2389,15 +2024,13 @@ mod tests {
                 session: 100 + i as u32,
                 info: info(i),
                 joined_at_ms: 0,
-                relay: self.relay,
+                relay: true,
             };
             self.clients.push(Client {
                 s: Session::new(cfg, board, self.now),
                 session: 100 + i as u32,
                 key: format!("{:064x}", i + 1),
                 online: false,
-                peers_sends: Vec::new(),
-                bursts: Vec::new(),
                 last_ui: Vec::new(),
             });
             self.clients.len() - 1
@@ -2441,37 +2074,9 @@ mod tests {
         fn handle(&mut self, c: usize, outs: Vec<Outgoing>) {
             for o in outs {
                 match o {
-                    Outgoing::PeersSend {
-                        kind,
-                        payload,
-                        target,
-                    } => {
-                        assert!(payload.len() <= codec::MAX_PEERS_PAYLOAD);
-                        self.clients[c].peers_sends.push(self.now);
-                        let direct = matches!(target, Target::Direct(_));
-                        self.route(c, target, || Wire::Peers {
-                            kind,
-                            payload: payload.clone(),
-                            direct,
-                        });
-                    }
                     Outgoing::RelaySend { payload, target } => {
-                        assert!(self.relay, "relay used while unavailable");
-                        assert!(payload.len() <= 64 * 1024);
-                        self.route(c, target, || Wire::Relay(payload.clone()));
-                    }
-                    Outgoing::StartGameBurst => {
-                        // The host allows one burst per minute.
-                        let ok = self.clients[c]
-                            .bursts
-                            .last()
-                            .is_none_or(|&(t, _)| self.now - t >= BURST_EVERY_MS);
-                        if ok {
-                            let sent = self.clients[c].peers_sends.len();
-                            self.clients[c].bursts.push((self.now, sent));
-                        }
-                        let outs = self.clients[c].s.game_burst_result(ok, self.now);
-                        self.handle(c, outs);
+                        assert!(payload.len() <= codec::MAX_RELAY_PAYLOAD);
+                        self.route(c, target, || payload.clone());
                     }
                     Outgoing::Ui(u) => {
                         let ui = &mut self.clients[c].last_ui;
@@ -2483,7 +2088,7 @@ mod tests {
             }
         }
 
-        fn route(&mut self, from: usize, target: Target, wire: impl Fn() -> Wire) {
+        fn route(&mut self, from: usize, target: Target, wire: impl Fn() -> Vec<u8>) {
             for to in 0..self.clients.len() {
                 let hit = match target {
                     Target::Channel => to != from,
@@ -2519,16 +2124,7 @@ mod tests {
                 }
                 let sender = self.peer_info(from);
                 let now = self.now;
-                let outs = match wire {
-                    Wire::Peers {
-                        kind,
-                        payload,
-                        direct,
-                    } => self.clients[to]
-                        .s
-                        .on_peer_message(&sender, kind, &payload, direct, now),
-                    Wire::Relay(p) => self.clients[to].s.on_relay_message(&sender, &p, now),
-                };
+                let outs = self.clients[to].s.on_relay_message(&sender, &wire, now);
                 self.handle(to, outs);
             }
         }
@@ -2617,35 +2213,6 @@ mod tests {
             };
             self.edit(c, edits).expect("honest edit");
         }
-
-        fn assert_rates(&self) {
-            for c in &self.clients {
-                check_rate(&c.peers_sends, &c.bursts);
-            }
-        }
-    }
-
-    /// The documented `peers.messages` limits, modelled independently of [`Limiter`].
-    fn check_rate(sends: &[u64], bursts: &[(u64, usize)]) {
-        for w in bursts.windows(2) {
-            assert!(w[1].0 - w[0].0 >= BURST_EVERY_MS, "game bursts too close");
-        }
-        let mut tokens = 3.0_f64;
-        let mut at = 0;
-        let mut recent: VecDeque<u64> = VecDeque::new();
-        for (i, &t) in sends.iter().enumerate() {
-            tokens = (tokens + (t - at) as f64 / 2_000.0).min(3.0);
-            at = t;
-            if bursts.iter().any(|&(b, n)| i >= n && t < b + BURST_MS) {
-                recent.retain(|&r| t - r < 1_000);
-                assert!(recent.len() < 4, "more than 4 messages per second at {t}");
-                recent.push_back(t);
-                tokens = (tokens - 1.0).max(0.0);
-            } else {
-                assert!(tokens >= 1.0 - 1e-9, "rate limit exceeded at {t} ms");
-                tokens -= 1.0;
-            }
-        }
     }
 
     fn next_z(b: &Board) -> String {
@@ -2703,8 +2270,8 @@ mod tests {
     }
 
     /// Client 0 starts the board alone, the others join half a second later.
-    fn start_net(seed: u64, chaos: Chaos, relay: bool, clients: usize) -> Net {
-        let mut net = Net::new(seed, chaos, relay);
+    fn start_net(seed: u64, chaos: Chaos, clients: usize) -> Net {
+        let mut net = Net::new(seed, chaos);
         for i in 0..clients {
             net.add(i, Board::new(author_key(i)));
         }
@@ -2720,19 +2287,17 @@ mod tests {
         net
     }
 
-    fn chaos_run(seed: u64, relay: bool, clients: usize, edit_every: u64) -> Net {
-        let mut net = start_net(seed, ROUGH, relay, clients);
+    fn chaos_run(seed: u64, clients: usize, edit_every: u64) -> Net {
+        let mut net = start_net(seed, ROUGH, clients);
         let end = net.now + 60_000;
         while net.now < end {
             let c = net.rng.below(clients as u64) as usize;
             net.random_edit(c);
-            if relay {
-                let (x, y) = (net.rng.below(4_000) as i32, net.rng.below(4_000) as i32);
-                net.act(c, |s, now| s.local_cursor(x, y, 1, 0, now));
-                net.act(c, |s, now| {
-                    s.local_live(1, &[(x, y), (x + 4, y + 2)], false, now)
-                });
-            }
+            let (x, y) = (net.rng.below(4_000) as i32, net.rng.below(4_000) as i32);
+            net.act(c, |s, now| s.local_cursor(x, y, 1, 0, now));
+            net.act(c, |s, now| {
+                s.local_live(1, &[(x, y), (x + 4, y + 2)], false, now)
+            });
             let pause = edit_every / 2 + net.rng.below(edit_every);
             net.run(pause);
         }
@@ -2741,7 +2306,7 @@ mod tests {
             for (i, c) in net.clients.iter().enumerate() {
                 let s = &c.s;
                 eprintln!(
-                    "c{i} hash {:x} vv {:?} gaps {:?} loading {:?} inbound {} snap_out {} unsent {} resend {}/{} q {} dropped {} live {}",
+                    "c{i} hash {:x} vv {:?} gaps {:?} loading {:?} inbound {} snap_out {} unsent {} resend {} q {} dropped {} live {}",
                     s.board().state_hash(),
                     s.board().vv(),
                     s.board().gaps(),
@@ -2749,7 +2314,6 @@ mod tests {
                     s.inbound.len(),
                     s.snap_out.len(),
                     s.unsent.len(),
-                    s.resend_peers.len(),
                     s.resend_relay.len(),
                     net.queue.len(),
                     s.dropped(),
@@ -2762,48 +2326,17 @@ mod tests {
     }
 
     #[test]
-    fn three_clients_converge_without_relay_under_chaos() {
-        for seed in [1, 2, 3] {
-            let net = chaos_run(seed, false, 3, 3_000);
-            let objects = net.clients[0].s.board().visible_objects().len();
-            assert!(objects > 5, "too few objects: {objects}");
-            net.assert_rates();
-            for c in &net.clients {
-                assert_eq!(c.s.status().queue, 0);
-                assert!(c.s.status().loading.is_none());
-            }
-        }
-    }
-
-    #[test]
-    fn four_clients_converge_with_relay_under_chaos() {
+    fn four_clients_converge_under_chaos() {
         for seed in [11, 12] {
-            let net = chaos_run(seed, true, 4, 300);
+            let net = chaos_run(seed, 4, 300);
             let objects = net.clients[0].s.board().visible_objects().len();
             assert!(objects > 50, "too few objects: {objects}");
-            net.assert_rates();
         }
-    }
-
-    #[test]
-    fn busy_sender_stays_within_rate_limit_and_shows_queue() {
-        let mut net = start_net(5, CALM, false, 3);
-        net.run(5_000);
-        let mut max_queue = 0;
-        for _ in 0..120 {
-            net.random_edit(1);
-            max_queue = max_queue.max(net.clients[1].s.status().queue);
-            net.run(100);
-        }
-        assert!(max_queue > 3, "queue never built up: {max_queue}");
-        assert!(net.settle(300_000).is_some());
-        net.assert_rates();
-        assert_eq!(net.clients[1].s.status().queue, 0);
     }
 
     #[test]
     fn coalescing_strips_overwritten_fields() {
-        let mut net = start_net(6, CALM, false, 2);
+        let mut net = start_net(6, CALM, 2);
         net.run(3_000);
         let mut rng = Rng(77);
         let b = net.clients[1].s.board();
@@ -2862,8 +2395,8 @@ mod tests {
     }
 
     /// Simulated time until a fresh joiner holds a board of `kib` KiB (model state size).
-    fn join_time(relay: bool, kib: usize) -> u64 {
-        let mut net = Net::new(21, CALM, relay);
+    fn join_time(kib: usize) -> u64 {
+        let mut net = Net::new(21, CALM);
         let host = drawn_board(author_key(0), 3, kib * 1024);
         let delta = codec::encode_delta(&host.delta_since(&Vv::new())).unwrap();
         let raw = miniz_oxide::inflate::decompress_to_vec(&delta)
@@ -2886,28 +2419,18 @@ mod tests {
         }
         assert!(net.converged());
         let took = net.now - start;
-        eprintln!("late join of {kib} KiB (relay: {relay}): {took} ms");
-        net.assert_rates();
+        eprintln!("late join of {kib} KiB : {took} ms");
         took
     }
 
     #[test]
     fn snapshot_of_150_kib_board_loads_in_time() {
-        // Without a relay one game burst carries about 43 parts in 10 s, then the normal rate
-        // (1 per 2 s) and the next burst a minute later carry the rest. Each Mumble message is
-        // a Bovnar document with the body as base-85 text, so a part holds ~750 bytes of
-        // deflated delta: 90 KiB (~33 KB) fits one burst, 150 KiB (~54 KB, ~72 parts) needs a
-        // second one. The relay carries everything at once.
-        assert!(join_time(false, 90) <= 15_000);
-        assert!(join_time(false, 120) <= 45_000);
-        // Longer than the expectation window after HELLO: the transfer must still complete.
-        assert!(join_time(false, 150) <= 80_000);
-        assert!(join_time(true, 150) <= 3_000);
+        assert!(join_time(150) <= 3_000);
     }
 
     #[test]
-    fn joiner_reports_loading_progress() {
-        let mut net = Net::new(22, CALM, false);
+    fn joiner_shows_loading_until_the_board_is_complete() {
+        let mut net = Net::new(22, CALM);
         net.add(0, drawn_board(author_key(0), 4, 60 * 1024));
         net.add(1, Board::new(author_key(1)));
         net.online(0);
@@ -2920,13 +2443,15 @@ mod tests {
                 seen.insert(p);
             }
         }
-        assert!(seen.iter().any(|&p| p > 0 && p < 100), "{seen:?}");
+        // The relay delivers the parts within a few milliseconds of each other: loading shows
+        // up when the joiner starts and is gone once the board is complete.
+        assert!(seen.contains(&0), "{seen:?}");
         assert!(net.clients[1].s.status().loading.is_none());
         assert!(net.converged());
     }
 
-    fn late_joiner(relay: bool, older_copy: bool) {
-        let mut net = start_net(31, ROUGH, relay, 2);
+    fn late_joiner(older_copy: bool) {
+        let mut net = start_net(31, ROUGH, 2);
         for _ in 0..10 {
             let c = net.rng.below(2) as usize;
             let b = net.clients[c].s.board();
@@ -2970,19 +2495,16 @@ mod tests {
         for c in &net.clients {
             assert_eq!(c.s.board().visible_objects().len(), expected);
         }
-        net.assert_rates();
     }
 
     #[test]
     fn late_joiner_without_copy_converges() {
-        late_joiner(false, false);
-        late_joiner(true, false);
+        late_joiner(false);
     }
 
     #[test]
     fn late_joiner_with_older_copy_merges_without_duplicates() {
-        late_joiner(false, true);
-        late_joiner(true, true);
+        late_joiner(true);
     }
 
     /// Lets a modified client bypass its own permission checks.
@@ -3007,83 +2529,81 @@ mod tests {
 
     #[test]
     fn draw_policy_is_enforced_by_receivers() {
-        for relay in [false, true] {
-            let mut net = start_net(41, CALM, relay, 3);
-            net.run(5_000);
-            let key_b = net.clients[1].key.clone();
-            let outs = net.clients[0]
-                .s
-                .set_settings(
-                    vec![
-                        BoardField::Policy(Policy::Selected),
-                        BoardField::Allowed(key_b, true),
-                    ],
-                    net.now,
-                )
-                .unwrap();
-            net.handle(0, outs);
-            assert!(net.settle(120_000).is_some());
-            // B may draw, C may not.
-            let e = stroke(&mut net.rng, net.clients[1].s.board());
-            net.edit(1, vec![e]).unwrap();
-            let e = stroke(&mut net.rng, net.clients[2].s.board());
-            assert_eq!(
-                net.edit(2, vec![e]),
-                Err(LocalError::NotAllowed),
-                "relay {relay}: {:?} {:?}",
-                net.clients[2].s.board().settings().policy,
-                net.clients[2].s.effective_host()
-            );
-            assert!(!net.clients[2].s.status().can_draw);
-            // A modified C draws anyway: everyone else ignores it.
-            let e = stroke(&mut net.rng, net.clients[2].s.board());
-            let forged = forge(&mut net, 2, vec![e]);
-            net.run(30_000);
-            for c in 0..2 {
-                assert!(!known(&net, c, forged[0]), "relay {relay} client {c}");
-            }
-            assert!(net.clients[0].s.dropped() >= 1);
-            let b_objects = net.clients[1].s.board().visible_objects().len();
-            assert_eq!(net.clients[0].s.board().visible_objects().len(), b_objects);
-            // Host only: B is refused now as well.
-            let outs = net.clients[0]
-                .s
-                .set_settings(vec![BoardField::Policy(Policy::HostOnly)], net.now)
-                .unwrap();
-            net.handle(0, outs);
-            net.run(30_000);
-            let e = stroke(&mut net.rng, net.clients[1].s.board());
-            assert_eq!(net.edit(1, vec![e]), Err(LocalError::NotAllowed));
-            let e = stroke(&mut net.rng, net.clients[0].s.board());
-            net.edit(0, vec![e]).unwrap();
-            net.run(30_000);
-            assert_eq!(
-                net.clients[1].s.board().visible_objects().len(),
-                net.clients[0].s.board().visible_objects().len()
-            );
-            // Settings from a non-host (a modified B) are ignored too.
-            let ops = net.clients[1]
-                .s
-                .board
-                .local_board(vec![BoardField::Policy(Policy::Everyone)])
-                .unwrap();
-            net.clients[1].s.push_own(vec![ops]);
-            let outs = net.clients[1].s.flush();
-            net.handle(1, outs);
-            net.run(30_000);
-            let policy = net.clients[0].s.board().settings().policy.clone();
-            assert_eq!(policy.map(|r| r.val), Some(Policy::HostOnly));
-            // A non-host cannot clear.
-            assert_eq!(
-                net.clients[1].s.clear(net.now).err(),
-                Some(LocalError::NotAllowed)
-            );
+        let mut net = start_net(41, CALM, 3);
+        net.run(5_000);
+        let key_b = net.clients[1].key.clone();
+        let outs = net.clients[0]
+            .s
+            .set_settings(
+                vec![
+                    BoardField::Policy(Policy::Selected),
+                    BoardField::Allowed(key_b, true),
+                ],
+                net.now,
+            )
+            .unwrap();
+        net.handle(0, outs);
+        assert!(net.settle(120_000).is_some());
+        // B may draw, C may not.
+        let e = stroke(&mut net.rng, net.clients[1].s.board());
+        net.edit(1, vec![e]).unwrap();
+        let e = stroke(&mut net.rng, net.clients[2].s.board());
+        assert_eq!(
+            net.edit(2, vec![e]),
+            Err(LocalError::NotAllowed),
+            "{:?} {:?}",
+            net.clients[2].s.board().settings().policy,
+            net.clients[2].s.effective_host()
+        );
+        assert!(!net.clients[2].s.status().can_draw);
+        // A modified C draws anyway: everyone else ignores it.
+        let e = stroke(&mut net.rng, net.clients[2].s.board());
+        let forged = forge(&mut net, 2, vec![e]);
+        net.run(30_000);
+        for c in 0..2 {
+            assert!(!known(&net, c, forged[0]), "client {c}");
         }
+        assert!(net.clients[0].s.dropped() >= 1);
+        let b_objects = net.clients[1].s.board().visible_objects().len();
+        assert_eq!(net.clients[0].s.board().visible_objects().len(), b_objects);
+        // Host only: B is refused now as well.
+        let outs = net.clients[0]
+            .s
+            .set_settings(vec![BoardField::Policy(Policy::HostOnly)], net.now)
+            .unwrap();
+        net.handle(0, outs);
+        net.run(30_000);
+        let e = stroke(&mut net.rng, net.clients[1].s.board());
+        assert_eq!(net.edit(1, vec![e]), Err(LocalError::NotAllowed));
+        let e = stroke(&mut net.rng, net.clients[0].s.board());
+        net.edit(0, vec![e]).unwrap();
+        net.run(30_000);
+        assert_eq!(
+            net.clients[1].s.board().visible_objects().len(),
+            net.clients[0].s.board().visible_objects().len()
+        );
+        // Settings from a non-host (a modified B) are ignored too.
+        let ops = net.clients[1]
+            .s
+            .board
+            .local_board(vec![BoardField::Policy(Policy::Everyone)])
+            .unwrap();
+        net.clients[1].s.push_own(vec![ops]);
+        let outs = net.clients[1].s.flush();
+        net.handle(1, outs);
+        net.run(30_000);
+        let policy = net.clients[0].s.board().settings().policy.clone();
+        assert_eq!(policy.map(|r| r.val), Some(Policy::HostOnly));
+        // A non-host cannot clear.
+        assert_eq!(
+            net.clients[1].s.clear(net.now).err(),
+            Some(LocalError::NotAllowed)
+        );
     }
 
     #[test]
     fn host_hands_over_automatically_and_explicitly() {
-        let mut net = start_net(51, CALM, false, 3);
+        let mut net = start_net(51, CALM, 3);
         net.run(5_000);
         let (a, b, c) = (author_key(0), author_key(1), author_key(2));
         for cl in &net.clients {
@@ -3112,6 +2632,7 @@ mod tests {
             .set_settings(vec![BoardField::Title("B's board".into())], now)
             .unwrap();
         net.handle(1, outs);
+        net.run(1_000);
         let outs = net.clients[1].s.handover(c, net.now).unwrap();
         net.handle(1, outs);
         assert!(net.settle(120_000).is_some());
@@ -3130,7 +2651,7 @@ mod tests {
 
     #[test]
     fn hide_is_local_and_remove_is_for_everyone() {
-        let mut net = start_net(61, CALM, true, 3);
+        let mut net = start_net(61, CALM, 3);
         net.run(2_000);
         for c in 0..3 {
             for _ in 0..3 {
@@ -3168,7 +2689,7 @@ mod tests {
 
     #[test]
     fn presenter_view_reaches_followers_only() {
-        let mut net = start_net(71, CALM, true, 3);
+        let mut net = start_net(71, CALM, 3);
         net.run(2_000);
         let a = author_key(0);
         let outs = net.clients[0].s.set_presenting(true, net.now).unwrap();
@@ -3195,55 +2716,76 @@ mod tests {
     }
 
     #[test]
-    fn degraded_mode_sends_no_realtime_and_cursor_rides_on_ops() {
-        let mut net = start_net(81, CALM, false, 2);
-        net.run(3_000);
-        net.act(1, |s, now| s.local_cursor(100, 200, 1, 0, now));
-        net.act(1, |s, now| s.local_live(1, &[(1, 1), (2, 2)], false, now));
-        let e = stroke(&mut net.rng, net.clients[1].s.board());
-        net.edit(1, vec![e]).unwrap();
-        net.run(3_000);
-        let view = net.clients[0].s.peers();
-        assert_eq!(view.len(), 1);
-        assert_eq!(view[0].cursor, Some((100, 200)));
-        assert!(view[0].ago_s.is_some_and(|s| s >= 1));
-        assert!(
-            !net.clients[0]
-                .last_ui
-                .iter()
-                .any(|u| matches!(u, Ui::Live { .. }))
-        );
-        // Laser: one game burst per press, then 2 messages per second at most.
-        let before = net.clients[1].bursts.len();
-        for _ in 0..20 {
-            net.act(1, |s, now| s.local_laser(&[(5, 5), (6, 7)], now));
-            net.run(100);
+    fn without_relay_nothing_is_sent_until_it_returns() {
+        let cfg = Config {
+            board: BOARD,
+            session: 100,
+            info: info(0),
+            joined_at_ms: 0,
+            relay: false,
+        };
+        let mut s = Session::new(cfg, Board::new(author_key(0)), 0);
+        let list = vec![PeerInfo {
+            session: 100,
+            name: "User 0".into(),
+            key: Some(format!("{:064x}", 1)),
+        }];
+        let sent = |outs: Vec<Outgoing>| -> Vec<Msg> {
+            outs.into_iter()
+                .filter_map(|o| match o {
+                    Outgoing::RelaySend { payload, .. } => {
+                        Some(codec::decode_relay(&payload).unwrap())
+                    }
+                    Outgoing::Ui(_) => None,
+                })
+                .collect()
+        };
+        let mut now = 0;
+        let mut all = sent(s.start(now));
+        all.extend(sent(s.on_presence(&list, now)));
+        let outs = s.init_board("Plan", now).unwrap();
+        all.extend(sent(outs));
+        let mut rng = Rng(8);
+        let e = stroke(&mut rng, s.board());
+        all.extend(sent(s.local_edit(vec![e], now).unwrap()));
+        for _ in 0..100 {
+            now += 50;
+            all.extend(sent(s.tick(now)));
         }
-        assert_eq!(net.clients[1].bursts.len(), before + 1);
-        let lasers = net.clients[0]
-            .last_ui
+        assert!(
+            all.is_empty(),
+            "sent {} messages without a relay",
+            all.len()
+        );
+        now += 50;
+        let mut back = sent(s.set_relay_available(true, now));
+        for _ in 0..100 {
+            now += 50;
+            back.extend(sent(s.tick(now)));
+        }
+        assert!(back.iter().any(|m| matches!(m, Msg::Hello(_))));
+        let ops: usize = back
             .iter()
-            .filter(|u| matches!(u, Ui::Laser { .. }))
-            .count();
-        assert!(lasers >= 2, "laser did not arrive: {lasers}");
-        net.assert_rates();
+            .map(|m| match m {
+                Msg::Ops(o) => o.ops.len(),
+                _ => 0,
+            })
+            .sum();
+        assert!(ops >= 1, "queued ops were not sent: {back:?}");
     }
 
     #[test]
     fn author_keys_are_bound_to_sessions() {
-        let mut net = start_net(91, CALM, false, 3);
+        let mut net = start_net(91, CALM, 3);
         net.run(3_000);
         // C replays an OPS message claiming to be B.
         let mut fake = Board::new(author_key(1));
         let e = stroke(&mut Rng(3), &fake);
         let ops = fake.local(vec![e]).unwrap();
-        let (payload, _) =
-            codec::pack_ops(&BOARD, author_key(1), &ops, None, Transport::Peers).unwrap();
+        let (payload, _) = codec::pack_ops(&BOARD, author_key(1), &ops).unwrap();
         let from = net.peer_info(2);
         let dropped = net.clients[0].s.dropped();
-        let outs = net.clients[0]
-            .s
-            .on_peer_message(&from, KIND_OPS, &payload, false, net.now);
+        let outs = net.clients[0].s.on_relay_message(&from, &payload, net.now);
         net.handle(0, outs);
         assert_eq!(net.clients[0].s.dropped(), dropped + 1);
         assert_eq!(net.clients[0].s.board().visible_objects().len(), 0);
@@ -3251,7 +2793,7 @@ mod tests {
 
     #[test]
     fn flood_is_dropped_with_bounded_memory() {
-        let mut net = start_net(101, CALM, true, 2);
+        let mut net = start_net(101, CALM, 2);
         net.run(2_000);
         let now = net.now;
         let s = &mut net.clients[0].s;
@@ -3275,13 +2817,13 @@ mod tests {
             vv: Vv::new(),
             host: false,
             joined_at_ms: 0,
+            direct: false,
         });
         s.on_relay_message(&evil, &codec::encode_relay(&hello).unwrap(), now);
         for i in 0..90 {
             let edits: Vec<Edit> = (0..50).map(|_| stroke(&mut rng, &fake)).collect();
             let ops = fake.local(edits).unwrap();
-            let (payload, n) =
-                codec::pack_ops(&BOARD, 0xbad, &ops, None, Transport::Relay).unwrap();
+            let (payload, n) = codec::pack_ops(&BOARD, 0xbad, &ops).unwrap();
             assert_eq!(n, ops.len());
             s.on_relay_message(&evil, &payload, now + i);
         }
@@ -3317,6 +2859,6 @@ mod tests {
         let bytes: usize = s.inbound.values().map(|e| e.bytes).sum();
         assert!(bytes <= MAX_SNAP_INBOUND * MAX_SNAP_BYTES);
         assert!(s.gaps.len() <= MAX_GAPS);
-        assert!(s.peers_ctrl.len() <= MAX_CTRL && s.snap_out.len() <= MAX_SNAP_OUT);
+        assert!(s.relay_ctrl.len() <= MAX_CTRL && s.snap_out.len() <= MAX_SNAP_OUT);
     }
 }

@@ -985,7 +985,6 @@ pub struct PeerJson {
     pub shape: u8,
     pub color: u8,
     pub cursor: Option<[f64; 2]>,
-    pub ago: Option<u64>,
     pub status: &'static str,
     pub speaking: bool,
     pub host: bool,

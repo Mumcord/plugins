@@ -238,8 +238,6 @@ function onMessage(msg) {
       if (!p) break;
       p.cursor = isNum(msg.x) && isNum(msg.y) ? [msg.x, msg.y] : null;
       p.status = typeof msg.status === "string" ? msg.status.slice(0, 20) : "";
-      p.ago = null;
-      p.seenAt = performance.now();
       updateCursors();
       break;
     }
@@ -355,12 +353,8 @@ function onObjs(msg) {
 }
 
 function onPeers(msg) {
-  const now = performance.now();
   const next = new Map();
-  for (const p of normalizePeers(msg.list)) {
-    p.seenAt = now;
-    next.set(p.author, p);
-  }
+  for (const p of normalizePeers(msg.list)) next.set(p.author, p);
   app.peers = next;
   app.hidden = new Set([...next.values()].filter((p) => p.hidden).map((p) => p.author));
   sceneDirty = true;
@@ -686,21 +680,15 @@ function placeLaserDot(author, p) {
 
 // --- Cursors -----------------------------------------------------------------------------------------
 
-function cursorTag(peer, now) {
-  const status = peer.status && app.t(`status.${peer.status}`) !== `status.${peer.status}` ? app.t(`status.${peer.status}`) : "";
-  if (status) return status;
-  if (peer.ago !== null) return app.t("cursor.ago", { n: Math.round(peer.ago + (now - peer.seenAt) / 1000) });
-  return "";
+function cursorTag(peer) {
+  return peer.status && app.t(`status.${peer.status}`) !== `status.${peer.status}` ? app.t(`status.${peer.status}`) : "";
 }
 
 function updateCursors() {
-  const now = performance.now();
   const layer = $("cursors");
   const seen = new Set();
   for (const p of app.peers.values()) {
     if (p.author === app.me.author || !p.cursor) continue;
-    const age = p.ago === null ? 0 : p.ago + (now - p.seenAt) / 1000;
-    if (age > 60) continue;
     seen.add(p.author);
     let c = cursorEls.get(p.author);
     if (!c) {
@@ -709,7 +697,7 @@ function updateCursors() {
       layer.append(c.root);
     }
     const s = worldToScreen(app.cam, p.cursor[0], p.cursor[1]);
-    updateCursor(c, p, s.x, s.y, cursorTag(p, now), p.ago !== null);
+    updateCursor(c, p, s.x, s.y, cursorTag(p));
   }
   for (const [author, c] of cursorEls) {
     if (!seen.has(author)) {
@@ -718,11 +706,6 @@ function updateCursors() {
     }
   }
 }
-
-// "x s ago" chips count up without new messages.
-setInterval(() => {
-  if ([...app.peers.values()].some((p) => p.ago !== null)) updateCursors();
-}, 1000);
 
 function sendCursor(p, force) {
   const now = performance.now();
@@ -944,7 +927,7 @@ function endGesture(p) {
 }
 
 function cancelGesture() {
-  if (gesture && gesture.type === "stroke" && app.status.relay) send({ t: "live", sid: gesture.sid, pts: [], done: true }, true);
+  if (gesture && gesture.type === "stroke") send({ t: "live", sid: gesture.sid, pts: [], done: true }, true);
   gesture = null;
   kb.down = false;
   kbEl.removeAttribute("data-down");
@@ -974,10 +957,10 @@ function commitStroke() {
   setPending({ objs: [...(pending ? pending.objs : []), shown], override: new Map(), faded: new Set(), until: performance.now() + PENDING_MS });
 }
 
-/** Sends the points added since the last live update (relay only: without one, strokes arrive on pen lift). */
+/** Sends the points added since the last live update. */
 function sendLive(done) {
   const g = gesture;
-  if (!g || !app.status.relay) return;
+  if (!g) return;
   const now = performance.now();
   if (!done && now - g.lastLive < SEND_EVERY_MS) return;
   const pts = g.pts.slice(g.sent);

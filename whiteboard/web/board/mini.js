@@ -63,8 +63,7 @@ function onMessage(msg) {
       redraw();
       break;
     case "peers": {
-      const now = performance.now();
-      peers = new Map(normalizePeers(msg.list).map((p) => [p.author, { ...p, seenAt: now }]));
+      peers = new Map(normalizePeers(msg.list).map((p) => [p.author, p]));
       people();
       redraw();
       break;
@@ -74,7 +73,6 @@ function onMessage(msg) {
       if (!p) break;
       p.cursor = Number.isFinite(msg.x) && Number.isFinite(msg.y) ? [msg.x, msg.y] : null;
       p.status = typeof msg.status === "string" ? msg.status.slice(0, 20) : "";
-      p.ago = null;
       cursors();
       people();
       break;
@@ -147,7 +145,7 @@ function cursors() {
       layer.append(c.root);
     }
     const s = worldToScreen(cam, p.cursor[0], p.cursor[1]);
-    updateCursor(c, p, s.x, s.y, "", p.ago !== null);
+    updateCursor(c, p, s.x, s.y, "");
   }
   for (const [author, c] of cursorEls) {
     if (!seen.has(author)) {

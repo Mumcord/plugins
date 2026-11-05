@@ -21,7 +21,7 @@ mod tests;
 use std::cell::RefCell;
 
 use mumcord_plugin_sdk::{
-    Plugin, chat, clock,
+    Plugin, app_menu, chat, clock,
     events::Event,
     files, log, peers, random, relay, stage, storage, timers,
     types::{Error, StartInfo},
@@ -61,13 +61,6 @@ impl store::Storage for Mumcord {
     }
 }
 
-fn peers_target(target: Target) -> peers::Target {
-    match target {
-        Target::Channel => peers::Target::Channel,
-        Target::Direct(s) => peers::Target::Direct(s),
-    }
-}
-
 impl Host for Mumcord {
     fn wall_ms(&mut self) -> u64 {
         clock::now().unix_seconds.saturating_mul(1000)
@@ -85,23 +78,25 @@ impl Host for Mumcord {
             .unwrap_or_default()
     }
 
-    fn peers_send(&mut self, target: Target, kind: u8, payload: &[u8]) -> Result<(), Error> {
-        peers::send(peers_target(target), kind, payload)
-    }
-
-    fn game_burst(&mut self) -> bool {
-        peers::start_game_burst().is_ok()
-    }
-
     fn relay_available(&mut self) -> bool {
         relay::status() == relay::RelayStatus::Available
     }
 
     fn relay_send(&mut self, target: Target, payload: &[u8]) -> Result<(), Error> {
-        // No Mumble fallback: the sync engine picks the transport itself.
+        // Never the Mumble fallback: board data only travels over the relay.
         match target {
             Target::Channel => relay::send_channel(payload, false),
             Target::Direct(s) => relay::send_direct(s, payload, false),
+        }
+    }
+
+    fn menu_state(&mut self, item: &str, reason: Option<&str>) {
+        let result = match reason {
+            None => app_menu::enable(item),
+            Some(r) => app_menu::disable(item, r),
+        };
+        if let Err(e) = result {
+            log::warn(&format!("could not update the Apps menu item: {e:?}"));
         }
     }
 

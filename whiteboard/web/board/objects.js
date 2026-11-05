@@ -141,7 +141,6 @@ export function normalizePeers(list) {
       shape: int(p.shape, 0, 3),
       color: int(p.color, 0, 5),
       cursor,
-      ago: Number.isFinite(p.ago) && p.ago >= 0 ? p.ago : null,
       status: str(p.status, 20),
       speaking: p.speaking === true,
       host: p.host === true,

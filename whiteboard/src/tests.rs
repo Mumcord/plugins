@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use mumcord_plugin_sdk::chat::PostOutcome;
 use mumcord_plugin_sdk::events::{
-    ActionSource, ActionValue, Event, PeerMessage, PluginSettings, UiAction, Visibility,
+    ActionSource, ActionValue, Event, PluginSettings, UiAction, Visibility,
 };
 use mumcord_plugin_sdk::types::{Error, Peer};
 use mumcord_plugin_sdk::ui::{Component, El, Slot};
@@ -27,7 +27,11 @@ struct Fake {
     rng: u8,
     me: Option<PeerInfo>,
     others: Vec<PeerInfo>,
+    /// Relay sends: target, message kind, payload.
     sent: Vec<(Target, u8, Vec<u8>)>,
+    relay_off: bool,
+    /// Apps-menu item and the reason it was greyed out (`None`: enabled), in call order.
+    menu: Vec<(String, Option<String>)>,
     stage_started: Vec<String>,
     stage_error: Option<Error>,
     joins: Vec<String>,
@@ -102,18 +106,23 @@ impl Host for Fake {
     fn presence(&mut self) -> Vec<PeerInfo> {
         self.me.iter().chain(&self.others).cloned().collect()
     }
-    fn peers_send(&mut self, target: Target, kind: u8, payload: &[u8]) -> Result<(), Error> {
+    fn relay_available(&mut self) -> bool {
+        !self.relay_off
+    }
+    fn relay_send(&mut self, target: Target, payload: &[u8]) -> Result<(), Error> {
+        if self.relay_off {
+            return Err(Error::RelayUnavailable);
+        }
+        let kind = match codec::decode_relay(payload) {
+            Ok(m) => m.kind(),
+            Err(_) if codec::decode_other(KIND_LINE, payload).is_ok() => KIND_LINE,
+            Err(_) => 0,
+        };
         self.sent.push((target, kind, payload.to_vec()));
         Ok(())
     }
-    fn game_burst(&mut self) -> bool {
-        true
-    }
-    fn relay_available(&mut self) -> bool {
-        false
-    }
-    fn relay_send(&mut self, _target: Target, _payload: &[u8]) -> Result<(), Error> {
-        Err(Error::RelayUnavailable)
+    fn menu_state(&mut self, item: &str, reason: Option<&str>) {
+        self.menu.push((item.to_owned(), reason.map(str::to_owned)));
     }
     fn stage_start(&mut self, title: &str, entry: &str) -> Result<String, Error> {
         if let Some(e) = self.stage_error {
@@ -285,18 +294,13 @@ impl User {
 fn deliver(from: &mut User, to: &mut User) {
     let sender = peer(&from.me());
     let me = to.me().session;
-    for (target, kind, payload) in std::mem::take(&mut from.host.sent) {
-        let direct = match target {
-            Target::Channel => false,
-            Target::Direct(s) if s == me => true,
+    for (target, _kind, payload) in std::mem::take(&mut from.host.sent) {
+        match target {
+            Target::Channel => {}
+            Target::Direct(s) if s == me => {}
             Target::Direct(_) => continue,
-        };
-        to.event(Event::PeerMessage(PeerMessage {
-            sender: sender.clone(),
-            kind,
-            payload,
-            direct,
-        }));
+        }
+        to.event(Event::RelayMessage((sender.clone(), payload)));
     }
 }
 
@@ -370,7 +374,7 @@ fn start_from_the_apps_menu_opens_the_stage_and_posts_an_invite_card() {
     assert_eq!(init["board"]["title"], "Untitled board");
     assert_eq!(init["strings"]["app.title"], "Whiteboard");
     assert_eq!(init["settings"]["canDraw"], true);
-    // The new board is announced to the channel (control messages share the send budget).
+    // The new board is announced to the channel .
     for _ in 0..12 {
         alice.tick();
     }
@@ -430,7 +434,7 @@ fn a_peers_ops_update_the_page() {
 }
 
 #[test]
-fn page_edits_produce_peer_messages_within_the_rate_limit() {
+fn page_edits_reach_the_other_board_over_the_relay() {
     let (mut alice, mut bob) = two_on_a_board();
     alice.host.sent.clear();
     for i in 0..30 {
@@ -439,12 +443,6 @@ fn page_edits_produce_peer_messages_within_the_rate_limit() {
             i * 50
         ));
     }
-    // Without a relay `peers.messages` allows a burst of 3, then one per 2 s.
-    assert!(
-        alice.host.sent.len() <= 3,
-        "{} messages at once",
-        alice.host.sent.len()
-    );
     settle(&mut alice, &mut bob, 64);
     assert_eq!(bob.app_objects(), alice.app_objects());
     assert_eq!(alice.app_objects(), 30);
@@ -806,23 +804,6 @@ fn base64(bytes: &[u8]) -> String {
     out
 }
 
-/// The BOARD payload `scenarios/invite-card.yaml` feeds in.
-#[test]
-fn the_scenario_board_payload_matches_the_codec() {
-    let m = codec::Msg::Board(codec::BoardMsg {
-        board: [0xab; 16],
-        title: "Plan".into(),
-        host: 0x0102_0304,
-        started_ms: 1_700_000_000_000,
-    });
-    let (kind, payload) = codec::encode_peers(&m).expect("encodes");
-    assert_eq!(kind, 6);
-    assert_eq!(
-        String::from_utf8(payload).unwrap(),
-        r#".v=1;.msg={.d="Te&q4Te&q4Te&q4Te&q41w&]yzuH4y0F5KZ%gy5";.k=6;};"#
-    );
-}
-
 /// Bob joins after Alice drew, but Alice's BOARD for him is lost (the host refused it, for
 /// example over a rate limit): she repeats it until Bob says HELLO, so he still loads the board.
 #[test]
@@ -848,7 +829,10 @@ fn a_lost_board_announcement_is_repeated_for_a_joiner() {
         alice.tick();
         bob.tick();
         let before = alice.host.sent.len();
-        alice.host.sent.retain(|m| m.1 != codec::KIND_BOARD);
+        alice
+            .host
+            .sent
+            .retain(|m| !matches!(codec::decode_relay(&m.2), Ok(codec::Msg::Board(_))));
         lost |= alice.host.sent.len() < before;
         if lost {
             break;
@@ -859,4 +843,52 @@ fn a_lost_board_announcement_is_repeated_for_a_joiner() {
     assert!(lost, "Alice never announced the board to Bob");
     settle(&mut alice, &mut bob, 80);
     assert!(upserted_texts(&bob).contains(&"early".to_owned()));
+}
+
+/// Without the relay nothing can be started: the user gets the explanation instead.
+#[test]
+fn without_the_relay_start_opens_a_notice_and_the_menu_item_is_greyed_out() {
+    let mut alice = User::new(1, "Alice", &[]);
+    alice.host.relay_off = true;
+    alice.event(Event::AppMenuActivated("start".into()));
+    assert!(alice.host.stage_started.is_empty());
+    assert_eq!(alice.host.dialogs.len(), 1, "{:?}", alice.host.dialogs);
+    let tree = alice
+        .last_tree(|s| matches!(s, Slot::Dialog))
+        .expect("notice");
+    assert!(
+        tree.contains(&crate::text::t("page.relay.title")),
+        "{tree:?}"
+    );
+    assert!(
+        alice
+            .host
+            .menu
+            .iter()
+            .any(|(_, reason)| reason.as_deref()
+                == Some(crate::text::t("page.relay.title").as_str())),
+        "{:?}",
+        alice.host.menu
+    );
+}
+
+/// A joiner who cannot use the relay never shows "0 %": the board can not load, so the page
+/// explains that instead of a progress bar.
+#[test]
+fn a_joiner_without_the_relay_gets_no_loading_progress() {
+    let mut alice = User::new(1, "Alice", &[(2, "Bob")]);
+    let mut bob = User::new(2, "Bob", &[(1, "Alice")]);
+    alice.starts_board();
+    bob.host.relay_off = true;
+    bob.event(Event::StageActivityStarted((
+        peer(&alice.me()),
+        "activity-1".into(),
+    )));
+    let bob_peer = peer(&bob.me());
+    bob.event(Event::StageJoined(bob_peer));
+    bob.page(r#"{"t":"ready"}"#);
+    bob.tick();
+    let status = bob.posted_of("status");
+    let last = status.last().expect("status");
+    assert!(last["loading"].is_null(), "{last}");
 }

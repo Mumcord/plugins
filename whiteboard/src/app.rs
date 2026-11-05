@@ -53,7 +53,7 @@ pub const MINI_ENTRY: &str = "board/mini.html";
 /// Apps-menu item and slash command from the manifest.
 pub const MENU_START: &str = "start";
 pub const COMMAND: &str = "whiteboard";
-/// Plain-text line announcement over `peers.messages`: `[FORMAT][which][hash u32 LE][board id]`,
+/// Plain-text line announcement over the relay: `[FORMAT][which][hash u32 LE][board id]`,
 /// so other Mumcord clients can hide the line behind the invite card (`chat.supersede`). It is
 /// handled here, outside the board codec, because it is about chat, not the board.
 pub const KIND_LINE: u8 = 0x20;
@@ -101,10 +101,10 @@ pub trait Host: Storage {
     fn random(&mut self, len: u32) -> Option<Vec<u8>>;
     /// The channel, the local user first; empty without `events.presence`.
     fn presence(&mut self) -> Vec<PeerInfo>;
-    fn peers_send(&mut self, target: Target, kind: u8, payload: &[u8]) -> Result<(), Error>;
-    fn game_burst(&mut self) -> bool;
     fn relay_available(&mut self) -> bool;
     fn relay_send(&mut self, target: Target, payload: &[u8]) -> Result<(), Error>;
+    /// Enables an Apps-menu item (`None`) or greys it out with a reason.
+    fn menu_state(&mut self, item: &str, reason: Option<&str>);
     fn stage_start(&mut self, title: &str, entry: &str) -> Result<String, Error>;
     fn stage_join(&mut self, activity: &str) -> Result<(), Error>;
     fn webview_show(&mut self, place: Place, entry: &str) -> Result<(), Error>;
@@ -267,6 +267,8 @@ pub struct App {
     me: Option<PeerInfo>,
     presence: Vec<PeerInfo>,
     relay: bool,
+    /// The relay state the Apps-menu item last showed; `None` forces an update.
+    menu_relay: Option<bool>,
     activity: Option<Activity>,
     /// Activities others started that the user may join: id -> starter.
     activities: BTreeMap<String, SessionId>,
@@ -325,6 +327,11 @@ impl App {
             self.now.max(wall)
         };
         let language_changed = text::on_event(&event);
+        if language_changed {
+            self.menu_relay = None;
+        }
+        // The relay can come and go without an event of its own (a server switch).
+        self.check_relay(host);
         match event {
             Event::SettingsChanged(s) => {
                 self.granted = Some(s.granted.into_iter().collect());
@@ -367,10 +374,6 @@ impl App {
             Event::StageLeft(peer) => self.stage_left(host, &peer),
             Event::StageVisibilityChanged(visible) => self.stage_visibility(host, visible),
             Event::SurfaceClosed(place) => self.surface_closed(place),
-            Event::PeerMessage(m) => {
-                let from = peer_info(&m.sender);
-                self.peer_message(host, &from, m.kind, &m.payload, m.direct);
-            }
             Event::RelayMessage((peer, data)) => self.relay_message(host, &peer_info(&peer), &data),
             Event::RelayStatusChanged(_) => self.check_relay(host),
             Event::Joined(_) | Event::PeerReady(_) => self.presence_changed(host),
@@ -413,8 +416,14 @@ impl App {
         self.me.as_ref().map(|m| m.session)
     }
 
+    /// Board data only travels over the relay: without it nobody can start or load a board.
     fn check_relay<H: Host>(&mut self, host: &mut H) {
         let on = self.has("peers.relay") && host.relay_available();
+        if self.menu_relay != Some(on) {
+            self.menu_relay = Some(on);
+            let reason = (!on).then(|| t("page.relay.title"));
+            host.menu_state(MENU_START, reason.as_deref());
+        }
         if on != self.relay {
             self.relay = on;
             if let Some(o) = &mut self.open {
@@ -459,6 +468,11 @@ impl App {
             if !self.has_page(Place::Stage) {
                 self.show_stage(host);
             }
+            return;
+        }
+        if !self.relay {
+            let lines = vec![t("page.relay.title"), t("page.relay.body")];
+            self.open_dialog(host, Dialog::notice(&t("notice.start.title"), lines));
             return;
         }
         self.refresh_me(host);
@@ -888,24 +902,9 @@ impl App {
         let mut queue: VecDeque<Outgoing> = out.into();
         while let Some(o) = queue.pop_front() {
             match o {
-                Outgoing::PeersSend {
-                    kind,
-                    payload,
-                    target,
-                } => {
-                    if let Err(e) = host.peers_send(target, kind, &payload) {
-                        host.log(Level::Debug, &format!("board message not sent: {e:?}"));
-                    }
-                }
                 Outgoing::RelaySend { payload, target } => {
                     if let Err(e) = host.relay_send(target, &payload) {
                         host.log(Level::Debug, &format!("relay message not sent: {e:?}"));
-                    }
-                }
-                Outgoing::StartGameBurst => {
-                    let ok = host.game_burst();
-                    if let Some(o) = &mut self.open {
-                        queue.extend(o.s.game_burst_result(ok, self.now));
                     }
                 }
                 Outgoing::Ui(ui) => self.on_ui(host, ui, from),
@@ -1056,28 +1055,10 @@ impl App {
 
     // ---- messages from other users --------------------------------------------------------------
 
-    fn peer_message<H: Host>(
-        &mut self,
-        host: &mut H,
-        from: &PeerInfo,
-        kind: u8,
-        payload: &[u8],
-        direct: bool,
-    ) {
-        if kind == KIND_LINE {
-            self.on_line(host, from, payload);
-            return;
-        }
-        if let Some(o) = &mut self.open {
-            let out = o.s.on_peer_message(from, kind, payload, direct, self.now);
-            self.run(host, out, Some(from));
-        } else if let Ok(Msg::Board(b)) = codec::decode_peers(kind, payload) {
-            self.board_seen(host, from, b);
-        }
-    }
-
     fn relay_message<H: Host>(&mut self, host: &mut H, from: &PeerInfo, data: &[u8]) {
-        if let Some(o) = &mut self.open {
+        if let Ok(line) = codec::decode_other(KIND_LINE, data) {
+            self.on_line(host, from, &line);
+        } else if let Some(o) = &mut self.open {
             let out = o.s.on_relay_message(from, data, self.now);
             self.run(host, out, Some(from));
         } else if let Ok(Msg::Board(b)) = codec::decode_relay(data) {
@@ -1123,10 +1104,6 @@ impl App {
 
     /// Another Mumcord's plain-text line: hide it behind that person's invite card.
     fn on_line<H: Host>(&mut self, host: &mut H, from: &PeerInfo, payload: &[u8]) {
-        let Ok(payload) = codec::decode_other(KIND_LINE, payload) else {
-            host.log(Level::Debug, "dropped a malformed chat line notice");
-            return;
-        };
         if payload.len() != LINE_LEN || payload[0] != FORMAT || payload[1] > 1 {
             host.log(Level::Debug, "dropped a malformed chat line notice");
             return;
@@ -1663,7 +1640,12 @@ impl App {
                 following: false,
                 can_draw: false,
                 // A joiner waits for the board id: show the loading state.
-                loading: self.activity.as_ref().filter(|a| !a.mine).map(|_| 0),
+                // Without the relay the board cannot load; the page explains that instead.
+                loading: self
+                    .activity
+                    .as_ref()
+                    .filter(|a| !a.mine && self.relay)
+                    .map(|_| 0),
                 undo: false,
                 redo: false,
                 storage,
@@ -1685,7 +1667,6 @@ impl App {
                 shape: p.shape,
                 color: p.color,
                 cursor: p.cursor.map(|(x, y)| [bridge::px(x), bridge::px(y)]),
-                ago: p.ago_s,
                 status: bridge::status_word(p.status),
                 speaking: self.talking.contains(&p.session),
                 host: p.host,
@@ -2548,7 +2529,7 @@ impl App {
                 let sent = codec::encode_other(KIND_LINE, &payload)
                     .map_err(|e| format!("{e:?}"))
                     .and_then(|doc| {
-                        host.peers_send(Target::Channel, KIND_LINE, &doc)
+                        host.relay_send(Target::Channel, &doc)
                             .map_err(|e| format!("{e:?}"))
                     });
                 if let Err(e) = sent {

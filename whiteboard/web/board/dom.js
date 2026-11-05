@@ -81,8 +81,8 @@ export function cursorEl(mini) {
   return { root, arrow, label, name, tag, glyph: null, key: "" };
 }
 
-/** Updates a cursor element for a peer; `tagText` is the status or "x s ago" (empty = none). */
-export function updateCursor(c, peer, sx, sy, tagText, stale) {
+/** Updates a cursor element for a peer; `tagText` is the status (empty = none). */
+export function updateCursor(c, peer, sx, sy, tagText) {
   const key = `${peer.shape}/${peer.color}`;
   if (c.key !== key) {
     c.key = key;
@@ -94,9 +94,6 @@ export function updateCursor(c, peer, sx, sy, tagText, stale) {
   if (c.name.textContent !== peer.name) c.name.textContent = peer.name;
   if (c.tag.textContent !== tagText) c.tag.textContent = tagText;
   c.tag.hidden = !tagText;
-  c.root.classList.toggle("wb-cursor--stale", stale);
-  // Without a relay the position is only the last known one, so the arrow is left out (mockup 7).
-  c.arrow.style.display = stale ? "none" : "";
   c.root.style.left = `${sx}px`;
   c.root.style.top = `${sy}px`;
 }

@@ -3,8 +3,7 @@
 //! Every payload, on both transports, is one Bovnar document made with the SDK's `bovnar`
 //! module (spec FR-9.93): the message layout version [`FORMAT`] plus a [`Wire`] message with the
 //! message kind `k` and the binary body `d` as base-85 text ([`crate::text85`]), because Bovnar
-//! has no byte-string type. Peers transport (Mumble plugin data): the document is at most 997
-//! bytes and the kind also travels as the Mumble message kind. Relay transport: at most 60 KiB.
+//! has no byte-string type. Everything travels over the relay, at most 60 KiB per document.
 //! The body keeps the compact binary layout below; Bovnar adds about 25 bytes and the text
 //! encoding 25 % per message.
 //!
@@ -18,8 +17,8 @@
 //! - OPS layout: board id, author, then a mode byte (0 raw, 1 deflated) and the rest of the body
 //!   (cursor, op count, ops), so the board id stays readable without inflating.
 //! - A single op larger than a payload cannot be sent: [`pack_ops`] reports `TooLarge` and the
-//!   sync layer must send it over the relay or as a snapshot. Likewise a version vector that does
-//!   not fit HELLO or SNAP part 0 (about 130 authors on peers) makes encoding fail.
+//!   sync layer skips it and receivers heal the gap with a snapshot. Likewise a version vector
+//!   that does not fit HELLO or SNAP part 0 makes encoding fail.
 //! - SNAP data is the rest of the payload; the parts concatenated form one deflated delta
 //!   ([`encode_delta`] / [`decode_delta`]).
 //! - LIVE has no "done" flag; a chunk without points can mark the end of a live stroke.
@@ -38,7 +37,6 @@ use crate::model::{
 use crate::text85;
 
 pub const FORMAT: u8 = 1;
-pub const MAX_PEERS_PAYLOAD: usize = 997;
 pub const MAX_RELAY_PAYLOAD: usize = 60 * 1024;
 pub const KIND_HELLO: u8 = 0x01;
 pub const KIND_OPS: u8 = 0x02;
@@ -62,29 +60,14 @@ const DEFLATE_LEVEL: u8 = 9;
 
 pub type BoardId = [u8; 16];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Transport {
-    Peers,
-    Relay,
-}
-
-impl Transport {
-    pub fn max_payload(self) -> usize {
-        match self {
-            Transport::Peers => MAX_PEERS_PAYLOAD,
-            Transport::Relay => MAX_RELAY_PAYLOAD,
-        }
-    }
-
-    /// The largest binary body whose document fits the payload limit.
-    pub fn body_room(self) -> usize {
-        text85::max_bytes(self.max_payload() - DOC_OVERHEAD)
-    }
-}
-
 /// Bovnar framing around the body text: `.v=1;.msg={.d="";.k=19;};` (kinds have two digits at
 /// most, the version one).
 const DOC_OVERHEAD: usize = 25;
+
+/// The largest binary body whose document fits [`MAX_RELAY_PAYLOAD`].
+fn body_room() -> usize {
+    text85::max_bytes(MAX_RELAY_PAYLOAD - DOC_OVERHEAD)
+}
 
 /// The Bovnar message every payload carries.
 #[derive(Serialize, Deserialize)]
@@ -110,6 +93,8 @@ pub struct Hello {
     pub host: bool,
     /// When this participant joined; the longest-present peer answers first.
     pub joined_at_ms: u64,
+    /// Sent to one person (an introduction or a resync request), not to the channel (a join).
+    pub direct: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,20 +203,12 @@ impl Msg {
     }
 }
 
-/// Cursor and live strokes are too chatty for the peers channel. Laser is allowed there: without
-/// a relay it is sent during a game burst.
-fn relay_only(kind: u8) -> bool {
-    matches!(kind, KIND_CURSOR | KIND_LIVE)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EncodeError {
     /// The message does not fit the transport's payload limit.
     TooLarge,
     /// Ops of another author, or a Create/Clear whose id is not (author, seq).
     BadOp,
-    /// The message kind is not allowed on this transport.
-    WrongTransport,
     /// More entries than a decoder accepts.
     TooMany,
     /// The Bovnar document could not be written.
@@ -249,7 +226,6 @@ pub enum DecodeError {
     /// Not a Bovnar document of the [`Wire`] shape, or its body text is not base 85.
     Document,
     UnknownKind,
-    WrongTransport,
     TrailingBytes,
     TooLarge,
     Inflate,
@@ -865,20 +841,18 @@ fn read_ops(r: &mut R) -> DResult<OpsMsg> {
     })
 }
 
-/// Packs as many leading ops as fit into one OPS payload for `transport`. Returns the payload
-/// (framed for the transport, kind [`KIND_OPS`]) and how many ops it holds. `TooLarge` means
+/// Packs as many leading ops as fit into one OPS payload. Returns the payload (kind
+/// [`KIND_OPS`]) and how many ops it holds. `TooLarge` means
 /// the first op alone does not fit.
 pub fn pack_ops(
     board: &BoardId,
     author: AuthorKey,
     ops: &[Op],
-    cursor: Option<(i32, i32)>,
-    transport: Transport,
 ) -> Result<(Vec<u8>, usize), EncodeError> {
     let chunks = op_chunks(author, ops)?;
     let mut cur = W::new();
-    cursor_part(&mut cur, cursor);
-    let room = transport.body_room();
+    cursor_part(&mut cur, None);
+    let room = body_room();
     // Raw sizes add up, so the raw fit is found by counting; deflate only extends it.
     let fixed = 16 + 4 + 1 + cur.0.len();
     let mut raw_fit = 0;
@@ -904,7 +878,7 @@ pub fn pack_ops(
         return Err(EncodeError::TooLarge);
     }
     let body = ops_body(board, author, &cur.0, &chunks[..lo]);
-    Ok((frame(transport, KIND_OPS, &body)?, lo))
+    Ok((frame(KIND_OPS, &body)?, lo))
 }
 
 // ---- deltas and snapshots ----------------------------------------------------------------------
@@ -1016,18 +990,13 @@ pub fn decode_delta(data: &[u8]) -> DResult<Vec<Write>> {
     Ok(out)
 }
 
-/// Splits a deflated delta into SNAP messages that each fit `transport`; part 0 carries `vv`.
-pub fn snap_messages(
-    board: &BoardId,
-    vv: &Vv,
-    data: &[u8],
-    transport: Transport,
-) -> Result<Vec<Snap>, EncodeError> {
+/// Splits a deflated delta into SNAP messages that each fit a payload; part 0 carries `vv`.
+pub fn snap_messages(board: &BoardId, vv: &Vv, data: &[u8]) -> Result<Vec<Snap>, EncodeError> {
     let mut vv_w = W::new();
     vv_w.vv(vv)?;
     // Header: board id, part and count (3-byte varints at most).
     let header = 16 + 3 + 3;
-    let room = transport.body_room();
+    let room = body_room();
     let first = room
         .checked_sub(header + vv_w.0.len())
         .filter(|&n| n > 0)
@@ -1062,6 +1031,7 @@ fn body(msg: &Msg) -> Result<Vec<u8>, EncodeError> {
             w.vv(&h.vv)?;
             w.u8(u8::from(h.host));
             w.uv(h.joined_at_ms);
+            w.u8(u8::from(h.direct));
         }
         Msg::Ops(m) => {
             let chunks = op_chunks(m.author, &m.ops)?;
@@ -1125,37 +1095,21 @@ fn body(msg: &Msg) -> Result<Vec<u8>, EncodeError> {
     Ok(w.0)
 }
 
-fn frame(transport: Transport, kind: u8, body: &[u8]) -> Result<Vec<u8>, EncodeError> {
+fn frame(kind: u8, body: &[u8]) -> Result<Vec<u8>, EncodeError> {
     let wire = Wire {
         k: kind,
         d: text85::encode(body),
     };
-    bovnar::encode(&wire, transport.max_payload()).map_err(|e| match e {
+    bovnar::encode(&wire, MAX_RELAY_PAYLOAD).map_err(|e| match e {
         bovnar::Error::TooLarge => EncodeError::TooLarge,
         // The body text only uses the base-85 alphabet, so nothing else can fail.
         _ => EncodeError::Document,
     })
 }
 
-fn encode(msg: &Msg, transport: Transport) -> Result<Vec<u8>, EncodeError> {
-    if transport == Transport::Peers && relay_only(msg.kind()) {
-        return Err(EncodeError::WrongTransport);
-    }
-    let out = frame(transport, msg.kind(), &body(msg)?)?;
-    if out.len() > transport.max_payload() {
-        return Err(EncodeError::TooLarge);
-    }
-    Ok(out)
-}
-
-/// Encodes for `peers.messages`: returns the message kind and the payload.
-pub fn encode_peers(msg: &Msg) -> Result<(u8, Vec<u8>), EncodeError> {
-    Ok((msg.kind(), encode(msg, Transport::Peers)?))
-}
-
 /// Encodes for the relay: the payload carries the kind itself.
 pub fn encode_relay(msg: &Msg) -> Result<Vec<u8>, EncodeError> {
-    encode(msg, Transport::Relay)
+    frame(msg.kind(), &body(msg)?)
 }
 
 fn read_body(kind: u8, r: &mut R) -> DResult<Msg> {
@@ -1167,6 +1121,7 @@ fn read_body(kind: u8, r: &mut R) -> DResult<Msg> {
             vv: r.vv()?,
             host: r.bool()?,
             joined_at_ms: r.uv()?,
+            direct: r.bool()?,
         }),
         KIND_OPS => Msg::Ops(read_ops(r)?),
         KIND_NEED => {
@@ -1247,8 +1202,8 @@ fn read_body(kind: u8, r: &mut R) -> DResult<Msg> {
 }
 
 /// Unwraps the Bovnar document: the message kind and the binary body.
-fn unframe(payload: &[u8], transport: Transport) -> DResult<(u8, Vec<u8>)> {
-    if payload.len() > transport.max_payload() {
+fn unframe(payload: &[u8]) -> DResult<(u8, Vec<u8>)> {
+    if payload.len() > MAX_RELAY_PAYLOAD {
         return Err(DecodeError::TooLarge);
     }
     let received = bovnar::decode::<Wire>(payload).map_err(|e| match e {
@@ -1262,28 +1217,15 @@ fn unframe(payload: &[u8], transport: Transport) -> DResult<(u8, Vec<u8>)> {
     Ok((received.message.k, body))
 }
 
-/// Decodes a `peers.messages` payload of the given kind.
-pub fn decode_peers(kind: u8, payload: &[u8]) -> DResult<Msg> {
-    if relay_only(kind) {
-        return Err(DecodeError::WrongTransport);
-    }
-    let (inner, body) = unframe(payload, Transport::Peers)?;
-    // The Mumble message kind and the document must agree.
-    if inner != kind {
-        return Err(DecodeError::BadValue);
-    }
-    read_body(kind, &mut R::new(&body))
-}
-
-/// Wraps the binary body of a message the app sends itself on `peers.messages` (the chat line
-/// notice) in the same Bovnar document as every other message.
+/// Wraps the binary body of a message the app sends itself on the relay (the chat line notice)
+/// in the same Bovnar document as every other message.
 pub fn encode_other(kind: u8, body: &[u8]) -> Result<Vec<u8>, EncodeError> {
-    frame(Transport::Peers, kind, body)
+    frame(kind, body)
 }
 
 /// Unwraps a payload from [`encode_other`]; the binary body is the caller's to check.
 pub fn decode_other(kind: u8, payload: &[u8]) -> DResult<Vec<u8>> {
-    let (inner, body) = unframe(payload, Transport::Peers)?;
+    let (inner, body) = unframe(payload)?;
     if inner != kind {
         return Err(DecodeError::BadValue);
     }
@@ -1292,7 +1234,7 @@ pub fn decode_other(kind: u8, payload: &[u8]) -> DResult<Vec<u8>> {
 
 /// Decodes a relay payload.
 pub fn decode_relay(payload: &[u8]) -> DResult<Msg> {
-    let (kind, body) = unframe(payload, Transport::Relay)?;
+    let (kind, body) = unframe(payload)?;
     read_body(kind, &mut R::new(&body))
 }
 
@@ -1307,10 +1249,6 @@ mod tests {
     fn rt(msg: Msg) {
         let relay = encode_relay(&msg).unwrap();
         assert_eq!(decode_relay(&relay).unwrap(), msg);
-        if !relay_only(msg.kind()) {
-            let (kind, peers) = encode_peers(&msg).unwrap();
-            assert_eq!(decode_peers(kind, &peers).unwrap(), msg);
-        }
     }
 
     fn info() -> AuthorInfo {
@@ -1408,6 +1346,16 @@ mod tests {
             vv: vv.clone(),
             host: true,
             joined_at_ms: 1_700_000_000_000,
+            direct: true,
+        }));
+        rt(Msg::Hello(Hello {
+            board: BOARD,
+            author: 9,
+            info: info(),
+            vv: vv.clone(),
+            host: false,
+            joined_at_ms: 5,
+            direct: false,
         }));
         rt(Msg::Ops(OpsMsg {
             board: BOARD,
@@ -1478,56 +1426,38 @@ mod tests {
     }
 
     #[test]
-    fn transport_rules() {
-        let cursor = Msg::Cursor(Cursor {
-            author: 1,
-            x: 0,
-            y: 0,
-            status: 0,
-            tool: 0,
-        });
-        assert_eq!(encode_peers(&cursor), Err(EncodeError::WrongTransport));
-        let relay = encode_relay(&cursor).unwrap();
-        assert_eq!(
-            decode_peers(KIND_CURSOR, &relay[..1]),
-            Err(DecodeError::WrongTransport)
-        );
+    fn malformed_and_foreign_payloads() {
         let need = Msg::Need(Need {
             board: BOARD,
             author: 1,
             from_seq: 1,
             to_seq: 1,
         });
-        let (kind, payload) = encode_peers(&need).unwrap();
-        // The Mumble message kind must match the document.
-        assert_eq!(decode_peers(0x7f, &payload), Err(DecodeError::BadValue));
-        let unknown = frame(Transport::Relay, 0x7f, &[]).unwrap();
+        let payload = encode_relay(&need).unwrap();
+        let unknown = frame(0x7f, &[]).unwrap();
         assert_eq!(decode_relay(&unknown), Err(DecodeError::UnknownKind));
         let mut body = body(&need).unwrap();
         body.push(0);
-        let long = frame(Transport::Peers, kind, &body).unwrap();
-        assert_eq!(decode_peers(kind, &long), Err(DecodeError::TrailingBytes));
+        let long = frame(KIND_NEED, &body).unwrap();
+        assert_eq!(decode_relay(&long), Err(DecodeError::TrailingBytes));
         // A newer layout version, raw bytes and bad body text are refused.
         let newer = String::from_utf8(payload.clone())
             .unwrap()
             .replacen(".v=1;", ".v=2;", 1);
         assert_eq!(
-            decode_peers(kind, newer.as_bytes()),
+            decode_relay(newer.as_bytes()),
             Err(DecodeError::UnknownFormat)
         );
-        assert_eq!(
-            decode_peers(kind, &[FORMAT, 1, 2, 3]),
-            Err(DecodeError::Document)
-        );
+        assert_eq!(decode_relay(&[FORMAT, 1, 2, 3]), Err(DecodeError::Document));
         let bad_text = br#".v=1;.msg={.d="a";.k=3;};"#;
-        assert_eq!(decode_peers(kind, bad_text), Err(DecodeError::Document));
+        assert_eq!(decode_relay(bad_text), Err(DecodeError::Document));
         // Unknown fields from a newer sender are ignored.
         let extra = String::from_utf8(payload)
             .unwrap()
             .replacen(".k=", ".z=7;.k=", 1);
-        assert_eq!(decode_peers(kind, extra.as_bytes()), Ok(need));
+        assert_eq!(decode_relay(extra.as_bytes()), Ok(need));
         assert_eq!(
-            decode_peers(kind, &vec![FORMAT; MAX_PEERS_PAYLOAD + 1]),
+            decode_relay(&vec![FORMAT; MAX_RELAY_PAYLOAD + 1]),
             Err(DecodeError::TooLarge)
         );
     }
@@ -1569,18 +1499,12 @@ mod tests {
     fn encoder_refuses_inconsistent_ops() {
         let mut ops = sample_ops(1);
         ops[0].author = 2;
-        assert_eq!(
-            pack_ops(&BOARD, 1, &ops, None, Transport::Peers),
-            Err(EncodeError::BadOp)
-        );
+        assert_eq!(pack_ops(&BOARD, 1, &ops), Err(EncodeError::BadOp));
         let mut ops = sample_ops(1);
         if let Body::Create { id, .. } = &mut ops[0].body {
             id.counter = 99;
         }
-        assert_eq!(
-            pack_ops(&BOARD, 1, &ops, None, Transport::Peers),
-            Err(EncodeError::BadOp)
-        );
+        assert_eq!(pack_ops(&BOARD, 1, &ops), Err(EncodeError::BadOp));
     }
 
     fn pen_stroke(n: usize, phase: f64) -> Vec<(f64, f64)> {
@@ -1623,8 +1547,7 @@ mod tests {
     fn typical_pen_stroke_is_small() {
         let mut board = Board::new(0xdead_beef);
         let ops = stroke_ops(&mut board, 1);
-        let (payload, n) =
-            pack_ops(&BOARD, board.me(), &ops, Some((10, 10)), Transport::Peers).unwrap();
+        let (payload, n) = pack_ops(&BOARD, board.me(), &ops).unwrap();
         assert_eq!(n, 1);
         // The stroke itself (what each extra stroke adds to a batch) stays within 120 bytes;
         // the message header (board id, author, cursor) is shared by every op of a batch.
@@ -1642,57 +1565,10 @@ mod tests {
     fn packer_fills_messages() {
         let mut board = Board::new(3);
         let ops = stroke_ops(&mut board, 40);
-        let mut rest = &ops[..];
-        let mut got = Vec::new();
-        let mut messages = 0;
-        while !rest.is_empty() {
-            let (payload, n) = pack_ops(&BOARD, 3, rest, None, Transport::Peers).unwrap();
-            assert!(payload.len() <= MAX_PEERS_PAYLOAD);
-            let Msg::Ops(m) = decode_peers(KIND_OPS, &payload).unwrap() else {
-                panic!("not ops");
-            };
-            got.extend(m.ops);
-            rest = &rest[n..];
-            messages += 1;
-        }
-        assert_eq!(got, ops);
-        assert!(messages <= 8, "{messages} messages for 40 strokes");
-        let (relay, n) = pack_ops(&BOARD, 3, &ops, None, Transport::Relay).unwrap();
+        let (relay, n) = pack_ops(&BOARD, 3, &ops).unwrap();
         assert_eq!(n, ops.len());
         assert!(relay.len() <= MAX_RELAY_PAYLOAD);
         assert!(matches!(decode_relay(&relay), Ok(Msg::Ops(m)) if m.ops == ops));
-    }
-
-    #[test]
-    fn oversized_op_is_reported() {
-        let op = Op {
-            author: 1,
-            seq: 1,
-            lamport: 1,
-            body: Body::Create {
-                id: ObjId {
-                    author: 1,
-                    counter: 1,
-                },
-                kind: Kind::Stroke,
-                base: {
-                    // Pseudo-random points do not deflate, so the op stays large.
-                    let mut seed = 0x2545_f491_u32;
-                    let mut next = move || {
-                        seed ^= seed << 13;
-                        seed ^= seed >> 17;
-                        seed ^= seed << 5;
-                        (seed % 1_000_000) as i32
-                    };
-                    (0..MAX_POINTS).map(|_| (next(), next())).collect()
-                },
-                fields: Fields::default(),
-            },
-        };
-        assert_eq!(
-            pack_ops(&BOARD, 1, &[op], None, Transport::Peers),
-            Err(EncodeError::TooLarge)
-        );
     }
 
     #[test]
@@ -1701,31 +1577,22 @@ mod tests {
         stroke_ops(&mut board, 60);
         board.local_clear().unwrap();
         let data = encode_delta(&board.delta_since(&Vv::new())).unwrap();
-        for transport in [Transport::Peers, Transport::Relay] {
-            let snaps = snap_messages(&BOARD, board.vv(), &data, transport).unwrap();
-            let mut joined = Vec::new();
-            let mut vv = None;
-            for s in snaps {
-                let payload = match transport {
-                    Transport::Peers => encode_peers(&Msg::Snap(s)).unwrap().1,
-                    Transport::Relay => encode_relay(&Msg::Snap(s)).unwrap(),
-                };
-                assert!(payload.len() <= transport.max_payload());
-                let msg = match transport {
-                    Transport::Peers => decode_peers(KIND_SNAP, &payload),
-                    Transport::Relay => decode_relay(&payload),
-                };
-                let Ok(Msg::Snap(s)) = msg else {
-                    panic!("not a snap");
-                };
-                vv = vv.or(s.vv);
-                joined.extend(s.data);
-            }
-            let mut copy = Board::new(4);
-            let writes = decode_delta(&joined).unwrap();
-            assert_eq!(copy.merge_delta(writes, &vv.unwrap()), 0);
-            assert_eq!(copy.state_hash(), board.state_hash());
+        let snaps = snap_messages(&BOARD, board.vv(), &data).unwrap();
+        let mut joined = Vec::new();
+        let mut vv = None;
+        for s in snaps {
+            let payload = encode_relay(&Msg::Snap(s)).unwrap();
+            assert!(payload.len() <= MAX_RELAY_PAYLOAD);
+            let Ok(Msg::Snap(s)) = decode_relay(&payload) else {
+                panic!("not a snap");
+            };
+            vv = vv.or(s.vv);
+            joined.extend(s.data);
         }
+        let mut copy = Board::new(4);
+        let writes = decode_delta(&joined).unwrap();
+        assert_eq!(copy.merge_delta(writes, &vv.unwrap()), 0);
+        assert_eq!(copy.state_hash(), board.state_hash());
     }
 
     // ---- property tests ------------------------------------------------------------------------
@@ -1906,18 +1773,20 @@ mod tests {
                 arb_info(),
                 arb_vv(),
                 any::<bool>(),
-                any::<u64>()
+                any::<u64>(),
+                any::<bool>()
             )
-                .prop_map(|(board, author, info, vv, host, joined_at_ms)| Msg::Hello(
-                    Hello {
+                .prop_map(|(board, author, info, vv, host, joined_at_ms, direct)| {
+                    Msg::Hello(Hello {
                         board,
                         author,
                         info,
                         vv,
                         host,
-                        joined_at_ms
-                    }
-                )),
+                        joined_at_ms,
+                        direct,
+                    })
+                }),
             (
                 board,
                 arb_ops(),
@@ -2004,14 +1873,6 @@ mod tests {
         fn encode_decode_round_trip(msg in arb_msg()) {
             let relay = encode_relay(&msg).unwrap();
             prop_assert_eq!(decode_relay(&relay).unwrap(), msg.clone());
-            if !relay_only(msg.kind()) {
-                match encode_peers(&msg) {
-                    Ok((kind, payload)) => {
-                        prop_assert_eq!(decode_peers(kind, &payload).unwrap(), msg);
-                    }
-                    Err(e) => prop_assert_eq!(e, EncodeError::TooLarge),
-                }
-            }
         }
 
         #[test]
@@ -2025,13 +1886,11 @@ mod tests {
             kind in any::<u8>(),
             bytes in prop::collection::vec(any::<u8>(), 0..1200),
         ) {
-            let _ = decode_peers(kind, &bytes);
             let _ = decode_relay(&bytes);
             let _ = decode_delta(&bytes);
             let mut framed = vec![FORMAT, kind];
             framed.extend_from_slice(&bytes);
             let _ = decode_relay(&framed);
-            let _ = decode_peers(kind, &framed[1..]);
         }
 
         #[test]
@@ -2047,9 +1906,6 @@ mod tests {
             }
             let _ = decode_relay(&payload);
             let _ = decode_relay(&payload[..cut.index(payload.len() + 1)]);
-            if payload.len() > 2 {
-                let _ = decode_peers(payload[1], &[&payload[..1], &payload[2..]].concat());
-            }
         }
 
         #[test]
