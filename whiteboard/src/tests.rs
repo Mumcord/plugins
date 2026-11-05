@@ -822,3 +822,41 @@ fn the_scenario_board_payload_matches_the_codec() {
         r#".v=1;.msg={.d="Te&q4Te&q4Te&q4Te&q41w&]yzuH4y0F5KZ%gy5";.k=6;};"#
     );
 }
+
+/// Bob joins after Alice drew, but Alice's BOARD for him is lost (the host refused it, for
+/// example over a rate limit): she repeats it until Bob says HELLO, so he still loads the board.
+#[test]
+fn a_lost_board_announcement_is_repeated_for_a_joiner() {
+    let mut alice = User::new(1, "Alice", &[(2, "Bob")]);
+    let mut bob = User::new(2, "Bob", &[(1, "Alice")]);
+    alice.starts_board();
+    alice.page(r#"{"t":"create","obj":{"k":"note","g":[10,20,156,112],"fill":2,"text":"early"}}"#);
+    for _ in 0..20 {
+        alice.tick();
+    }
+    alice.host.sent.clear();
+    bob.event(Event::StageActivityStarted((
+        peer(&alice.me()),
+        "activity-1".into(),
+    )));
+    let bob_peer = peer(&bob.me());
+    bob.event(Event::StageJoined(bob_peer.clone()));
+    alice.event(Event::StageJoined(bob_peer));
+    bob.page(r#"{"t":"ready"}"#);
+    let mut lost = false;
+    for _ in 0..40 {
+        alice.tick();
+        bob.tick();
+        let before = alice.host.sent.len();
+        alice.host.sent.retain(|m| m.1 != codec::KIND_BOARD);
+        lost |= alice.host.sent.len() < before;
+        if lost {
+            break;
+        }
+        deliver(&mut alice, &mut bob);
+        deliver(&mut bob, &mut alice);
+    }
+    assert!(lost, "Alice never announced the board to Bob");
+    settle(&mut alice, &mut bob, 80);
+    assert!(upserted_texts(&bob).contains(&"early".to_owned()));
+}

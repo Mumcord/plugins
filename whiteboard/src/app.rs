@@ -60,6 +60,11 @@ pub const KIND_LINE: u8 = 0x20;
 const LINE_LEN: usize = 1 + 1 + 4 + 16;
 /// Timer interval; the host raises anything shorter to 250 ms.
 pub const TICK_MS: u64 = 250;
+/// The host repeats BOARD this often while a joiner has not said HELLO yet: a single
+/// announcement can be refused by the host (rate limit) or lost, and the joiner cannot ask for
+/// it because it does not know the board id yet.
+const BOARD_REPEAT_MS: u64 = 3_000;
+const BOARD_REPEATS: u8 = 20;
 /// Page bridge pacing: the host drops messages above 60 per second.
 const PAGE_RATE_PER_S: f64 = 50.0;
 const PAGE_BURST: f64 = 50.0;
@@ -267,6 +272,8 @@ pub struct App {
     activities: BTreeMap<String, SessionId>,
     pending_join: Option<String>,
     participants: BTreeSet<SessionId>,
+    /// Next BOARD repeat for joiners (due time, repeats left).
+    board_repeat: Option<(u64, u8)>,
     invites: Vec<Invite>,
     invite_seq: u32,
     seen_boards: BTreeMap<SessionId, BoardMsg>,
@@ -558,6 +565,7 @@ impl App {
             && o.s.effective_host() == Some(o.s.me())
         {
             let out = o.s.announce_board(o.started_ms, self.now);
+            self.board_repeat = Some((self.now + BOARD_REPEAT_MS, BOARD_REPEATS));
             self.run(host, out, None);
         }
     }
@@ -583,6 +591,7 @@ impl App {
         self.open = None;
         self.activity = None;
         self.participants.clear();
+        self.board_repeat = None;
         self.pages.clear();
         self.render = None;
         self.view = None;
@@ -825,6 +834,7 @@ impl App {
             let out = o.s.tick(now);
             self.run(host, out, None);
         }
+        self.repeat_board(host);
         if self
             .open
             .as_ref()
@@ -843,6 +853,33 @@ impl App {
         if self.clear_undo_until.is_some_and(|u| now >= u) {
             self.clear_undo_until = None;
         }
+    }
+
+    /// Announces the board again while a stage participant has not joined it (no HELLO yet).
+    fn repeat_board<H: Host>(&mut self, host: &mut H) {
+        let Some((due, left)) = self.board_repeat else {
+            return;
+        };
+        if self.now < due {
+            return;
+        }
+        let me = self.my_session();
+        let Some(o) = &mut self.open else {
+            self.board_repeat = None;
+            return;
+        };
+        let on_board: BTreeSet<SessionId> = o.s.peers().iter().map(|p| p.session).collect();
+        let waiting = self
+            .participants
+            .iter()
+            .any(|s| Some(*s) != me && !on_board.contains(s));
+        if !waiting || left == 0 || o.s.effective_host() != Some(o.s.me()) {
+            self.board_repeat = None;
+            return;
+        }
+        self.board_repeat = Some((self.now + BOARD_REPEAT_MS, left - 1));
+        let out = o.s.announce_board(o.started_ms, self.now);
+        self.run(host, out, None);
     }
 
     /// Carries out what the engine asked for. `from` is the sender of the message being
