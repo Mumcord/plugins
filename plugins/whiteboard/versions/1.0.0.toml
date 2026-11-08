@@ -1,0 +1,17 @@
+version = "1.0.0"
+api = "1.1"
+size = 1020356
+sha256 = "1d31a00a63afbbfd6eb021431897203b838f1ec3393fbfc15f3368d4ec8747ce"
+permissions = ["ui.stage", "ui.webview", "ui.app-menu", "ui.dialog", "peers.relay", "events.presence", "random.bytes", "ui.side-panel", "events.voice", "chat.send", "chat.supersedes", "ui.chat-card", "commands", "files.save", "chat.post-image"]
+published = "2026-11-08"
+signature = """
+untrusted comment: signature from rsign secret key
+RUStYW7iMZi0HO7EpzQ58DoVwqxlHRn9H6n8YrsL1W+VCUgT4M7/Xhbbl8ZvDMTt6c21QvJJcE2dQoU42EDIWUYcSp7Zkafn0wk=
+trusted comment: timestamp:1794181721
+mGYb3gv++qnaIPgx3oDSmF6+M1CKcmgl+ZfI1+3HT5jG3TK3TO3lQC2i05KccHlRlBADMIDh8ekX4drpOts7CQ==
+"""
+
+[source]
+repository = "https://github.com/Mumcord/plugins.git"
+commit = "12b6b2647a4e1db29f2dcac9202de0d92b3a92a4"
+path = "whiteboard"
