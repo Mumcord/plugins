@@ -1,8 +1,6 @@
-# EVE Fit <span class="mp-soon">Coming soon</span>
+# EVE Fit
 
-> [!NOTE]
-> EVE Fit is not released yet. This page describes what it will do once it is available in
-> **Settings → Plugins → Browse**.
+<img class="mp-plugin-icon" src="../../eve-fit/assets/icon-128.png" alt="" width="96" height="96">
 
 Paste an EVE Online fitting in chat and everyone sees a ship card.
 
