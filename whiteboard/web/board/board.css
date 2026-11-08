@@ -14,6 +14,7 @@
   --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.5rem;
   --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-full: 9999px;
   --wb-note-text: #24211a;
+  --wb-corner-clear: 92px;
   --wb-hl-alpha: 0.62;
   --wb-hl-blend: normal;
 }
@@ -121,7 +122,11 @@ button { font: inherit; }
 /* --- Toolbars -------------------------------------------------------------------------------------- */
 .wb-toolbar, .wb-props, .wb-zoom, .wb-presentbar, .wb-actions { position: absolute; z-index: 8; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: var(--radius-lg);
   background: var(--wb-chrome); border: 1px solid var(--wb-chrome-border); box-shadow: var(--shadow-raised); backdrop-filter: blur(6px); color: var(--wb-chrome-text); }
-.wb-toolbar { left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+/* The rail is centred while it fits and scrolls inside the board when the stage is short. It stays clear of the
+   bottom-left corner: the host draws its "Plugin content" badge (~32 px high) there and the zoom bar sits above it. */
+.wb-toolbar { left: 12px; top: 12px; bottom: var(--wb-corner-clear); height: fit-content; max-height: calc(100% - 12px - var(--wb-corner-clear)); margin-block: auto;
+  flex-direction: column; flex-wrap: nowrap; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.wb-toolbar > * { flex: none; }
 .wb-sep { width: 22px; margin: 3px 0; border: 0; border-top: 1px solid var(--wb-chrome-border); }
 .wb-tool { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--wb-chrome-text); cursor: pointer; }
 .wb-tool:hover { background: var(--color-bg-hover); }
@@ -153,7 +158,7 @@ button { font: inherit; }
 .wb-num { display: inline-flex; gap: 4px; align-items: center; font-size: var(--font-size-xs); font-weight: 700; }
 .wb-num input { width: 4.2rem; padding: 3px 6px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-weight: 400; }
 .wb-alt { width: 14rem; padding: 3px 8px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-size: var(--font-size-sm); }
-.wb-zoom { left: 12px; bottom: 12px; padding: 3px 6px; }
+.wb-zoom { left: 12px; bottom: 44px; padding: 3px 6px; }
 .wb-zoom__val { min-width: 3.2rem; text-align: center; font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; }
 .wb-mini { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--wb-chrome-text); cursor: pointer; }
 .wb-mini:hover { background: var(--color-bg-hover); }
@@ -218,10 +223,15 @@ button { font: inherit; }
 .wb-export__preview { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: repeating-conic-gradient(var(--color-bg-hover) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
 .wb-export__canvas { display: block; width: 100%; height: auto; }
 .wb-export__meta { margin: var(--space-2) 0 0; }
-.wb-dialog--wide[open] { display: flex; flex-direction: column; overflow: hidden; }
-.wb-export-form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-.wb-export { overflow: auto; min-height: 0; }
-.wb-export__foot { flex: none; border-top: 1px solid var(--color-border); }
+/* The whole dialog scrolls when the stage is short; the note and buttons stay pinned at the bottom so they are always reachable. */
+.wb-export__foot { position: sticky; bottom: calc(-1 * var(--space-5)); margin-bottom: calc(-1 * var(--space-5)); padding-bottom: var(--space-5); background: var(--color-bg-chat); border-top: 1px solid var(--color-border); }
+.wb-dialog--small { overscroll-behavior: contain; }
+@media (max-height: 520px) {
+  .wb-dialog { max-height: calc(100vh - 1rem); padding: var(--space-3) var(--space-4); }
+  .wb-export__foot { bottom: calc(-1 * var(--space-3)); margin-bottom: calc(-1 * var(--space-3)); padding-bottom: var(--space-3); }
+  .wb-dlg-actions { margin-top: var(--space-2); }
+  .wb-fs { margin-bottom: var(--space-2); }
+}
 @media (max-width: 40rem) { .wb-export { grid-template-columns: 1fr; } }
 .wb-fs { margin: 0 0 var(--space-3); padding: 0; border: 0; }
 .wb-fs legend { margin-bottom: var(--space-1); padding: 0; font-size: var(--font-size-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
