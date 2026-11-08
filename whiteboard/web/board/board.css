@@ -9,19 +9,23 @@
  */
 :root {
   color-scheme: light dark;
-  --font-family: "Instrument Sans", system-ui, sans-serif;
+  --font-family: "Instrument Sans Variable", "Instrument Sans", "Segoe UI", system-ui, -apple-system, "Noto Sans", Arial, sans-serif;
   --font-size-xs: 0.75rem; --font-size-sm: 0.875rem;
   --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.5rem;
   --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-full: 9999px;
   --wb-note-text: #24211a;
   --wb-corner-clear: 92px;
   --wb-hl-alpha: 0.62;
+  --focus-ring-width: 0.1875rem; --duration-fast: 120ms; --duration-normal: 200ms; --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --wb-hl-blend: normal;
 }
 :root, :root[data-theme="dark"] {
   --color-bg-chat: #1a1342; --color-bg-elevated: #231b55; --color-bg-hover: #2c2366; --color-bg-selected: #2a1f5e;
   --color-text: #f6f0e8; --color-text-secondary: #cbc3e3; --color-text-muted: #aaa2cc;
   --color-accent: #a78bff; --color-on-accent: #0e0a26; --color-accent-text: #ffb08a;
+  --color-primary-bg: #ffd9c2; --color-primary-text: #0e0a26;
+  --shadow-primary-glow: 0 0.5rem 1.5rem -0.25rem color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --shadow-primary-glow-hover: 0 0.75rem 2rem -0.25rem color-mix(in srgb, var(--color-accent) 75%, transparent);
   --color-success: #3ee39e; --color-warning: #fbbf24; --color-danger: #ff8f8f;
   --color-border: #31285f; --color-border-strong: #8a80b8; --color-focus: #ffb08a; --color-backdrop: rgb(7 5 20 / 72%);
   --shadow-raised: 0 1rem 2.5rem -0.75rem rgb(0 0 0 / 60%);
@@ -32,6 +36,9 @@
   --color-bg-chat: #ffffff; --color-bg-elevated: #eee9f8; --color-bg-hover: #e2daf3; --color-bg-selected: #e6dcfa;
   --color-text: #17113a; --color-text-secondary: #3d3566; --color-text-muted: #544c7c;
   --color-accent: #6a40e0; --color-on-accent: #ffffff; --color-accent-text: #5b34d6;
+  --color-primary-bg: #17113a; --color-primary-text: #ffffff;
+  --shadow-primary-glow: 0 0.5rem 1.5rem -0.25rem color-mix(in srgb, var(--color-accent) 40%, transparent);
+  --shadow-primary-glow-hover: 0 0.75rem 2rem -0.25rem color-mix(in srgb, var(--color-accent) 60%, transparent);
   --color-success: #136634; --color-warning: #7f4d00; --color-danger: #b01c1c;
   --color-border: #d6cfe8; --color-border-strong: #716894; --color-focus: #c21f62; --color-backdrop: rgb(23 17 58 / 45%);
   --shadow-raised: 0 1rem 2.5rem -0.75rem rgb(23 17 58 / 25%);
@@ -78,7 +85,7 @@
 html, body { height: 100%; margin: 0; }
 body { display: flex; flex-direction: column; overflow: hidden; background: var(--wb-paper); color: var(--wb-chrome-text); font: 14px/1.4 var(--font-family); }
 button { font: inherit; }
-:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 [hidden] { display: none !important; }
 
@@ -173,7 +180,7 @@ button { font: inherit; }
 /* --- Banners, presenting ------------------------------------------------------------------------------------- */
 .wb-banner { position: absolute; z-index: 9; right: 12px; top: 12px; display: flex; gap: var(--space-3); align-items: center; width: max-content; max-width: calc(100% - 24px); padding: 6px 8px 6px 12px; border-radius: var(--radius-full); font-size: var(--font-size-sm); box-shadow: var(--shadow-raised); }
 .wb-banner--follow { right: auto; left: 50%; top: 64px; transform: translateX(-50%); }
-.wb-banner__btn { flex: none; display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; border: 1px solid var(--wb-chrome-border); border-radius: var(--radius-full); background: transparent; color: inherit; font: inherit; font-size: var(--font-size-sm); cursor: pointer; }
+.wb-banner__btn { flex: none; display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: transparent; color: inherit; font: inherit; font-size: var(--font-size-sm); cursor: pointer; }
 .wb-banner__btn:hover { background: var(--color-bg-hover); }
 .wb-who-stack { display: inline-flex; }
 .wb-who { position: relative; display: grid; place-items: center; width: 24px; height: 24px; margin-left: -6px; border-radius: 50%; background: var(--c); color: #fff; font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--c); }
@@ -200,20 +207,18 @@ button { font: inherit; }
 .wb-outline:not([data-open]):not(:focus-within) { width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); }
 .wb-outline h2 { margin: 0; font-size: var(--font-size-sm); }
 .wb-outline label { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-muted); }
-.wb-outline select { padding: 4px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-weight: 400; }
 .wb-outline ul { flex: 1; margin: 0; padding: 0; overflow: auto; list-style: none; }
 .wb-outline li { padding: 5px 8px; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; }
 .wb-outline li[aria-selected="true"] { background: var(--color-bg-selected); }
 .wb-outline p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
 /* --- Help dialog ----------------------------------------------------------------------------------------------- */
-.wb-dialog { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg-chat); color: var(--color-text); box-shadow: var(--shadow-raised); }
+.wb-dialog { font-family: var(--font-family); width: min(34rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg-chat); color: var(--color-text); box-shadow: var(--shadow-raised); }
 .wb-dialog::backdrop { background: var(--color-backdrop); }
-.wb-dialog h2 { margin: 0 0 var(--space-3); font-size: 1.1rem; }
+.wb-dialog h2 { margin: 0 0 var(--space-3); font-size: var(--font-size-lg); letter-spacing: -0.01em; }
 .wb-keys { display: grid; grid-template-columns: max-content 1fr; gap: 6px var(--space-4); margin: 0 0 var(--space-4); font-size: var(--font-size-sm); }
 .wb-keys dt { font-weight: 700; white-space: nowrap; }
 .wb-keys dd { margin: 0; color: var(--color-text-secondary); }
-.wb-dialog__close { padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-full); background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; cursor: pointer; }
 
 /* --- In-board dialogs: Export or share (mockups 5, 5b) and Clear (mockup 6b) --------------------------------------- */
 .wb-dialog--wide { width: min(56rem, calc(100vw - 2rem)); }
@@ -238,28 +243,36 @@ button { font: inherit; }
 .wb-opt { display: flex; gap: var(--space-3); align-items: flex-start; padding: 6px 8px; border-radius: var(--radius-md); }
 .wb-opt:has(input:checked) { background: var(--color-bg-selected); }
 .wb-opt:has(input:disabled) { opacity: 0.45; }
-.wb-opt input { margin-top: 3px; accent-color: var(--color-accent); }
+/* Radios as in Mumcord (controls.css): a 1.25rem ring with an accent centre. */
+.wb-opt input { appearance: none; display: inline-grid; flex: none; place-content: center; width: 1.25rem; height: 1.25rem; margin: 1px 0 0; border: 2px solid var(--color-border-strong); border-radius: 50%; background: transparent; cursor: pointer; transition: border-color var(--duration-fast) var(--ease-out); }
+.wb-opt input:checked { border-color: var(--color-accent); background: radial-gradient(circle, var(--color-accent) 0 38%, transparent 42%); }
+.wb-opt:hover input:not(:disabled) { border-color: var(--color-accent); }
+.wb-opt input:disabled { opacity: 0.45; cursor: not-allowed; }
 .wb-opt__t { display: flex; flex-direction: column; font-size: var(--font-size-sm); }
 .wb-opt__t span { color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .wb-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3); }
 .wb-field { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-muted); }
-.wb-select { padding: var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-size: var(--font-size-sm); font-weight: 400; }
-.wb-switch-row { display: flex; gap: var(--space-3); align-items: flex-start; margin-bottom: var(--space-3); font-size: var(--font-size-sm); }
+.wb-select, .wb-outline select { appearance: none; padding: var(--space-2); padding-inline-end: 2rem; border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background-color: var(--color-bg-elevated); background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%), linear-gradient(135deg, currentcolor 50%, transparent 50%); background-position: calc(100% - 1rem) 55%, calc(100% - 0.7rem) 55%; background-size: 0.3rem 0.3rem; background-repeat: no-repeat; color: var(--color-text); font: inherit; font-size: var(--font-size-sm); font-weight: 400; cursor: pointer; }
+.wb-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.wb-select option, .wb-outline select option { background: var(--color-bg-elevated); color: var(--color-text); }
+.wb-switch-row { display: flex; gap: var(--space-3); align-items: center; margin-bottom: var(--space-3); font-size: var(--font-size-sm); }
 .wb-switch-row > span { display: flex; flex-direction: column; }
-.wb-switch { flex: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: 10px; background: var(--color-border-strong); appearance: none; cursor: pointer; }
-.wb-switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 120ms; }
-.wb-switch:checked { background: var(--color-accent); }
-.wb-switch:checked::after { transform: translateX(16px); }
-.wb-switch:disabled { opacity: 0.55; }
+/* Switch as in Mumcord's settings: 2.5 x 1.5rem pill, accent when on. */
+.wb-switch { appearance: none; position: relative; flex: none; width: 2.5rem; height: 1.5rem; margin: 0; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: var(--color-bg-hover); cursor: pointer; transition: background var(--duration-fast); }
+.wb-switch::after { content: ""; position: absolute; top: 0.1875rem; left: 0.1875rem; width: 1rem; height: 1rem; border-radius: var(--radius-full); background: var(--color-text-secondary); transition: transform var(--duration-fast); }
+.wb-switch:checked { border-color: var(--color-accent); background: var(--color-accent); }
+.wb-switch:checked::after { background: var(--color-on-accent); transform: translateX(1rem); }
+.wb-switch:disabled { opacity: 0.5; cursor: not-allowed; }
 .wb-note { margin: var(--space-3) 0 0; color: var(--color-text-secondary); font-size: var(--font-size-xs); }
 .wb-note:empty { display: none; }
 .wb-note[data-tone="success"] { color: var(--color-success); font-weight: 700; }
 .wb-note[data-tone="warning"] { color: var(--color-warning); font-weight: 700; }
 .wb-note[data-tone="danger"] { color: var(--color-danger); font-weight: 700; }
 .wb-dlg-actions { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-4); }
-.wb-button.wb-button--quiet { border: 1px solid var(--color-border-strong); background: transparent; color: var(--color-text); }
-.wb-button.wb-button--danger { background: var(--color-danger); color: var(--color-bg-chat); }
-.wb-button:disabled { opacity: 0.55; cursor: default; }
+.wb-button.wb-button--quiet { border: 1px solid var(--color-border-strong); background: var(--color-bg-elevated); color: var(--color-text); font-weight: 400; box-shadow: none; }
+.wb-button.wb-button--quiet:hover:not(:disabled) { border-color: var(--color-text-secondary); background: var(--color-bg-hover); box-shadow: none; }
+.wb-button.wb-button--danger { background: var(--color-danger); color: var(--color-bg-chat); box-shadow: none; }
+.wb-button:disabled { opacity: 0.5; cursor: not-allowed; }
 .wb-toast { position: fixed; z-index: 40; left: 50%; bottom: 56px; display: flex; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius-full); box-shadow: var(--shadow-raised); font-size: var(--font-size-sm); transform: translateX(-50%); }
 
 /* --- Side panel mini view ------------------------------------------------------------------------------------------- */
@@ -273,7 +286,10 @@ button { font: inherit; }
 .wb-h3 { margin-top: var(--space-3); }
 .wb-quick__row { display: flex; gap: var(--space-2); }
 .wb-quick__input { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-bg-elevated); color: var(--color-text); font: inherit; font-size: var(--font-size-sm); }
-.wb-button { padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-full); background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; cursor: pointer; }
+/* Glow pill as in Mumcord (.button--primary): cream with a dark label in dark, a dark pill in light. */
+.wb-button, .wb-dialog__close { padding: var(--space-2) var(--space-4); border: 1px solid transparent; border-radius: var(--radius-full); background: var(--color-primary-bg); color: var(--color-primary-text); font-weight: 600; box-shadow: var(--shadow-primary-glow); cursor: pointer; transition: box-shadow var(--duration-fast), background-color var(--duration-fast), border-color var(--duration-fast), transform var(--duration-normal) var(--ease-out); }
+.wb-button:hover:not(:disabled), .wb-dialog__close:hover { box-shadow: var(--shadow-primary-glow-hover); }
+@media (prefers-reduced-motion: no-preference) { .wb-button:hover:not(:disabled), .wb-dialog__close:hover { transform: translateY(-1px); } .wb-button:active:not(:disabled), .wb-dialog__close:active { transform: scale(0.97); } }
 .wb-muted { color: var(--color-text-muted); font-size: var(--font-size-xs); }
 .wb-plist { margin: 0; padding: 0; list-style: none; }
 .wb-prow { display: flex; gap: var(--space-2); align-items: center; padding: 5px 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); }

@@ -93,7 +93,7 @@ export function createDialogs(t, send, scope, preview) {
         select("bg", t("exp.background"), [["paper", t("exp.bgPaper")], ["none", t("exp.bgNone")]], "paper"),
       ]),
       el("label", { class: "wb-switch-row" }, [
-        el("input", { type: "checkbox", name: "names", class: "wb-switch" }),
+        el("input", { type: "checkbox", role: "switch", name: "names", class: "wb-switch" }),
         el("span", {}, [el("b", { text: t("exp.names") }), el("span", { class: "wb-muted", text: t("exp.namesHint") })]),
       ]),
     );
