@@ -1,5 +1,6 @@
-// Whiteboard, issue #397: three Mumcord clients on one board over a server without a relay.
-// - No relay: the board shows the "no relay" strip, and another person's cursor shows "x s ago".
+// Whiteboard, issue #397: three Mumcord clients on one board over a relay that allows plugin data
+// (the board travels only over the relay; start.e2e.ts covers a server without one).
+// - With the relay the board shows no "needs a relay" notice, and B's stroke reaches A.
 // - Late join: C joins a ~110 KiB board (70 strokes × 400 points) and has all of it within 15 s,
 //   drawing before the load finishes (the issue's 150 KiB in 15 s, as agreed: ≤ 110 KiB here).
 // - A, B and C draw, place and type notes, move them and erase at the same time; every client ends
@@ -7,7 +8,7 @@
 //   duplicated and dropped messages are covered by the simulated network in src/sync.rs tests.
 // - After everyone leaves, A restarts Mumcord and "Continue" re-opens the saved board.
 import { $, browser, expect } from "@wdio/globals";
-import { app, apps, registry, testenv } from "../../helpers/index.ts";
+import { app, apps, registry } from "../../helpers/index.ts";
 import { joinChannel, reconnectSaved } from "../../helpers/chat-ui.ts";
 import {
   bulkStrokes,
@@ -21,6 +22,7 @@ import {
   ROOT,
   setUpClient,
   startFromAppsMenu,
+  startRelay,
   stroke,
   waitSameBoard,
 } from "./board.ts";
@@ -29,8 +31,10 @@ const BULK_STROKES = 70;
 const BULK_POINTS = 400;
 const LATE_JOIN_MS = 15_000;
 
-describe("Whiteboard: three clients without a relay", () => {
+describe("Whiteboard: three clients over the relay", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
   /** Objects every client should have at the end of the current step. */
   let objects = 0;
   let finalBoard: string[] = [];
@@ -38,7 +42,7 @@ describe("Whiteboard: three clients without a relay", () => {
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -49,38 +53,28 @@ describe("Whiteboard: three clients without a relay", () => {
 
   it("A, B and C install Whiteboard in the same channel", async () => {
     await app.restart({ env: fixtures.env() });
-    await setUpClient("Alice");
+    await setUpClient("Alice", port);
     await apps.startB({ env: fixtures.env() });
-    await apps.onB(() => setUpClient("Bob"));
+    await apps.onB(() => setUpClient("Bob", port));
     await apps.startC({ env: fixtures.env() });
-    await apps.onC(() => setUpClient("Carol"));
+    await apps.onC(() => setUpClient("Carol", port));
   });
 
-  it("shows the no-relay strip and other people's cursors as 'x s ago'", async () => {
+  it("shows no relay notice and B's stroke reaches A", async () => {
     await startFromAppsMenu();
     await apps.onB(joinFromCard);
     for (const on of [onA, apps.onB]) {
-      await on(() =>
-        inBoard(async () => {
-          await expect($("#strip")).toBeDisplayed({ wait: 15_000 });
-          await expect($("#strip-title")).toHaveText("This server has no relay for plugin data.");
-        }),
-      );
+      await on(() => inBoard(() => expect($("#strip")).not.toBeDisplayed()));
     }
     await apps.onB(() => inBoard(() => stroke(-50, -150)));
     objects = 1;
     await waitSameBoard([onA, apps.onB], objects);
-    // Without a relay the cursor travels with the stroke: A shows where B was and since when.
-    await inBoard(() =>
-      expect($("#cursors")).toHaveText(expect.stringMatching(/\d+ s ago/), { wait: 15_000 }),
-    );
   });
 
   it(`C joins a ~110 KiB board late and loads it within ${String(LATE_JOIN_MS / 1000)} s`, async function () {
     this.timeout(10 * 60_000);
     await inBoard(() => bulkStrokes(BULK_STROKES, BULK_POINTS, 397));
     objects += BULK_STROKES;
-    // Without a relay A sends the strokes to B at the server's message rate: that may take minutes.
     const board = await waitSameBoard([onA, apps.onB], objects, 5 * 60_000);
 
     await apps.onC(async () => {

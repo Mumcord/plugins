@@ -1,7 +1,9 @@
 // Whiteboard, issue #397: starting a board and its sealed page. A starts the board from the Apps
 // menu: it opens on the stage and posts an invite card; B joins from the card. The entry is also
 // offered in the channel menu and as /whiteboard. The board page makes no network requests: a
-// `fetch` and an `<img>` to a local address are blocked and never reach it.
+// `fetch` and an `<img>` to a local address are blocked and never reach it. The board travels only
+// over a relay that allows plugin data: on a server without one, the Apps entry is disabled with the
+// reason and /whiteboard explains it.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { $, browser, expect } from "@wdio/globals";
@@ -12,14 +14,19 @@ import {
   inviteCards,
   joinFromCard,
   onA,
+  pluginDialog,
   ROOT,
   setUpClient,
   START,
   startFromAppsMenu,
+  startRelay,
   stroke,
   typeInComposer,
   waitSameBoard,
 } from "./board.ts";
+
+const NO_RELAY = "Whiteboard needs a relay on this server.";
+const REFUSED = "Couldn't start the whiteboard";
 
 /** A local web server that counts every request (it must stay at zero). */
 async function countingServer(): Promise<{ url: string; hits: () => number; stop: () => void }> {
@@ -36,11 +43,13 @@ async function countingServer(): Promise<{ url: string; hits: () => number; stop
 
 describe("Whiteboard: start, invite card and a sealed page", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
 
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -48,11 +57,33 @@ describe("Whiteboard: start, invite card and a sealed page", () => {
     await fixtures.stop();
   });
 
-  it("A and B install Whiteboard in the same channel", async () => {
+  it("without a relay, the Apps entry is disabled with the reason and /whiteboard explains it", async () => {
+    await testenv.up("v15");
     await app.restart({ env: fixtures.env() });
     await setUpClient("Alice");
+    await $("button.chat-apps__button").click();
+    const item = $(
+      `//div[@role='menu']//*[@role='menuitem'][contains(normalize-space(.),'${START}')]`,
+    );
+    await item.waitForDisplayed({ timeout: 10_000 });
+    await expect(item).toHaveAttribute("aria-disabled", "true");
+    await expect($("//div[@role='menu']")).toHaveText(expect.stringContaining(NO_RELAY));
+    await browser.keys("Escape");
+
+    await typeInComposer("/whiteboard ");
+    await browser.keys("Enter");
+    const dialog = pluginDialog(REFUSED);
+    await dialog.waitForDisplayed({ timeout: 15_000 });
+    await expect(dialog).toHaveText(expect.stringContaining(NO_RELAY));
+    await browser.keys("Escape");
+    await dialog.waitForDisplayed({ reverse: true });
+  });
+
+  it("A and B install Whiteboard in the same channel", async () => {
+    await app.restart({ freshProfile: true, env: fixtures.env() });
+    await setUpClient("Alice", port);
     await apps.startB({ env: fixtures.env() });
-    await apps.onB(() => setUpClient("Bob"));
+    await apps.onB(() => setUpClient("Bob", port));
   });
 
   it("offers Start whiteboard in the channel menu and as /whiteboard", async () => {

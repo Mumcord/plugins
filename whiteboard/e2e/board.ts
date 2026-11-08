@@ -3,13 +3,20 @@
 // boards are compared through the board outline: one line per object in reading order, with the
 // object id, kind, colour, text and position. Equal outlines on every client mean equal boards.
 import { $, $$, browser, expect } from "@wdio/globals";
+import { relayenv } from "../../helpers/index.ts";
 import { composer, joinChannel } from "../../helpers/chat-ui.ts";
+import { registerOnServer } from "../../helpers/files-ui.ts";
 import { openSettingsGroup } from "../../helpers/settings-ui.ts";
 import { addAndConnect, completeWizard } from "../../helpers/voice-ui.ts";
 import { closeSettings, developerMode, install } from "../official-shared/a11y.ts";
 
-/** Plugin data travels on the voice server only, so every client joins this channel. */
-export const ROOT = "Mumcord Test Server";
+/**
+ * Plugin data travels on the voice server only, so every client joins this channel: the root
+ * channel of the mumpeer test environment's server (helpers/relayenv.ts).
+ */
+export const ROOT = "Mumpeer Test Server";
+/** The root channel of the plain test server (`testenv.up("v15")`), which has no relay. */
+export const PLAIN_ROOT = "Mumcord Test Server";
 export const PLUGIN = "Whiteboard";
 /** The people of the specs; their names are masked when outlines are compared. */
 export const PEOPLE = ["Alice", "Bob", "Carol"];
@@ -23,13 +30,31 @@ export const pluginDialog = (title: string) =>
 const stageFrame = () => $(`iframe.plugin-webview__frame[title='${PLUGIN}']`);
 export const panelFrame = () => $(".pstrip-panel iframe.plugin-webview__frame");
 
-/** Wizard, connection, the shared channel and the plugin with every optional permission. */
-export async function setUpClient(name: string): Promise<void> {
+/**
+ * Starts the mumpeer test environment with a relay that allows plugin data and returns the port of
+ * its Mumble server. The board travels only over the relay, so every board spec needs it.
+ */
+export async function startRelay(): Promise<number> {
+  return (await relayenv.startRelay("plugin-data")).port;
+}
+
+/**
+ * Wizard, connection, the shared channel and the plugin with every optional permission. With
+ * `port`, the client connects to the relay environment's server and registers (the relay bot gives
+ * relay tokens to registered users only); without, to the plain test server.
+ */
+export async function setUpClient(name: string, port?: number): Promise<void> {
   await completeWizard(name);
   await developerMode();
   await closeSettings();
-  await addAndConnect();
-  await joinChannel(ROOT);
+  if (port === undefined) {
+    await addAndConnect();
+    await joinChannel(PLAIN_ROOT);
+  } else {
+    await addAndConnect(`localhost:${String(port)}`);
+    await joinChannel(ROOT);
+    await registerOnServer();
+  }
   await openSettingsGroup("Plugins");
   await install(PLUGIN);
   await closeSettings();
@@ -39,7 +64,8 @@ export async function setUpClient(name: string): Promise<void> {
 export async function startFromAppsMenu(): Promise<void> {
   await $("button.chat-apps__button").click();
   const item = $(`//div[@role='menu']//*[@role='menuitem'][normalize-space(.)='${START}']`);
-  await item.waitForClickable({ timeout: 15_000 });
+  // The entry stays disabled until the client holds a relay token for this server.
+  await item.waitForClickable({ timeout: 60_000 });
   await item.click();
   await stageFrame().waitForDisplayed({ timeout: 30_000 });
 }

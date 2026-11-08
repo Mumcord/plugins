@@ -3,9 +3,9 @@
 // Escape), selects everything (Ctrl+A), deletes, undoes and redoes, zooms with + and -, and walks
 // the board outline. The board is started from the Apps menu with the keyboard as well.
 import { $, browser, expect } from "@wdio/globals";
-import { app, registry, testenv } from "../../helpers/index.ts";
+import { app, registry } from "../../helpers/index.ts";
 import { composer } from "../../helpers/chat-ui.ts";
-import { inBoard, note, outline, setUpClient, START, waitCount } from "./board.ts";
+import { inBoard, note, outline, setUpClient, START, startRelay, waitCount } from "./board.ts";
 
 const stage = () => $("iframe.plugin-webview__frame[title='Whiteboard']");
 
@@ -22,11 +22,13 @@ async function focusBoard(): Promise<void> {
 
 describe("Whiteboard: keyboard only", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
 
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -35,7 +37,7 @@ describe("Whiteboard: keyboard only", () => {
 
   it("starts the board from the Apps menu with the keyboard", async () => {
     await app.restart({ env: fixtures.env() });
-    await setUpClient("Alice");
+    await setUpClient("Alice", port);
     // From the composer, Shift+Tab reaches the Apps button next to it.
     await composer().click();
     const apps = $("button.chat-apps__button");

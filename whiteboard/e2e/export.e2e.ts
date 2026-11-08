@@ -7,7 +7,7 @@
 // user's gesture (FR-9.45).
 import { existsSync, readdirSync } from "node:fs";
 import { $, expect } from "@wdio/globals";
-import { app, registry, testenv } from "../../helpers/index.ts";
+import { app, registry } from "../../helpers/index.ts";
 import { ScriptBot } from "../../helpers/chat-ui.ts";
 import {
   action,
@@ -19,6 +19,7 @@ import {
   noteAt,
   setUpClient,
   startFromAppsMenu,
+  startRelay,
   stroke,
 } from "./board.ts";
 
@@ -26,12 +27,14 @@ const EXPORT_TITLE = 'Export or share "Untitled board"';
 
 describe("Whiteboard: export and post to chat", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
   let carol: ScriptBot | undefined;
 
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -41,7 +44,7 @@ describe("Whiteboard: export and post to chat", () => {
 
   it("A draws a board", async () => {
     await app.restart({ env: fixtures.env() });
-    await setUpClient("Alice");
+    await setUpClient("Alice", port);
     await startFromAppsMenu();
     await inBoard(async () => {
       await stroke(-100, -50);
@@ -71,7 +74,7 @@ describe("Whiteboard: export and post to chat", () => {
   });
 
   it("posts the board as a picture that a standard client receives", async () => {
-    carol = new ScriptBot({ name: "Carol", timeout: 60 });
+    carol = new ScriptBot({ name: "Carol", port, timeout: 60 });
     await carol.connected();
     const picture = carol.run("expect message --from Alice --contains \"<img\"", 60_000);
     await inBoard(async () => {

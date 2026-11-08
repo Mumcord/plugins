@@ -1,10 +1,10 @@
 // Whiteboard, issue #397: the side panel mini view. With the board running, A opens Whiteboard
 // in the plugin strip: the mini view shows the live, read-only preview, a quick sticky note lands
 // on the board, "Open on stage" brings the board back, and switching chats stops nothing.
-// The issue's case is a screen share on the stage; screen sharing needs the relay test
-// environment, so here the panel is opened next to the running board instead.
+// The issue's case is a screen share on the stage; here the panel is opened next to the running
+// board instead.
 import { $, browser, expect } from "@wdio/globals";
-import { app, registry, testenv } from "../../helpers/index.ts";
+import { app, registry } from "../../helpers/index.ts";
 import { selectChannel } from "../../helpers/chat-ui.ts";
 import { openPanel } from "../official-shared/a11y.ts";
 import {
@@ -15,6 +15,7 @@ import {
   ROOT,
   setUpClient,
   startFromAppsMenu,
+  startRelay,
   stroke,
   waitCount,
 } from "./board.ts";
@@ -23,11 +24,13 @@ const stage = () => $(`iframe.plugin-webview__frame[title='${PLUGIN}']`);
 
 describe("Whiteboard: side panel mini view", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
 
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -36,7 +39,7 @@ describe("Whiteboard: side panel mini view", () => {
 
   it("A starts a board and draws", async () => {
     await app.restart({ env: fixtures.env() });
-    await setUpClient("Alice");
+    await setUpClient("Alice", port);
     await startFromAppsMenu();
     await inBoard(() => stroke(-50, 0));
   });

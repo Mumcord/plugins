@@ -3,10 +3,9 @@
 // - Clearing needs a confirmation, removes everything for both, and Undo brings it back.
 // - Hiding B's strokes affects only A.
 // - Presenting: B sees that A presents and can follow and stop following; Esc ends presenting.
-//   The followed view and the laser travel on the relay only (no relay in this environment):
-//   their live movement is not checked here.
+//   The live movement of the followed view and the laser is not checked here.
 import { $, browser, expect } from "@wdio/globals";
-import { app, apps, registry, testenv } from "../../helpers/index.ts";
+import { app, apps, registry } from "../../helpers/index.ts";
 import {
   action,
   boardButton,
@@ -21,6 +20,7 @@ import {
   pluginDialog,
   setUpClient,
   startFromAppsMenu,
+  startRelay,
   stroke,
   waitCount,
   waitSameBoard,
@@ -44,12 +44,14 @@ async function bDraws(x: number): Promise<void> {
 
 describe("Whiteboard: host settings and presenting", () => {
   let fixtures: registry.FixtureRegistry;
+  /** The Mumble server of the relay environment. */
+  let port = 0;
   let objects = 0;
 
   before(async function () {
     this.timeout(20 * 60_000);
     fixtures = await registry.start();
-    await testenv.up("v15");
+    port = await startRelay();
   });
 
   after(async () => {
@@ -59,9 +61,9 @@ describe("Whiteboard: host settings and presenting", () => {
 
   it("A starts a board and B joins it", async () => {
     await app.restart({ env: fixtures.env() });
-    await setUpClient("Alice");
+    await setUpClient("Alice", port);
     await apps.startB({ env: fixtures.env() });
-    await apps.onB(() => setUpClient("Bob"));
+    await apps.onB(() => setUpClient("Bob", port));
     await startFromAppsMenu();
     await apps.onB(joinFromCard);
     await inBoard(() => stroke(-200, -100));
