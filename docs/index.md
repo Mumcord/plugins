@@ -46,6 +46,12 @@ no server changes and work on any standard Mumble server.
 
     A remote for your mumbot music bot: now playing, skip, volume, queue and adding tracks.
 
+-   <img src="../whiteboard/assets/icon-128.png" alt="" width="48" height="48"> **[Whiteboard](plugins/whiteboard.md)**
+
+    ---
+
+    One shared, endless board for your voice channel: sketch, add sticky notes, present with a laser and export.
+
 -   **[EVE Fit](plugins/eve-fit.md)** <span class="mp-soon">Coming soon</span>
 
     ---
