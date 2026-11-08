@@ -1,23 +1,25 @@
 // Whiteboard, issue #397: starting a board and its sealed page. A starts the board from the Apps
 // menu: it opens on the stage and posts an invite card; B joins from the card. The entry is also
-// offered in the channel menu and as /whiteboard. The board page makes no network requests: a
-// `fetch` and an `<img>` to a local address are blocked and never reach it. The board travels only
-// over a relay that allows plugin data: on a server without one, the Apps entry is disabled with the
-// reason and /whiteboard explains it.
+// offered as /whiteboard. The board page makes no network requests: a `fetch` and an `<img>` to a
+// local address are blocked and never reach it. The board travels only over a relay that allows
+// plugin data: on a server without one, the Apps entry is disabled with the reason and /whiteboard
+// explains it.
+//
+// Not automated: the channel menu entry of #397. Mumcord shows plugin app menu items only in the
+// composer's Apps menu and the plugins palette, not in the channel context menu, so there is no
+// host place to test it yet.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { $, browser, expect } from "@wdio/globals";
 import { app, apps, registry, testenv } from "../../helpers/index.ts";
-import { channelName } from "../../helpers/voice-ui.ts";
 import {
   inBoard,
   inviteCards,
   joinFromCard,
   onA,
   pluginDialog,
-  ROOT,
   setUpClient,
-  START,
+  startItem,
   startFromAppsMenu,
   startRelay,
   stroke,
@@ -62,12 +64,10 @@ describe("Whiteboard: start, invite card and a sealed page", () => {
     await app.restart({ env: fixtures.env() });
     await setUpClient("Alice");
     await $("button.chat-apps__button").click();
-    const item = $(
-      `//div[@role='menu']//*[@role='menuitem'][contains(normalize-space(.),'${START}')]`,
-    );
+    const item = startItem();
     await item.waitForDisplayed({ timeout: 10_000 });
     await expect(item).toHaveAttribute("aria-disabled", "true");
-    await expect($("//div[@role='menu']")).toHaveText(expect.stringContaining(NO_RELAY));
+    await expect(item.$(".chat-apps__reason")).toHaveText(NO_RELAY);
     await browser.keys("Escape");
 
     await typeInComposer("/whiteboard ");
@@ -86,12 +86,7 @@ describe("Whiteboard: start, invite card and a sealed page", () => {
     await apps.onB(() => setUpClient("Bob", port));
   });
 
-  it("offers Start whiteboard in the channel menu and as /whiteboard", async () => {
-    await channelName(ROOT).click({ button: "right" });
-    const item = $(`//*[@role='menu']//*[@role='menuitem'][normalize-space(.)='${START}']`);
-    await item.waitForDisplayed({ timeout: 10_000 });
-    await browser.keys("Escape");
-
+  it("offers /whiteboard in the chat box", async () => {
     await typeInComposer("/whiteboard");
     const option = $("//div[@role='listbox'][@aria-label='Plugin commands']//*[@role='option']");
     await option.waitForDisplayed({ timeout: 10_000 });

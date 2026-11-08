@@ -12,7 +12,9 @@ import {
   boardDialog,
   boardToast,
   dialogButton,
+  dialogChoice,
   dialogControl,
+  drag,
   inBoard,
   joinFromCard,
   onA,
@@ -39,7 +41,7 @@ async function closeDialog(): Promise<void> {
 
 /** B tries to draw; returns once B's own page took the stroke or refused it. */
 async function bDraws(x: number): Promise<void> {
-  await apps.onB(() => inBoard(() => stroke(x, 100)));
+  await apps.onB(() => inBoard(() => stroke(x, 60)));
 }
 
 describe("Whiteboard: host settings and presenting", () => {
@@ -66,7 +68,7 @@ describe("Whiteboard: host settings and presenting", () => {
     await apps.onB(() => setUpClient("Bob", port));
     await startFromAppsMenu();
     await apps.onB(joinFromCard);
-    await inBoard(() => stroke(-200, -100));
+    await inBoard(() => stroke(-200, -60));
     await bDraws(0);
     objects = 2;
     await waitSameBoard([onA, apps.onB], objects);
@@ -74,7 +76,7 @@ describe("Whiteboard: host settings and presenting", () => {
 
   it("'Only me' makes B view-only on B's own client", async () => {
     await openBoardSettings();
-    await dialogControl("Only me").click();
+    await dialogChoice("Who may draw", "Only me");
     await closeDialog();
     await apps.onB(() =>
       inBoard(() =>
@@ -83,7 +85,18 @@ describe("Whiteboard: host settings and presenting", () => {
         }),
       ),
     );
-    await bDraws(150);
+    // B's pen is off; the pen key is refused too, so a drag on the board draws nothing.
+    await apps.onB(() =>
+      inBoard(async () => {
+        await expect($("#toolbar button[data-tool='pen']")).toBeDisabled();
+        await browser.keys("p");
+        await drag([
+          [150, 60],
+          [190, 70],
+          [230, 60],
+        ]);
+      }),
+    );
     // Nothing new reaches A (and B's page drops it, too).
     await browser.pause(5_000);
     await waitSameBoard([onA, apps.onB], objects);
@@ -91,7 +104,7 @@ describe("Whiteboard: host settings and presenting", () => {
 
   it("'Selected people' lets B draw once A selects B", async () => {
     await openBoardSettings();
-    await dialogControl("Selected people").click();
+    await dialogChoice("Who may draw", "Selected people");
     await dialogControl("Bob may draw").click();
     await closeDialog();
     await apps.onB(() =>

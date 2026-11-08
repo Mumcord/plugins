@@ -25,10 +25,13 @@ export const START = "Start whiteboard";
 /** Mumcord's own UI (outside the board frame). */
 export const inviteCards = () =>
   $$(`section.plugin-chat-card[aria-label='Card from ${PLUGIN}']`);
+/** A host dialog by its title; double quotes in the XPath, because titles hold apostrophes. */
 export const pluginDialog = (title: string) =>
-  $(`//div[@role='dialog'][.//*[normalize-space(.)='${title}']]`);
-const stageFrame = () => $(`iframe.plugin-webview__frame[title='${PLUGIN}']`);
-export const panelFrame = () => $(".pstrip-panel iframe.plugin-webview__frame");
+  $(`//div[@role='dialog'][.//*[normalize-space(.)="${title}"]]`);
+/** The board on the stage (the media area); the side panel has its own frame. */
+export const stageFrame = () => $(".plugin-stage iframe.plugin-webview__frame");
+/** The mini view in the side panel next to the chat. */
+export const panelFrame = () => $(".plugin-sidepanel__body iframe.plugin-webview__frame");
 
 /**
  * Starts the mumpeer test environment with a relay that allows plugin data and returns the port of
@@ -60,10 +63,19 @@ export async function setUpClient(name: string, port?: number): Promise<void> {
   await closeSettings();
 }
 
+/**
+ * The "Start whiteboard" item of the open Apps menu. Matched on its label text alone: the item also
+ * holds the plugin's tile letter, its name and, when disabled, the reason.
+ */
+export const startItem = () =>
+  $(
+    `//div[contains(@class,'chat-apps__menu')]//button[contains(@class,'appmenu__item')][.//span[contains(@class,'appmenu__text')]/text()[normalize-space()='${START}']]`,
+  );
+
 /** "Start whiteboard" from the composer's Apps menu. */
 export async function startFromAppsMenu(): Promise<void> {
   await $("button.chat-apps__button").click();
-  const item = $(`//div[@role='menu']//*[@role='menuitem'][normalize-space(.)='${START}']`);
+  const item = startItem();
   // The entry stays disabled until the client holds a relay token for this server.
   await item.waitForClickable({ timeout: 60_000 });
   await item.click();
@@ -98,7 +110,8 @@ export async function typeInComposer(text: string): Promise<void> {
     );
     field.dispatchEvent(new Event("input", { bubbles: true }));
   }, text);
-  await expect(box).toHaveValue(text);
+  // A trailing space is part of the command text, so it must not be trimmed away.
+  await expect(box).toHaveValue(text, { trim: false });
 }
 
 /** Runs `fn` inside the board frame on the stage (or `frame`), then returns to Mumcord. */
@@ -137,7 +150,12 @@ export async function drag(points: [number, number][]): Promise<void> {
   await pointer.up({ button: 0 }).perform();
 }
 
-/** Draws a short pen stroke from (x, y) to the right (inside the frame). */
+/**
+ * Draws a short pen stroke from (x, y) to the right (inside the frame). Points are relative to the
+ * board's centre; in the test window the free drawing area is about x -210…+250, y -90…+90 (a
+ * joiner's stage is shorter): the tool rail, the toolbar with the pen options, the zoom bar and
+ * the save status sit around it and would take the pointer instead.
+ */
 export async function stroke(x: number, y: number, length = 80): Promise<void> {
   await tool("pen");
   await drag([
@@ -193,19 +211,26 @@ export async function eraseAt(x: number, y: number): Promise<void> {
   ]);
 }
 
+const outlineOpen = async (): Promise<boolean> =>
+  (await $("#outline").getAttribute("data-open")) !== null;
+
+/** Opens the board outline panel with its toolbar button and leaves it open (inside the frame). */
+export async function openOutline(): Promise<void> {
+  if (await outlineOpen()) return;
+  await action("Board outline").click();
+  await browser.waitUntil(outlineOpen, {
+    timeout: 10_000,
+    timeoutMsg: "the board outline did not open",
+  });
+}
+
 /**
  * The board outline (inside the frame): "<object id> <description>" per object in reading order,
- * with every person's name masked ("you" on the own client, the name elsewhere). Opens the
- * outline when it is closed.
+ * with every person's name masked ("you" on the own client, the name elsewhere). The page keeps
+ * the list current while the panel is closed, so it is read without opening it: opening focuses
+ * the first item, which selects that object and moves the view to it.
  */
 export async function outline(): Promise<string[]> {
-  if ((await $("#outline").getAttribute("data-open")) === null) {
-    await action("Board outline").click();
-    await browser.waitUntil(async () => (await $("#outline").getAttribute("data-open")) !== null, {
-      timeout: 10_000,
-      timeoutMsg: "the board outline did not open",
-    });
-  }
   return browser.execute((people: string[]) => {
     const names = [...people, "you", "someone"].join("|");
     const mask = new RegExp(` by (${names}),`, "g");
@@ -218,13 +243,20 @@ export async function outline(): Promise<string[]> {
 /** Waits until the board outline has `count` objects (inside the frame). */
 export async function waitCount(count: number, timeout = 30_000): Promise<string[]> {
   let lines: string[] = [];
-  await browser.waitUntil(
-    async () => {
-      lines = await outline();
-      return lines.length === count;
-    },
-    { timeout, interval: 250, timeoutMsg: `expected ${String(count)} objects, outline: ${JSON.stringify(lines)}` },
-  );
+  // The message is built after the wait, so it shows the last outline read.
+  await browser
+    .waitUntil(
+      async () => {
+        lines = await outline();
+        return lines.length === count;
+      },
+      { timeout, interval: 250 },
+    )
+    .catch((e: unknown) => {
+      throw new Error(
+        `expected ${String(count)} objects, outline: ${JSON.stringify(lines)} (${String(e)})`,
+      );
+    });
   return lines;
 }
 
@@ -260,7 +292,8 @@ export async function bulkStrokes(count: number, points: number, seed: number): 
           // Far above the view, so the other specs' clicks and the eraser never touch them.
           const g = [(i % 10) * 220 - 1100, Math.floor(i / 10) * 220 - 4000, 200, 200];
           const obj = { k: "stroke", g, pts, bw: 200, bh: 200, ink: i % 6, w: 1 };
-          window.parent.postMessage(JSON.stringify({ t: "create", obj }), "*");
+          // Every page message names the place it comes from (bridge.js).
+          window.parent.postMessage(JSON.stringify({ p: "stage", t: "create", obj }), "*");
           i += 1;
           setTimeout(next, 40);
         };
@@ -286,27 +319,50 @@ export async function waitSameBoard(
   timeout = 60_000,
 ): Promise<string[]> {
   let boards: string[][] = [];
-  await browser.waitUntil(
-    async () => {
-      boards = [];
-      for (const on of clients) boards.push(await on(() => inBoard(outline)));
-      const first = JSON.stringify(boards[0]);
-      return boards[0].length === count && boards.every((b) => JSON.stringify(b) === first);
-    },
-    {
-      timeout,
-      interval: 1_000,
-      timeoutMsg: `boards differ: ${JSON.stringify(boards.map((b) => b.length))} objects`,
-    },
-  );
+  // The message is built after the wait, so it shows the last boards read, not the first.
+  await browser
+    .waitUntil(
+      async () => {
+        boards = [];
+        for (const on of clients) boards.push(await on(() => inBoard(outline)));
+        const first = JSON.stringify(boards[0]);
+        return boards[0].length === count && boards.every((b) => JSON.stringify(b) === first);
+      },
+      { timeout, interval: 1_000 },
+    )
+    .catch((e: unknown) => {
+      throw new Error(
+        `boards differ: ${JSON.stringify(boards.map((b) => b.length))} objects, expected ${String(count)} (${String(e)})`,
+      );
+    });
   return boards[0];
 }
 
-/** A labelled control in an open plugin dialog of Mumcord (radio, checkbox, switch). */
+/**
+ * Picks `option` in the labelled choice of an open plugin dialog of Mumcord: a combobox whose
+ * list opens on click.
+ */
+export async function dialogChoice(label: string, option: string): Promise<void> {
+  const box = $(
+    `//div[@role='dialog']//*[@role='combobox'][@id=//div[@role='dialog']//label[normalize-space(.)="${label}"]/@for]`,
+  );
+  await box.click();
+  const item = $(
+    `//*[@role='listbox']//*[@role='option'][normalize-space(.)="${option}" or .//*[normalize-space(.)="${option}"]]`,
+  );
+  await item.waitForClickable({ timeout: 10_000 });
+  await item.click();
+  await item.waitForExist({ reverse: true, timeout: 10_000 });
+}
+
+/**
+ * A labelled control in an open plugin dialog of Mumcord (radio, checkbox, switch). The label goes
+ * into double quotes, because labels hold apostrophes ("Hide Bob's strokes for me").
+ */
 export function dialogControl(label: string) {
   return $(
-    `//div[@role='dialog']//input[@id=//div[@role='dialog']//label[normalize-space(.)='${label}']/@for]` +
-      ` | //div[@role='dialog']//label[normalize-space(.)='${label}']//input`,
+    `//div[@role='dialog']//input[@id=//div[@role='dialog']//label[normalize-space(.)="${label}"]/@for]` +
+      ` | //div[@role='dialog']//label[normalize-space(.)="${label}"]//input`,
   );
 }
 

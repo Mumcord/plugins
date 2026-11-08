@@ -9,7 +9,8 @@
 // - After everyone leaves, A restarts Mumcord and "Continue" re-opens the saved board.
 import { $, browser, expect } from "@wdio/globals";
 import { app, apps, registry } from "../../helpers/index.ts";
-import { joinChannel, reconnectSaved } from "../../helpers/chat-ui.ts";
+import { joinChannel } from "../../helpers/chat-ui.ts";
+import { reconnect } from "../../helpers/voice-ui.ts";
 import {
   bulkStrokes,
   eraseAt,
@@ -66,7 +67,7 @@ describe("Whiteboard: three clients over the relay", () => {
     for (const on of [onA, apps.onB]) {
       await on(() => inBoard(() => expect($("#strip")).not.toBeDisplayed()));
     }
-    await apps.onB(() => inBoard(() => stroke(-50, -150)));
+    await apps.onB(() => inBoard(() => stroke(-50, -70)));
     objects = 1;
     await waitSameBoard([onA, apps.onB], objects);
   });
@@ -81,7 +82,7 @@ describe("Whiteboard: three clients over the relay", () => {
       const clicked = Date.now();
       await joinFromCard();
       // Drawing works before the board has loaded.
-      await inBoard(() => stroke(150, -150));
+      await inBoard(() => stroke(100, 0));
       await inBoard(async () => {
         let mine: string[] = [];
         await browser.waitUntil(
@@ -104,9 +105,9 @@ describe("Whiteboard: three clients over the relay", () => {
   it("A, B and C draw, move notes, type and erase at once and end with the same board", async () => {
     // Each person works in their own column of the view; the bulk strokes lie far above it.
     const columns: [typeof onA, number, string][] = [
-      [onA, -250, "Alice's plan"],
-      [apps.onB, -50, "Bob's idea"],
-      [apps.onC, 150, "Carol's todo"],
+      [onA, -210, "Alice's plan"],
+      [apps.onB, -20, "Bob's idea"],
+      [apps.onC, 170, "Carol's todo"],
     ];
     for (const [on, x, text] of columns) {
       await on(() =>
@@ -120,7 +121,7 @@ describe("Whiteboard: three clients over the relay", () => {
       await on(() => inBoard(() => moveAt(x + 20, 70, 0, 60)));
     }
     // C erases its own new stroke; A and B keep theirs.
-    await apps.onC(() => inBoard(() => eraseAt(150 + 40, -50)));
+    await apps.onC(() => inBoard(() => eraseAt(170 + 40, -50)));
     objects += 2 * columns.length - 1;
     finalBoard = await waitSameBoard([onA, apps.onB, apps.onC], objects);
     for (const [, , text] of columns) {
@@ -129,10 +130,12 @@ describe("Whiteboard: three clients over the relay", () => {
   });
 
   it("re-opens the saved board with Continue after everyone left and A restarted", async () => {
+    // A saves 2 s after the last change (SAVE_DEBOUNCE_MS); a restart before that loses it.
+    await browser.pause(4_000);
     await apps.stopB();
     await apps.stopC();
     await app.restart();
-    await reconnectSaved();
+    await reconnect();
     await joinChannel(ROOT);
     await startFromAppsMenu();
     await inBoard(async () => {
@@ -140,13 +143,19 @@ describe("Whiteboard: three clients over the relay", () => {
       await resume.waitForClickable({ timeout: 30_000 });
       await resume.click();
       let board: string[] = [];
-      await browser.waitUntil(
-        async () => {
-          board = await outline();
-          return board.length === finalBoard.length;
-        },
-        { timeout: 30_000, timeoutMsg: `the saved board has ${String(board.length)} objects` },
-      );
+      await browser
+        .waitUntil(
+          async () => {
+            board = await outline();
+            return board.length === finalBoard.length;
+          },
+          { timeout: 30_000 },
+        )
+        .catch((e: unknown) => {
+          throw new Error(
+            `the saved board has ${String(board.length)} of ${String(finalBoard.length)} objects (${String(e)})`,
+          );
+        });
       expect(board).toEqual(finalBoard);
     });
   });

@@ -5,9 +5,7 @@
 import { $, browser, expect } from "@wdio/globals";
 import { app, registry } from "../../helpers/index.ts";
 import { composer } from "../../helpers/chat-ui.ts";
-import { inBoard, note, outline, setUpClient, START, startRelay, waitCount } from "./board.ts";
-
-const stage = () => $("iframe.plugin-webview__frame[title='Whiteboard']");
+import { inBoard, note, openOutline, outline, setUpClient, stageFrame, startItem, startRelay, waitCount } from "./board.ts";
 
 async function zoomPercent(): Promise<number> {
   const text = await $("#zoom").getText();
@@ -38,18 +36,18 @@ describe("Whiteboard: keyboard only", () => {
   it("starts the board from the Apps menu with the keyboard", async () => {
     await app.restart({ env: fixtures.env() });
     await setUpClient("Alice", port);
-    // From the composer, Shift+Tab reaches the Apps button next to it.
+    // From the composer, Tab reaches the Apps button below it.
     await composer().click();
     const apps = $("button.chat-apps__button");
-    for (let i = 0; i < 6 && !(await apps.isFocused()); i++) await browser.keys(["Shift", "Tab"]);
+    for (let i = 0; i < 6 && !(await apps.isFocused()); i++) await browser.keys("Tab");
     await expect(apps).toBeFocused();
     await browser.keys("Enter");
-    const item = $(`//div[@role='menu']//*[@role='menuitem'][normalize-space(.)='${START}']`);
+    const item = startItem();
     await item.waitForDisplayed({ timeout: 10_000 });
     for (let i = 0; i < 6 && !(await item.isFocused()); i++) await browser.keys("ArrowDown");
     await expect(item).toBeFocused();
     await browser.keys("Enter");
-    await stage().waitForDisplayed({ timeout: 30_000 });
+    await stageFrame().waitForDisplayed({ timeout: 30_000 });
   });
 
   it("draws, places a note, selects, deletes, undoes, redoes and zooms", async () => {
@@ -94,7 +92,7 @@ describe("Whiteboard: keyboard only", () => {
 
   it("walks the board outline and edits the note from it", async () => {
     await inBoard(async () => {
-      await outline();
+      await openOutline();
       const items = $("#outline-tree");
       await browser.execute(() =>
         document.querySelector<HTMLElement>("#outline-tree li[data-id]")?.focus(),
