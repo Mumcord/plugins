@@ -19,7 +19,7 @@ const OPTIONAL = [
   "Show cards in the chat",
   "Show notifications",
 ];
-const WEBVIEW_TEXT = "Show its own web content in a sealed frame";
+const WEBVIEW_TEXT = "Show its own content in a sealed frame";
 
 const prompt = "//div[contains(concat(' ',@class,' '),' plugin-prompt ')]";
 const pluginTab = (name: string) =>
