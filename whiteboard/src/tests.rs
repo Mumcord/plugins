@@ -845,6 +845,29 @@ fn a_lost_board_announcement_is_repeated_for_a_joiner() {
     assert!(upserted_texts(&bob).contains(&"early".to_owned()));
 }
 
+/// Bob joins right after Alice starts, before her board is open: her first announcement goes
+/// out before Bob is on the relay, so she must repeat it until Bob says hello.
+#[test]
+fn a_joiner_before_the_board_is_open_still_gets_it() {
+    let mut alice = User::new(1, "Alice", &[(2, "Bob")]);
+    let mut bob = User::new(2, "Bob", &[(1, "Alice")]);
+    alice.event(Event::AppMenuActivated("start".into()));
+    bob.event(Event::StageActivityStarted((
+        peer(&alice.me()),
+        "activity-1".into(),
+    )));
+    let bob_peer = peer(&bob.me());
+    bob.event(Event::StageJoined(bob_peer.clone()));
+    alice.event(Event::StageJoined(bob_peer));
+    alice.page(r#"{"t":"ready"}"#);
+    // Bob is not on the relay yet: everything Alice sends while opening is lost for him.
+    alice.host.sent.clear();
+    bob.page(r#"{"t":"ready"}"#);
+    alice.page(r#"{"t":"create","obj":{"k":"note","g":[10,20,156,112],"fill":2,"text":"late"}}"#);
+    settle(&mut alice, &mut bob, 80);
+    assert!(upserted_texts(&bob).contains(&"late".to_owned()));
+}
+
 /// Without the relay nothing can be started: the user gets the explanation instead.
 #[test]
 fn without_the_relay_start_opens_a_notice_and_the_menu_item_is_greyed_out() {

@@ -798,6 +798,9 @@ impl App {
         }
         if announce {
             out.extend(s.announce_board(started_ms, now));
+            // People can join before the board opens; this first announcement may go out before
+            // they are on the relay, so it repeats until they say hello (or nobody is waiting).
+            self.board_repeat = Some((now + BOARD_REPEAT_MS, BOARD_REPEATS));
         }
         self.open = Some(Open {
             s,
