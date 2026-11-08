@@ -81,7 +81,7 @@ Plugins that need a newer plugin API need a Mumcord release that has it: plugins
 
 `e2e/mumcord-gate.sh [--e2e] <plugin>` prints why a plugin cannot be tested with the pinned tag:
 
-- its manifest `api` is newer than the tag supports (`^1.1` needs `v0.7.0`; the table is in the
+- its manifest `api` is newer than the tag supports (`^1.1` needs `v0.7.0`, `^1.2` needs `v0.8.0`; the table is in the
   script), or
 - with `--e2e`: `<plugin>/e2e/min-mumcord` names a newer tag. That one-line file (e.g. `v0.7.0`)
   is for specs that need host features of a later release.

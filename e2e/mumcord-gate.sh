@@ -22,6 +22,7 @@ tag="$(tr -d '[:space:]' < "$repo/e2e/mumcord-version")"
 # The first Mumcord release with each plugin API newer than 1.0. Add a line when a new API ships.
 api="$(jq -r '.api // ""' "$repo/$id/manifest.json")"
 case "$api" in
+  *1.2*) need=v0.8.0 ;;
   *1.1*) need=v0.7.0 ;;
   *) need="" ;;
 esac

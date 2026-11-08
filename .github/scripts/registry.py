@@ -356,6 +356,11 @@ def next_sequence(*index_urls: str) -> int:
     return max(int(time.time()), published + 1)
 
 
+# The first Mumcord release (major, minor) with each plugin API newer than 1.0 (FR-9.20, FR-13.6).
+# Add a line when a new API ships. Such versions are listed in the v1.1 index only.
+FIRST_MUMCORD_WITH_API = {"1.1": (0, 7), "1.2": (0, 8)}
+
+
 def check_site(site: Path) -> None:
     """The generated registry data: v1 stays readable by 0.6.x, v1.1 lists everything."""
     needed = ["v1/index.json", "v1/revoked.json", "v1/permissions.json", "v1.1/index.json",
@@ -381,11 +386,13 @@ def check_site(site: Path) -> None:
     for plugin in new["plugins"]:
         for entry in plugin["versions"]:
             minimum = entry.get("min_mumcord")
-            if api_minor(entry["api"]) == "1.1" and minimum is not None:
+            first = FIRST_MUMCORD_WITH_API.get(api_minor(entry["api"]))
+            if first is not None and minimum is not None:
                 parts = tuple(int(x) for x in minimum.split("."))
-                if parts < (0, 7):
+                if parts < first:
                     raise CheckError(f"{plugin['id']} {entry['version']}: min_mumcord {minimum} "
-                                     "is below 0.7, the first release with api 1.1")
+                                     f"is below {first[0]}.{first[1]}, the first release with "
+                                     f"api {api_minor(entry['api'])}")
     print(f"v1 lists {sum(len(p['versions']) for p in old['plugins'])} versions, "
           f"v1.1 lists {sum(len(p['versions']) for p in new['plugins'])}")
 

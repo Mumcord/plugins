@@ -12,11 +12,11 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "api": {
-      "description": "Plugin API the package is built against: 1 (API 1.0, listed in the v1 index too) or \"1.1\" (listed in the v1.1 index only).",
-      "oneOf": [{ "type": "integer", "const": 1 }, { "type": "string", "const": "1.1" }]
+      "description": "Plugin API the package is built against: 1 (API 1.0, listed in the v1 index too) or \"1.1\" / \"1.2\" (listed in the v1.1 index only).",
+      "oneOf": [{ "type": "integer", "const": 1 }, { "type": "string", "enum": ["1.1", "1.2"] }]
     },
     "min_mumcord": {
-      "description": "Lowest Mumcord release that runs this version, \"major.minor\". Never below the first release with the api (0.6 for 1.0, 0.7 for 1.1); site-data enforces that.",
+      "description": "Lowest Mumcord release that runs this version, \"major.minor\". Never below the first release with the api (0.6 for 1.0, 0.7 for 1.1, 0.8 for 1.2); site-data enforces that.",
       "type": "string",
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
     },
