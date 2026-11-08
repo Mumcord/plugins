@@ -548,7 +548,6 @@ pub(crate) mod tests {
         let mut b = Board::new(7);
         b.local_author(AuthorInfo {
             name: "Maya <admin>".into(),
-            cert_key: None,
             shape: 1,
             color: 2,
         })

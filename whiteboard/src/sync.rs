@@ -50,7 +50,7 @@ use crate::codec::{
 };
 use crate::model::{
     AuthorInfo, AuthorKey, Board, BoardField, Body, Edit, Fields, Host, MAX_TITLE_CHARS, ObjId,
-    Object, Op, Policy, Reject, Vv, vv_hash,
+    Object, Op, Policy, Reject, Vv, allow_key, vv_hash,
 };
 
 /// A Mumble session id as the host reports it.
@@ -173,15 +173,13 @@ pub enum Outgoing {
 pub struct PeerInfo {
     pub session: SessionId,
     pub name: String,
-    /// The attested per-plugin certificate key.
-    pub key: Option<String>,
 }
 
 pub struct Config {
     pub board: BoardId,
     /// The local user's Mumble session.
     pub session: SessionId,
-    /// The local identity; `cert_key` must be the local user's presence key.
+    /// The local identity.
     pub info: AuthorInfo,
     /// Wall-clock time the board was opened; the earliest participant answers joiners and
     /// becomes host when the host leaves.
@@ -238,7 +236,6 @@ struct PeerCursor {
 #[derive(Debug)]
 struct Peer {
     name: String,
-    key: Option<String>,
     present: bool,
     author: Option<AuthorKey>,
     /// Set by HELLO: the peer has this board open.
@@ -254,7 +251,6 @@ impl Peer {
     fn new(info: &PeerInfo, now: u64) -> Peer {
         Peer {
             name: info.name.clone(),
-            key: info.key.clone(),
             present: true,
             author: None,
             joined_at: None,
@@ -342,7 +338,6 @@ struct Part {
     joined: u64,
     author: AuthorKey,
     session: Option<SessionId>,
-    key: Option<String>,
 }
 
 pub struct Session {
@@ -540,7 +535,7 @@ impl Session {
             host: self.is_host(self.me),
             presenting: self.presenter(),
             following: self.following,
-            can_draw: self.can_draw(self.me, self.info.cert_key.as_deref()),
+            can_draw: self.can_draw(self.me),
             loading: self.loading_percent(),
             undo: self.board.can_undo(),
             redo: self.board.can_redo(),
@@ -567,7 +562,7 @@ impl Session {
                     cursor: p.cursor.map(|c| (c.x, c.y)),
                     status: p.cursor.map_or(0, |c| c.status),
                     host: host == Some(author),
-                    can_draw: self.can_draw(author, p.key.as_deref()),
+                    can_draw: self.can_draw(author),
                     hidden: self.hidden.contains(&author),
                 },
             ));
@@ -589,11 +584,6 @@ impl Session {
             let h = &reg.val;
             if parts.iter().any(|p| p.author == h.author) {
                 return Some(h.author);
-            }
-            if let Some(k) = &h.cert_key
-                && let Some(p) = parts.iter().find(|p| p.key.as_ref() == Some(k))
-            {
-                return Some(p.author);
             }
         }
         parts.first().map(|p| p.author)
@@ -621,10 +611,7 @@ impl Session {
             .board
             .local_board(vec![
                 BoardField::Title(title),
-                BoardField::Host(Host {
-                    author: self.me,
-                    cert_key: self.info.cert_key.clone(),
-                }),
+                BoardField::Host(Host { author: self.me }),
                 BoardField::Policy(Policy::Everyone),
             ])
             .map_err(LocalError::Model)?;
@@ -718,13 +705,12 @@ impl Session {
     pub fn handover(&mut self, author: AuthorKey, now: u64) -> Result<Vec<Outgoing>, LocalError> {
         self.now = now;
         self.require_host()?;
-        let session = self
-            .participant_session(author)
+        // Only someone on the board can take over.
+        self.participant_session(author)
             .ok_or(LocalError::NotAllowed)?;
-        let cert_key = self.peers.get(&session).and_then(|p| p.key.clone());
         let op = self
             .board
-            .local_board(vec![BoardField::Host(Host { author, cert_key })])
+            .local_board(vec![BoardField::Host(Host { author })])
             .map_err(LocalError::Model)?;
         self.push_own(vec![op]);
         Ok(self.flush())
@@ -825,7 +811,7 @@ impl Session {
         now: u64,
     ) -> Vec<Outgoing> {
         self.now = now;
-        if self.relay && self.can_draw(self.me, self.info.cert_key.as_deref()) {
+        if self.relay && self.can_draw(self.me) {
             if !self.live.contains_key(&sid) && self.live.len() >= MAX_LIVE_STROKES {
                 self.live.pop_first();
             }
@@ -849,7 +835,7 @@ impl Session {
     /// Laser trail points (quarter pixels).
     pub fn local_laser(&mut self, points: &[(i32, i32)], now: u64) -> Vec<Outgoing> {
         self.now = now;
-        if self.may_laser(self.me, self.info.cert_key.as_deref()) {
+        if self.may_laser(self.me) {
             self.laser.extend_from_slice(points);
             if self.laser.len() > codec::MAX_LASER_POINTS {
                 self.laser
@@ -885,7 +871,6 @@ impl Session {
             }
             if let Some(p) = self.peers.get_mut(&info.session) {
                 p.name.clone_from(&info.name);
-                p.key.clone_from(&info.key);
                 p.present = true;
             } else if self.peers.len() < MAX_PEERS {
                 self.peers.insert(info.session, Peer::new(info, now));
@@ -986,7 +971,7 @@ impl Session {
             || self.effective_host() == Some(author)
     }
 
-    fn can_draw(&self, author: AuthorKey, key: Option<&str>) -> bool {
+    fn can_draw(&self, author: AuthorKey) -> bool {
         if self.is_host(author) {
             return true;
         }
@@ -994,12 +979,12 @@ impl Session {
         match s.policy.as_ref().map(|r| r.val) {
             None | Some(Policy::Everyone) => true,
             Some(Policy::HostOnly) => false,
-            Some(Policy::Selected) => key.is_some_and(|k| s.allowed.get(k).is_some_and(|r| r.val)),
+            Some(Policy::Selected) => s.allowed.get(&allow_key(author)).is_some_and(|r| r.val),
         }
     }
 
-    fn may_laser(&self, author: AuthorKey, key: Option<&str>) -> bool {
-        self.can_draw(author, key)
+    fn may_laser(&self, author: AuthorKey) -> bool {
+        self.can_draw(author)
             || self
                 .board
                 .settings()
@@ -1009,7 +994,7 @@ impl Session {
     }
 
     fn require_draw(&self) -> Result<(), LocalError> {
-        if self.can_draw(self.me, self.info.cert_key.as_deref()) {
+        if self.can_draw(self.me) {
             Ok(())
         } else {
             Err(LocalError::NotAllowed)
@@ -1024,10 +1009,11 @@ impl Session {
         }
     }
 
-    /// Whether a remote op may change the board; `key` is the sender's attested key.
-    fn allowed(&self, op: &Op, key: Option<&str>) -> bool {
+    /// Whether a remote op may change the board. Its author is already bound to the sending
+    /// session (`bind`), so nobody can act as someone else.
+    fn allowed(&self, op: &Op) -> bool {
         match &op.body {
-            Body::Create { .. } | Body::Set { .. } => self.can_draw(op.author, key),
+            Body::Create { .. } | Body::Set { .. } => self.can_draw(op.author),
             Body::Clear { .. } => self.is_host(op.author),
             // The model only accepts a revoke from the Clear's author.
             Body::ClearRevoke { .. } => true,
@@ -1039,14 +1025,14 @@ impl Session {
                 }
                 let current = self.board.settings().presenter.as_ref().and_then(|r| r.val);
                 !fields.is_empty()
-                    && self.can_draw(op.author, key)
+                    && self.can_draw(op.author)
                     && fields.iter().all(|f| match f {
                         BoardField::Presenter(Some(a)) => *a == op.author,
                         BoardField::Presenter(None) => current == Some(op.author),
                         _ => false,
                     })
             }
-            Body::Author(info) => info.cert_key.as_deref() == key,
+            Body::Author(_) => true,
         }
     }
 
@@ -1057,7 +1043,6 @@ impl Session {
             joined: self.joined_at,
             author: self.me,
             session: None,
-            key: self.info.cert_key.clone(),
         }];
         for (&s, p) in &self.peers {
             if let (true, Some(joined), Some(author)) = (p.present, p.joined_at, p.author) {
@@ -1065,7 +1050,6 @@ impl Session {
                     joined,
                     author,
                     session: Some(s),
-                    key: p.key.clone(),
                 });
             }
         }
@@ -1125,7 +1109,6 @@ impl Session {
         let Some(p) = self.peers.get_mut(&from.session) else {
             return false;
         };
-        p.key.clone_from(&from.key);
         p.present = true;
         p.flood_window(now);
         p.flood_msgs += 1;
@@ -1179,10 +1162,6 @@ impl Session {
                 .is_some_and(|p| p.author == Some(author))
     }
 
-    fn key_of(&self, session: SessionId) -> Option<String> {
-        self.peers.get(&session).and_then(|p| p.key.clone())
-    }
-
     // ---- receiving -----------------------------------------------------------------------------
 
     fn receive(&mut self, from: &PeerInfo, msg: Msg) {
@@ -1206,9 +1185,8 @@ impl Session {
                 }
             }
             Msg::Live(l) => {
-                let key = self.key_of(s);
                 if self.bound_to(l.author, s)
-                    && self.can_draw(l.author, key.as_deref())
+                    && self.can_draw(l.author)
                     && !self.hidden.contains(&l.author)
                 {
                     let done = l.points.is_empty();
@@ -1223,8 +1201,7 @@ impl Session {
                 }
             }
             Msg::Laser(l) => {
-                let key = self.key_of(s);
-                if self.bound_to(l.author, s) && self.may_laser(l.author, key.as_deref()) {
+                if self.bound_to(l.author, s) && self.may_laser(l.author) {
                     self.out.push(Outgoing::Ui(Ui::Laser {
                         author: l.author,
                         points: l.points,
@@ -1317,7 +1294,6 @@ impl Session {
             self.dropped += 1;
             return;
         }
-        let key = self.key_of(s);
         let now = self.now;
         let room = match self.peers.get_mut(&s) {
             Some(p) => {
@@ -1337,7 +1313,7 @@ impl Session {
             if self.board.has_applied(op.author, op.seq) {
                 continue;
             }
-            if self.allowed(op, key.as_deref()) {
+            if self.allowed(op) {
                 if self.board.apply(op).is_ok() {
                     self.note_remote(op);
                 }
@@ -1978,7 +1954,6 @@ mod tests {
     struct Client {
         s: Session,
         session: SessionId,
-        key: String,
         online: bool,
         last_ui: Vec<Ui>,
     }
@@ -1999,7 +1974,6 @@ mod tests {
     fn info(i: usize) -> AuthorInfo {
         AuthorInfo {
             name: format!("P{i}"),
-            cert_key: Some(format!("{:064x}", i + 1)),
             shape: (i % 4) as u8,
             color: (i % 6) as u8,
         }
@@ -2029,7 +2003,6 @@ mod tests {
             self.clients.push(Client {
                 s: Session::new(cfg, board, self.now),
                 session: 100 + i as u32,
-                key: format!("{:064x}", i + 1),
                 online: false,
                 last_ui: Vec::new(),
             });
@@ -2040,7 +2013,6 @@ mod tests {
             PeerInfo {
                 session: self.clients[c].session,
                 name: format!("User {c}"),
-                key: Some(self.clients[c].key.clone()),
             }
         }
 
@@ -2531,7 +2503,7 @@ mod tests {
     fn draw_policy_is_enforced_by_receivers() {
         let mut net = start_net(41, CALM, 3);
         net.run(5_000);
-        let key_b = net.clients[1].key.clone();
+        let key_b = allow_key(net.clients[1].s.me());
         let outs = net.clients[0]
             .s
             .set_settings(
@@ -2728,7 +2700,6 @@ mod tests {
         let list = vec![PeerInfo {
             session: 100,
             name: "User 0".into(),
-            key: Some(format!("{:064x}", 1)),
         }];
         let sent = |outs: Vec<Outgoing>| -> Vec<Msg> {
             outs.into_iter()
@@ -2792,6 +2763,47 @@ mod tests {
     }
 
     #[test]
+    fn a_participant_cannot_claim_the_host_role() {
+        let mut net = start_net(93, CALM, 3);
+        net.run(3_000);
+        let host = author_key(0);
+        assert_eq!(net.clients[1].s.effective_host(), Some(host));
+        let from = net.peer_info(2);
+        // C writes itself in as host. Its earlier sequence numbers are taken, so the claim comes
+        // after a run of strokes nobody receives.
+        let mut fake = Board::new(author_key(2));
+        for _ in 0..20 {
+            let e = stroke(&mut Rng(5), &fake);
+            fake.local(vec![e]).unwrap();
+        }
+        let claim = fake
+            .local_board(vec![BoardField::Host(Host {
+                author: author_key(2),
+            })])
+            .unwrap();
+        let (as_itself, _) = codec::pack_ops(&BOARD, author_key(2), &[claim]).unwrap();
+        // C also sends a stroke under the host's author key.
+        let mut forged = Board::new(host);
+        let e = stroke(&mut Rng(7), &forged);
+        let ops = forged.local(vec![e]).unwrap();
+        let (as_host, _) = codec::pack_ops(&BOARD, host, &ops).unwrap();
+        for c in 0..2 {
+            let dropped = net.clients[c].s.dropped();
+            for payload in [&as_itself, &as_host] {
+                let outs = net.clients[c].s.on_relay_message(&from, payload, net.now);
+                net.handle(c, outs);
+            }
+            assert_eq!(net.clients[c].s.dropped(), dropped + 2, "client {c}");
+            assert_eq!(net.clients[c].s.effective_host(), Some(host), "client {c}");
+            assert_eq!(
+                net.clients[c].s.board().visible_objects().len(),
+                0,
+                "client {c}"
+            );
+        }
+    }
+
+    #[test]
     fn flood_is_dropped_with_bounded_memory() {
         let mut net = start_net(101, CALM, 2);
         net.run(2_000);
@@ -2801,7 +2813,6 @@ mod tests {
         let evil = PeerInfo {
             session: 666,
             name: "x".into(),
-            key: None,
         };
         let mut fake = Board::new(0xbad);
         let mut rng = Rng(5);
@@ -2810,7 +2821,6 @@ mod tests {
             author: 0xbad,
             info: AuthorInfo {
                 name: "x".into(),
-                cert_key: None,
                 shape: 0,
                 color: 0,
             },
@@ -2840,7 +2850,6 @@ mod tests {
             let sender = PeerInfo {
                 session: 1_000 + k,
                 name: "x".into(),
-                key: None,
             };
             s.on_relay_message(&sender, &p, now + 300);
             s.on_relay_message(&evil, &p, now + 300);

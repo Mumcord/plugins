@@ -269,16 +269,6 @@ impl W {
         self.0.extend_from_slice(s.as_bytes());
     }
 
-    fn opt_str(&mut self, s: &Option<String>) {
-        match s {
-            Some(s) => {
-                self.u8(1);
-                self.str(s);
-            }
-            None => self.u8(0),
-        }
-    }
-
     fn board(&mut self, b: &BoardId) {
         self.0.extend_from_slice(b);
     }
@@ -315,7 +305,6 @@ impl W {
 
     fn author_info(&mut self, a: &AuthorInfo) {
         self.str(&a.name);
-        self.opt_str(&a.cert_key);
         self.u8(a.shape);
         self.u8(a.color);
     }
@@ -345,10 +334,7 @@ impl W {
     fn board_field_value(&mut self, f: &BoardField) {
         match f {
             BoardField::Title(t) => self.str(t),
-            BoardField::Host(h) => {
-                self.key(h.author);
-                self.opt_str(&h.cert_key);
-            }
+            BoardField::Host(h) => self.key(h.author),
             BoardField::Policy(p) => self.u8(p.to_u8()),
             BoardField::Allowed(k, v) => {
                 self.str(k);
@@ -478,14 +464,6 @@ impl<'a> R<'a> {
         Ok(s.to_string())
     }
 
-    fn opt_str(&mut self, max_chars: usize) -> DResult<Option<String>> {
-        Ok(if self.bool()? {
-            Some(self.str(max_chars)?)
-        } else {
-            None
-        })
-    }
-
     fn count(&mut self, max: usize) -> DResult<usize> {
         let n = usize::try_from(self.uv()?).map_err(|_| DecodeError::TooLong)?;
         if n > max {
@@ -534,7 +512,6 @@ impl<'a> R<'a> {
     fn author_info(&mut self) -> DResult<AuthorInfo> {
         Ok(AuthorInfo {
             name: self.str(MAX_NAME_CHARS)?,
-            cert_key: self.opt_str(MAX_KEY_CHARS)?,
             shape: self.u8()?,
             color: self.u8()?,
         })
@@ -575,7 +552,6 @@ impl<'a> R<'a> {
             0 => BoardField::Title(self.str(MAX_TITLE_CHARS)?),
             1 => BoardField::Host(Host {
                 author: self.key()?,
-                cert_key: self.opt_str(MAX_KEY_CHARS)?,
             }),
             2 => BoardField::Policy(Policy::from_u8(self.u8()?).ok_or(DecodeError::BadValue)?),
             3 => BoardField::Allowed(self.str(MAX_KEY_CHARS)?, self.bool()?),
@@ -1254,7 +1230,6 @@ mod tests {
     fn info() -> AuthorInfo {
         AuthorInfo {
             name: "Ann ü".into(),
-            cert_key: Some("abc".into()),
             shape: 2,
             color: 5,
         }
@@ -1309,10 +1284,7 @@ mod tests {
             Body::Board {
                 fields: vec![
                     BoardField::Title("T".into()),
-                    BoardField::Host(Host {
-                        author,
-                        cert_key: None,
-                    }),
+                    BoardField::Host(Host { author }),
                     BoardField::Policy(Policy::HostOnly),
                     BoardField::Allowed("key".into(), false),
                     BoardField::LaserForViewers(true),
@@ -1633,25 +1605,14 @@ mod tests {
     }
 
     fn arb_info() -> impl Strategy<Value = AuthorInfo> {
-        (
-            arb_str(MAX_NAME_CHARS),
-            prop::option::of(arb_str(MAX_KEY_CHARS)),
-            any::<u8>(),
-            any::<u8>(),
-        )
-            .prop_map(|(name, cert_key, shape, color)| AuthorInfo {
-                name,
-                cert_key,
-                shape,
-                color,
-            })
+        (arb_str(MAX_NAME_CHARS), any::<u8>(), any::<u8>())
+            .prop_map(|(name, shape, color)| AuthorInfo { name, shape, color })
     }
 
     fn arb_board_field() -> impl Strategy<Value = BoardField> {
         prop_oneof![
             arb_str(MAX_TITLE_CHARS).prop_map(BoardField::Title),
-            (any::<u32>(), prop::option::of(arb_str(MAX_KEY_CHARS)))
-                .prop_map(|(author, cert_key)| BoardField::Host(Host { author, cert_key })),
+            any::<u32>().prop_map(|author| BoardField::Host(Host { author })),
             (0u8..3).prop_map(|p| BoardField::Policy(Policy::from_u8(p).unwrap())),
             (arb_str(MAX_KEY_CHARS), any::<bool>()).prop_map(|(k, v)| BoardField::Allowed(k, v)),
             any::<bool>().prop_map(BoardField::LaserForViewers),

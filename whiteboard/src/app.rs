@@ -39,7 +39,7 @@ use crate::dialogs::{self, Ctx, Dialog, Effect, Line, View};
 use crate::export::{self, Options, Paper, Scope};
 use crate::model::{
     AuthorInfo, AuthorKey, Board, BoardField, Edit, Fields, Geom, Kind, MAX_NAME_CHARS, ObjId,
-    Policy, Reject, z_after, z_before,
+    Policy, Reject, allow_key, z_after, z_before,
 };
 use crate::store::{self, Ago, Autosave, BoardFile, IndexEntry, Storage, StoreError};
 use crate::sync::{
@@ -127,7 +127,6 @@ pub fn peer_info(p: &Peer) -> PeerInfo {
     PeerInfo {
         session: p.session,
         name: p.name.clone(),
-        key: p.key.clone(),
     }
 }
 
@@ -770,12 +769,10 @@ impl App {
         let me = self.me.clone().unwrap_or(PeerInfo {
             session: 0,
             name: String::new(),
-            key: None,
         });
         let author = board.me();
         let info = AuthorInfo {
             name: me.name.chars().take(MAX_NAME_CHARS).collect(),
-            cert_key: me.key.clone(),
             shape: (author % 4) as u8,
             color: ((author >> 8) % 6) as u8,
         };
@@ -1932,39 +1929,28 @@ impl App {
         let settings = board.settings();
         let status = o.s.status();
         let peers = o.s.peers();
-        let allowed = |key: &Option<String>| {
-            key.as_ref()
-                .and_then(|k| settings.allowed.get(k))
+        let allowed = |author: AuthorKey| {
+            settings
+                .allowed
+                .get(&allow_key(author))
                 .is_some_and(|r| r.val)
         };
-        let key_of = |session: SessionId| {
-            self.presence
-                .iter()
-                .find(|p| p.session == session)
-                .and_then(|p| p.key.clone())
-        };
         let me = self.me.clone();
-        let my_key = me.as_ref().and_then(|m| m.key.clone());
         let mut persons = vec![dialogs::Person {
             author: o.s.me(),
             name: me.map_or_else(String::new, |m| m.name),
-            key: my_key.clone(),
             me: true,
             host: status.host,
-            allowed: allowed(&my_key),
+            allowed: allowed(o.s.me()),
             hidden: false,
         }];
-        persons.extend(peers.iter().map(|p| {
-            let key = key_of(p.session);
-            dialogs::Person {
-                author: p.author,
-                name: p.name.clone(),
-                allowed: allowed(&key),
-                key,
-                me: false,
-                host: p.host,
-                hidden: p.hidden,
-            }
+        persons.extend(peers.iter().map(|p| dialogs::Person {
+            author: p.author,
+            name: p.name.clone(),
+            allowed: allowed(p.author),
+            me: false,
+            host: p.host,
+            hidden: p.hidden,
         }));
         ctx.title = board_title(o);
         ctx.host = status.host;

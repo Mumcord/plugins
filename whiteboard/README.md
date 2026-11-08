@@ -28,7 +28,8 @@ PNG, SVG, PDF or a board file (Mumcord/mumcord#397).
 - **Post to chat:** posts a picture of the board, the view or the selection into the channel
   through Mumcord's normal image sending, so standard Mumble clients see it inline too. It tries
   2× first and 1× when that is too big; above the server's limit Mumcord offers it as a file.
-- **Board settings:** the host decides who may draw (everyone, selected people, only the host),
+- **Board settings:** the host decides who may draw (everyone, selected people, only the host;
+  a selected person keeps it while on the board and is picked again after leaving and rejoining),
   whether viewers may use the laser while the host presents, can clear the board (with a
   confirmation and 30 seconds of Undo), remove someone's strokes for everyone and hand over the
   host role. Anyone can hide a person's strokes just for themselves and pick their paper.

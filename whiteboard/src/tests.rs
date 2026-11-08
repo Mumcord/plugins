@@ -200,7 +200,6 @@ fn info(session: u32, name: &str) -> PeerInfo {
     PeerInfo {
         session,
         name: name.to_owned(),
-        key: Some(format!("{session:064x}")),
     }
 }
 
@@ -208,7 +207,9 @@ fn peer(p: &PeerInfo) -> Peer {
     Peer {
         session: p.session,
         name: p.name.clone(),
-        key: p.key.clone(),
+        // Mumcord gives every install another key for the same person; the plugin never compares
+        // them across clients.
+        key: Some(format!("{:064x}", p.session)),
     }
 }
 
@@ -866,6 +867,32 @@ fn a_joiner_before_the_board_is_open_still_gets_it() {
     alice.page(r#"{"t":"create","obj":{"k":"note","g":[10,20,156,112],"fill":2,"text":"late"}}"#);
     settle(&mut alice, &mut bob, 80);
     assert!(upserted_texts(&bob).contains(&"late".to_owned()));
+}
+
+/// Mumcord derives `peer.key` from a secret of each install, so Alice's Mumcord and Bob's own
+/// one see different keys for Bob; the allow list names board authors instead. "Bob may draw"
+/// lets Bob draw on his own client and on Alice's.
+#[test]
+fn a_selected_person_may_draw_on_every_client() {
+    let (mut alice, mut bob) = two_on_a_board();
+    let bob_author = bob.posted_of("init").last().expect("init")["me"]["author"]
+        .as_u64()
+        .expect("author");
+    alice.page(r#"{"t":"menu","item":"settings"}"#);
+    alice.click(Slot::Dialog, "policy", ActionValue::Text("selected".into()));
+    alice.click(
+        Slot::Dialog,
+        &format!("allow:{bob_author}"),
+        ActionValue::Boolean(true),
+    );
+    settle(&mut alice, &mut bob, 12);
+    assert_eq!(
+        bob.posted_of("status").last().expect("status")["canDraw"],
+        true
+    );
+    bob.page(r#"{"t":"create","obj":{"k":"note","g":[0,0,156,112],"text":"allowed"}}"#);
+    settle(&mut alice, &mut bob, 12);
+    assert!(upserted_texts(&alice).contains(&"allowed".to_owned()));
 }
 
 /// Without the relay nothing can be started: the user gets the explanation instead.

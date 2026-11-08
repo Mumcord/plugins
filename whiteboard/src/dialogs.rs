@@ -10,7 +10,7 @@ use mumcord_plugin_sdk::ui::{self, Align, ButtonKind, Direction, El, Justify, To
 
 use crate::bridge::PaperSetting;
 use crate::codec::BoardId;
-use crate::model::{AuthorKey, MAX_TITLE_CHARS, Policy};
+use crate::model::{AuthorKey, MAX_TITLE_CHARS, Policy, allow_key};
 use crate::store::{hex_id, parse_hex_id};
 use crate::text::{clip, clip_to, t, t_with};
 
@@ -25,7 +25,6 @@ pub enum Line {
 pub struct Person {
     pub author: AuthorKey,
     pub name: String,
-    pub key: Option<String>,
     pub me: bool,
     pub host: bool,
     pub allowed: bool,
@@ -207,10 +206,10 @@ fn settings_action(
             .and_then(|a| ctx.persons.iter().find(|p| p.author == a))
     };
     match (action.split_once(':'), text, on) {
-        (Some(("allow", a)), _, Some(on)) => match person(a).and_then(|p| p.key.clone()) {
-            Some(key) => Effect::Allow { key, on },
-            None => Effect::None,
-        },
+        (Some(("allow", a)), _, Some(on)) => person(a).map_or(Effect::None, |p| Effect::Allow {
+            key: allow_key(p.author),
+            on,
+        }),
         (Some(("hide", a)), _, Some(on)) => person(a).map_or(Effect::None, |p| Effect::Hide {
             author: p.author,
             on,
@@ -311,14 +310,11 @@ fn settings_view(ctx: &Ctx, confirm_remove: Option<AuthorKey>) -> El {
             row = row.child(ui::chip(&t("dialog.settings.hiddenChip")).tone(Tone::Neutral));
         }
         if ctx.host && ctx.policy == Some(Policy::Selected) && !p.host {
-            row = row.child(
-                ui::toggle(
-                    &format!("allow:{}", p.author),
-                    &t_with("dialog.settings.allow", &[("name", &clip_to(&p.name, 40))]),
-                    p.allowed,
-                )
-                .disabled(p.key.is_none()),
-            );
+            row = row.child(ui::toggle(
+                &format!("allow:{}", p.author),
+                &t_with("dialog.settings.allow", &[("name", &clip_to(&p.name, 40))]),
+                p.allowed,
+            ));
         }
         if !p.me {
             row = row.child(ui::toggle(
@@ -507,7 +503,6 @@ mod tests {
                 Person {
                     author: 1,
                     name: "Maya".into(),
-                    key: Some("k1".into()),
                     me: true,
                     host: true,
                     allowed: true,
@@ -516,7 +511,6 @@ mod tests {
                 Person {
                     author: 2,
                     name: "Ben".into(),
-                    key: None,
                     me: false,
                     host: false,
                     allowed: false,
@@ -564,10 +558,13 @@ mod tests {
             d.on_action("hide:9", &ActionValue::Boolean(true), &c),
             Effect::None
         );
-        // Ben has no certificate, so he cannot be put on the allow list.
+        // The allow list names authors, so Ben needs no certificate to be on it.
         assert_eq!(
             d.on_action("allow:2", &ActionValue::Boolean(true), &c),
-            Effect::None
+            Effect::Allow {
+                key: allow_key(2),
+                on: true
+            }
         );
         assert_eq!(
             d.on_action("remove:2", &ActionValue::None, &c),

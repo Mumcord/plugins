@@ -224,7 +224,14 @@ impl Policy {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Host {
     pub author: AuthorKey,
-    pub cert_key: Option<String>,
+}
+
+/// The key of `author` in the allowed list. Not `peer.key`: Mumcord derives that from a secret of
+/// each install, so every client sees a different key for the same person. The author key is the
+/// same on every client; a person who leaves and joins again is a new author and needs a new "may
+/// draw".
+pub fn allow_key(author: AuthorKey) -> String {
+    format!("{author:08x}")
 }
 
 /// One board setting write.
@@ -233,7 +240,7 @@ pub enum BoardField {
     Title(String),
     Host(Host),
     Policy(Policy),
-    /// Cert key -> may draw (only used with [`Policy::Selected`]).
+    /// [`allow_key`] of an author -> may draw (only used with [`Policy::Selected`]).
     Allowed(String, bool),
     LaserForViewers(bool),
     Presenter(Option<AuthorKey>),
@@ -255,7 +262,6 @@ impl BoardField {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AuthorInfo {
     pub name: String,
-    pub cert_key: Option<String>,
     pub shape: u8,
     pub color: u8,
 }
@@ -690,7 +696,6 @@ fn check_author(info: &AuthorInfo) -> Result<(), Reject> {
     if !chars_at_most(&info.name, MAX_NAME_CHARS) {
         return Err(Reject::NameTooLong);
     }
-    check_key(&info.cert_key)?;
     if info.shape >= SHAPE_COUNT || info.color >= COLOR_COUNT {
         return Err(Reject::BadValue);
     }
@@ -700,7 +705,6 @@ fn check_author(info: &AuthorInfo) -> Result<(), Reject> {
 fn check_board_field(f: &BoardField) -> Result<(), Reject> {
     match f {
         BoardField::Title(t) if !chars_at_most(t, MAX_TITLE_CHARS) => Err(Reject::TitleTooLong),
-        BoardField::Host(h) => check_key(&h.cert_key),
         BoardField::Allowed(k, _) => check_key(&Some(k.clone())),
         _ => Ok(()),
     }
@@ -794,7 +798,6 @@ pub fn op_writes(op: &Op) -> Result<Vec<Write>, Reject> {
 fn board_field_size(f: &BoardField) -> usize {
     16 + match f {
         BoardField::Title(t) => t.len(),
-        BoardField::Host(h) => h.cert_key.as_ref().map_or(0, String::len),
         BoardField::Allowed(k, _) => k.len(),
         _ => 0,
     }
@@ -811,9 +814,7 @@ fn write_size(w: &Write) -> usize {
         Write::Clear { vv, .. } => 32 + vv.len() * 8,
         Write::Revoke { .. } => 32,
         Write::Board { field, .. } => board_field_size(field),
-        Write::Author { info, .. } => {
-            32 + info.name.len() + info.cert_key.as_ref().map_or(0, String::len)
-        }
+        Write::Author { info, .. } => 32 + info.name.len(),
     }
 }
 
@@ -1011,9 +1012,7 @@ impl Board {
         match unit {
             Unit::Obj(id) => self.objects.get(&id).map_or(0, Object::approx_size),
             Unit::Clear(id) => self.clears.get(&id).map_or(0, |c| 32 + c.vv.len() * 8),
-            Unit::Author(k) => self.authors.get(&k).map_or(0, |r| {
-                32 + r.val.name.len() + r.val.cert_key.as_ref().map_or(0, String::len)
-            }),
+            Unit::Author(k) => self.authors.get(&k).map_or(0, |r| 32 + r.val.name.len()),
             Unit::Settings => self.settings.approx_size(),
         }
     }
@@ -1507,16 +1506,6 @@ impl Fnv {
         self.bytes(s.as_bytes());
     }
 
-    fn opt_str(&mut self, s: &Option<String>) {
-        match s {
-            Some(s) => {
-                self.u8(1);
-                self.str(s);
-            }
-            None => self.u8(0),
-        }
-    }
-
     fn stamp(&mut self, s: Stamp) {
         self.u64(s.lamport);
         self.u32(s.author);
@@ -1559,10 +1548,7 @@ impl Fnv {
         self.u8(f.tag());
         match f {
             BoardField::Title(t) => self.str(t),
-            BoardField::Host(h) => {
-                self.u32(h.author);
-                self.opt_str(&h.cert_key);
-            }
+            BoardField::Host(h) => self.u32(h.author),
             BoardField::Policy(p) => self.u8(p.to_u8()),
             BoardField::Allowed(k, v) => {
                 self.str(k);
@@ -1581,7 +1567,6 @@ impl Fnv {
 
     fn author(&mut self, a: &AuthorInfo) {
         self.str(&a.name);
-        self.opt_str(&a.cert_key);
         self.u8(a.shape);
         self.u8(a.color);
     }
@@ -1959,7 +1944,6 @@ mod tests {
         );
         let author = AuthorInfo {
             name: "a".into(),
-            cert_key: None,
             shape: SHAPE_COUNT,
             color: 0,
         };
@@ -2022,7 +2006,6 @@ mod tests {
             lamport: MAX_LAMPORT + 1,
             body: Body::Author(AuthorInfo {
                 name: "x".into(),
-                cert_key: None,
                 shape: 0,
                 color: 0,
             }),
@@ -2186,10 +2169,7 @@ mod tests {
         let ops = vec![
             a.local_board(vec![
                 BoardField::Title("Plan".into()),
-                BoardField::Host(Host {
-                    author: 1,
-                    cert_key: Some("k1".into()),
-                }),
+                BoardField::Host(Host { author: 1 }),
                 BoardField::Policy(Policy::Selected),
                 BoardField::Allowed("k2".into(), true),
                 BoardField::LaserForViewers(true),
@@ -2198,7 +2178,6 @@ mod tests {
             .unwrap(),
             a.local_author(AuthorInfo {
                 name: "Ann".into(),
-                cert_key: Some("k1".into()),
                 shape: 3,
                 color: 5,
             })
@@ -2480,7 +2459,6 @@ mod tests {
                 Step::Name(a, t) => {
                     let info = AuthorInfo {
                         name: format!("n{t}"),
-                        cert_key: Some("c".into()),
                         shape: t % 4,
                         color: t % 6,
                     };
