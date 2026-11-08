@@ -62,7 +62,7 @@ workflow. `e2e/changed-plugins.sh <base>` prints the selection.
 
 ### Which Mumcord the E2E tests use
 
-`e2e/mumcord-version` pins a **Mumcord release tag** (now `v0.6.2`). CI builds that tag once with its
+`e2e/mumcord-version` pins a **Mumcord release tag** (now `v0.7.2`). CI builds that tag once with its
 test backend (a downloaded release has no WebDriver backend) and caches the app, the E2E image and
 the `mumcord-plugin` CLI per tag. A tag never changes, so the tests never depend on unreleased
 Mumcord code.
@@ -93,10 +93,9 @@ Such a plugin still runs `cargo test` in CI. Its mock-host scenarios, its E2E sp
 ### The registry CLI pin
 
 The `check` and `publish` workflows install `mumcord-plugin` from the ref in
-`.github/mumcord-cli-ref` (branch or tag of `Mumcord/mumcord`, cached per commit). Until Mumcord
-0.7.0 is released it is the branch `feat/09-host`, because only that CLI writes the `v1.1` index
-(`site-data`), checks `min_mumcord` and knows API 1.1. **At the 0.7.0 release this file moves to
-`v0.7.0`**, the same time `e2e/mumcord-version` does. Locally, `MUMCORD_PLUGIN=<path>` selects a
+`.github/mumcord-cli-ref` (branch or tag of `Mumcord/mumcord`, cached per commit), now `v0.7.2`. It needs a CLI that writes
+the `v1.1` index (`site-data`), checks `min_mumcord` and knows API 1.1, so it is 0.7.0 or later and
+moves together with `e2e/mumcord-version`. Locally, `MUMCORD_PLUGIN=<path>` selects a
 CLI for `.github/scripts/registry.py`.
 
 ### Run the E2E tests locally
@@ -117,8 +116,8 @@ and the image `mumcord-e2e-ref`), so the tag's build stays untouched. Local runs
 uses the pinned tag.
 
 ```sh
-MUMCORD_REF=feat/09-host e2e/run.sh whiteboard
-MUMCORD_REF=feat/09-host e2e/run.sh --check whiteboard
+MUMCORD_REF=main e2e/run.sh whiteboard
+MUMCORD_REF=main e2e/run.sh --check whiteboard
 ```
 
 The specs run as part of Mumcord's suite: `e2e/run.sh` copies them (and any other `.ts`
