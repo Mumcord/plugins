@@ -10,7 +10,6 @@ import { el, cursorEl, updateCursor } from "./dom.js";
 import { ObjectStore, normalizePeers, personColour } from "./objects.js";
 import { readPalette, drawScene, drawLive, textSize, HAND_FAMILY, noteTilt, loadHandFont } from "./render.js";
 import { answerRender, drawPreview } from "./pngrender.js";
-import { STAGE_CHUNK } from "./chunk.js";
 import { createDialogs } from "./dialogs.js";
 import { addTrail, pruneTrail, trailAlpha, TRAIL_MS } from "./trail.js";
 import { nextShape, toolForKey, commandFor, isArrowKey, moveKbCursor, followShift, isTypingTarget } from "./keyboard.js";
@@ -283,7 +282,6 @@ function onMessage(msg) {
         peerOf,
         hidden: app.hidden,
         send: (m) => send(m),
-        chunk: STAGE_CHUNK,
       });
       break;
     case "boards":

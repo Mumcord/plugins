@@ -8,7 +8,6 @@ import { el, cursorEl, updateCursor, shapeGlyph } from "./dom.js";
 import { ObjectStore, normalizePeers, personColour, peerStateKey } from "./objects.js";
 import { readPalette, drawScene, loadHandFont } from "./render.js";
 import { answerRender } from "./pngrender.js";
-import { PANEL_CHUNK } from "./chunk.js";
 import { boundsOf, inflate, fitRect, worldToScreen, viewRect, quickNotePlace } from "./geom.js";
 
 const $ = (id) => document.getElementById(id);
@@ -92,7 +91,6 @@ function onMessage(msg) {
         peerOf,
         hidden: hiddenAuthors(),
         send,
-        chunk: PANEL_CHUNK,
       });
       break;
     default:

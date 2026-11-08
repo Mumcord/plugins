@@ -11,23 +11,28 @@ test("base64 matches Node's encoder for all tail lengths", () => {
 
 test("png chunks stay within the limit and reassemble", () => {
   const bytes = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 31) & 255);
-  const msgs = c.pngMessages(7, bytes, c.STAGE_CHUNK);
+  const msgs = c.pngMessages(7, bytes);
   assert.ok(msgs.length > 1);
   for (const [i, m] of msgs.entries()) {
     assert.equal(m.t, "png");
     assert.equal(m.req, 7);
     assert.equal(m.part, i);
     assert.equal(m.of, msgs.length);
-    assert.ok(m.data.length <= 48 * 1024);
+    assert.ok(m.data.length <= c.PNG_CHUNK);
     assert.equal(m.data.length % 4, 0);
-    assert.ok(JSON.stringify(m).length < 60 * 1024);
   }
   assert.deepEqual(Buffer.from(msgs.map((m) => m.data).join(""), "base64"), Buffer.from(bytes));
 });
 
-test("side panel chunks fit its 16 KiB bridge", () => {
-  const msgs = c.pngMessages("r1", new Uint8Array(50_000), c.PANEL_CHUNK);
-  for (const m of msgs) assert.ok(JSON.stringify(m).length <= 16 * 1024);
+test("png chunks fit the host's 16 KiB page-to-plugin limit on every place", () => {
+  // Mumcord's UI drops any page message above 16 KiB, the stage's included, so a larger part
+  // never reaches the plugin and the export times out.
+  const bytes = Uint8Array.from({ length: 200_000 }, (_, i) => (i * 31) & 255);
+  for (const place of ["stage", "side"]) {
+    for (const m of c.pngMessages("r1", bytes)) {
+      assert.ok(Buffer.byteLength(JSON.stringify({ p: place, ...m })) <= 16 * 1024);
+    }
+  }
 });
 
 test("an empty PNG still gives one part", () => {

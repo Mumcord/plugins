@@ -1,9 +1,11 @@
 // Pure helpers for sending rendered PNGs over the bridge in chunks.
 
-/** Base64 chunk size for the stage (its bridge takes 64 KiB per message). */
-export const STAGE_CHUNK = 48 * 1024;
-/** The side panel's bridge takes only 16 KiB per message, so its chunks are smaller. */
-export const PANEL_CHUNK = 12 * 1024;
+/**
+ * Base64 chunk size. The host's UI takes at most 16 KiB per page -> plugin message from every
+ * web view, the stage included (only plugin -> stage messages may reach 64 KiB), so the chunk
+ * leaves room for the envelope.
+ */
+export const PNG_CHUNK = 12 * 1024;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -38,7 +40,7 @@ export function chunkString(s, max) {
  * The `png` messages answering render request `req`. Chunk boundaries fall on multiples of four
  * characters so every part is valid base64 on its own.
  */
-export function pngMessages(req, bytes, max = STAGE_CHUNK) {
+export function pngMessages(req, bytes, max = PNG_CHUNK) {
   const size = Math.max(4, max - (max % 4));
   const parts = chunkString(bytesToBase64(bytes), size);
   return parts.map((data, part) => ({ t: "png", req, part, of: parts.length, data }));

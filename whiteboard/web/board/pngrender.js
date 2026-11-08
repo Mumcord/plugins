@@ -54,7 +54,7 @@ export function drawPreview(canvas, scope, transparent, ctx) {
 
 /**
  * `ctx` gives the current state: `objs` (paint order), `selected` (Set of ids), `view` (world
- * rect on screen), `palette`, `peerOf`, `hidden` (authors hidden locally), `send`, `chunk`.
+ * rect on screen), `palette`, `peerOf`, `hidden` (authors hidden locally), `send`.
  */
 export async function answerRender(msg, ctx) {
   const req = msg.req;
@@ -70,7 +70,7 @@ export async function answerRender(msg, ctx) {
       g.fillRect(0, 0, canvas.width, canvas.height);
     }
     drawScene(g, objs, { x: rect.x, y: rect.y, zoom: s }, 1, ctx.palette, { peerOf: ctx.peerOf });
-    for (const part of pngMessages(req, await toPngBytes(canvas), ctx.chunk)) ctx.send(part);
+    for (const part of pngMessages(req, await toPngBytes(canvas))) ctx.send(part);
   } catch (err) {
     console.warn("whiteboard: rendering the PNG failed", err.name);
     // An empty answer (of: 0) tells the plugin the render failed instead of leaving it waiting.

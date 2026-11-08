@@ -6,13 +6,18 @@ import { Pacer } from "./rate.js";
 /** Stay well below the host's 60 messages per second. */
 const RATE = 45;
 const BURST = 20;
+/**
+ * The host's UI drops every page -> plugin message above 16 KiB, on the stage too; only plugin ->
+ * page messages get the stage's 64 KiB.
+ */
+const MAX_SEND_BYTES = 16 * 1024;
 
 /**
- * Connects to the plugin. `place` is where the page runs (`stage` or `side`) and `maxBytes` that
- * place's bridge limit (64 KiB on the stage, 16 KiB in the side panel); `onMessage` gets every
- * parsed message with a string `t`. A plugin may show several web views and the host does not
- * say which one a message is for or from, so every message carries the place: `p` going out,
- * `to` coming in.
+ * Connects to the plugin. `place` is where the page runs (`stage` or `side`) and `maxBytes` the
+ * largest message that place receives (64 KiB on the stage, 16 KiB in the side panel);
+ * `onMessage` gets every parsed message with a string `t`. A plugin may show several web views
+ * and the host does not say which one a message is for or from, so every message carries the
+ * place: `p` going out, `to` coming in.
  */
 export function connect(onMessage, maxBytes, place) {
   let timer = 0;
@@ -43,7 +48,7 @@ export function connect(onMessage, maxBytes, place) {
      */
     send(msg, ephemeral = false) {
       const text = JSON.stringify({ p: place, ...msg });
-      if (text.length > maxBytes) {
+      if (new TextEncoder().encode(text).length > MAX_SEND_BYTES) {
         console.warn(`whiteboard: message "${msg.t}" is too large for the bridge and was not sent`);
         return false;
       }
