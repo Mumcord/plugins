@@ -16,9 +16,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Plugin API 1.1 is not released yet: the SDK comes from Mumcord's feat/09-host branch, pinned
-# by Cargo.lock. Switch to the crates.io release once Mumcord 0.7.0 ships.
-mumcord-plugin-sdk = { git = "https://github.com/Mumcord/mumcord.git", branch = "feat/09-host", features = ["1.1"] }
+mumcord-plugin-sdk = { version = "0.7", features = ["1.1"] }
 # Deflate for op batches and snapshots: small, pure Rust, builds for wasm32.
 miniz_oxide = "0.8"
 # The page bridge speaks JSON; both already come with the SDK.
