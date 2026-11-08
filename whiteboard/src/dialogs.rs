@@ -297,7 +297,10 @@ fn settings_view(ctx: &Ctx, confirm_remove: Option<AuthorKey>) -> El {
     }
     let mut list = ui::list(&t("dialog.settings.people"));
     for p in ctx.persons.iter().take(48) {
-        let mut row = ui::stack(Direction::Row, 8, Align::Center).justify(Justify::FillFirst);
+        // Name line and action line are separate: the renderer never shrinks the toggles and
+        // buttons, so beside them the name column collapsed to one letter per line.
+        let mut head = ui::stack(Direction::Row, 8, Align::Center).justify(Justify::FillFirst);
+        let mut row = ui::stack(Direction::Row, 8, Align::Center);
         let mut name = clip_to(&p.name, 40);
         if p.host {
             name = t_with("dialog.settings.hostName", &[("name", &name)]);
@@ -305,9 +308,9 @@ fn settings_view(ctx: &Ctx, confirm_remove: Option<AuthorKey>) -> El {
         if p.me {
             name = t_with("dialog.settings.you", &[("name", &name)]);
         }
-        row = row.child(ui::text(&clip(&name)));
+        head = head.child(ui::text(&clip(&name)));
         if p.hidden {
-            row = row.child(ui::chip(&t("dialog.settings.hiddenChip")).tone(Tone::Neutral));
+            head = head.child(ui::chip(&t("dialog.settings.hiddenChip")).tone(Tone::Neutral));
         }
         if ctx.host && ctx.policy == Some(Policy::Selected) && !p.host {
             row = row.child(ui::toggle(
@@ -340,7 +343,11 @@ fn settings_view(ctx: &Ctx, confirm_remove: Option<AuthorKey>) -> El {
                     .kind(ButtonKind::Secondary),
                 );
         }
-        list = list.child(row);
+        list = list.child(
+            ui::stack(Direction::Column, 4, Align::Start)
+                .child(head)
+                .child(row),
+        );
     }
     col = col.child(list);
     if let Some(a) = confirm_remove {
