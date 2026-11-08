@@ -10,7 +10,7 @@ hide:
 # Mumcord Plugins
 
 **Your Mumble server. Finally cosy.** Plugins are small, safe extras on top of voice chat: polls,
-dice, pets, a remote for your music bot and, soon, EVE Online fits. They run inside Mumcord, need
+dice, pets, a remote for your music bot and EVE Online fits. They run inside Mumcord, need
 no server changes and work on any standard Mumble server.
 
 [Install a plugin](install.md){ .md-button .md-button--primary }
@@ -46,7 +46,13 @@ no server changes and work on any standard Mumble server.
 
     A remote for your mumbot music bot: now playing, skip, volume, queue and adding tracks.
 
--   **[EVE Fit](plugins/eve-fit.md)** <span class="mp-soon">Coming soon</span>
+-   <img src="../whiteboard/assets/icon-128.png" alt="" width="48" height="48"> **[Whiteboard](plugins/whiteboard.md)**
+
+    ---
+
+    One shared, endless board for your voice channel: sketch, add sticky notes, present with a laser and export.
+
+-   <img src="../eve-fit/assets/icon-128.png" alt="" width="48" height="48"> **[EVE Fit](plugins/eve-fit.md)**
 
     ---
 

@@ -16,6 +16,7 @@ Registry source and official plugins for [Mumcord](https://github.com/Mumcord/mu
 | <img src="dice/assets/icon-128.png" alt="" width="64"> | [**Dice roller**](dice/) | `/roll d20` or `2d6+3` with fair rolls that others in the channel can witness and verify. |
 | <img src="echolings/assets/icon-128.png" alt="" width="64"> | [**Echolings**](echolings/) | A little creature made of sound that grows while you hang out with friends. It never dies and never nags. |
 | <img src="mumbot-music/assets/icon-128.png" alt="" width="64"> | [**Mumbot Music**](mumbot-music/) | Control a mumbot music bot in your channel: now playing, skip, volume, queue and adding tracks. |
+| <img src="whiteboard/assets/icon-128.png" alt="" width="64"> | [**Whiteboard**](whiteboard/) | One shared, endless board for your voice channel: sketch, add sticky notes, present with a laser and export as PNG, SVG or PDF. |
 | <img src="eve-fit/assets/icon-128.png" alt="" width="64"> | [**EVE fit**](eve-fit/) | EVE Online ship fits pasted into the chat become a tidy card, with the full fit one click away. |
 
 ## How plugins work
@@ -129,7 +130,7 @@ checkout and the shared helpers in `e2e/helpers/` to
 ## Repository layout
 
 - `plugins/<id>/plugin.toml`, `plugins/<id>/versions/<ver>.toml`, media: registry entries
-- `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `eve-fit/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
+- `poll/`, `dice/`, `echolings/`, `mumbot-music/`, `whiteboard/`, `eve-fit/`: official plugin sources (AGPL-3.0, own `LICENSE` each)
   with their mock-host scenarios (`scenarios/`) and E2E specs (`e2e/`)
 - `e2e/`: E2E harness for the official plugins (runner, shared helpers, pinned Mumcord tag)
 - `policy/REVIEW.md`: review policy
@@ -144,5 +145,5 @@ checkout and the shared helpers in `e2e/helpers/` to
 
 There is no repository-wide licence; each part carries its own `LICENSE`:
 
-- Official plugins (`poll/`, `dice/`, `echolings/`, `mumbot-music/`): AGPL-3.0-or-later
+- Official plugins (`poll/`, `dice/`, `echolings/`, `mumbot-music/`, `whiteboard/`): AGPL-3.0-or-later
 - Template (`template/`) and docs (`docs/`): Apache-2.0

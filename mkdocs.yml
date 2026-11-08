@@ -98,7 +98,8 @@ nav:
       - Dice roller: plugins/dice.md
       - Echolings: plugins/echolings.md
       - Mumbot Music: plugins/mumbot-music.md
-      - EVE Fit (coming soon): plugins/eve-fit.md
+      - Whiteboard: plugins/whiteboard.md
+      - EVE Fit: plugins/eve-fit.md
   - Build plugins:
       - Overview: developers.md
       - Getting started: getting-started.md
