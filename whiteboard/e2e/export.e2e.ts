@@ -22,8 +22,6 @@ import {
   stroke,
 } from "./board.ts";
 
-/** Why these tests are skipped until the host counts clicks in the page as a gesture. */
-const BLOCKED = "blocked by host task GX: a click inside the plugin's page is not a user gesture yet";
 const EXPORT_TITLE = 'Export or share "Untitled board"';
 
 describe("Whiteboard: export and post to chat", () => {
@@ -51,7 +49,7 @@ describe("Whiteboard: export and post to chat", () => {
     });
   });
 
-  it.skip(`exports PNG, SVG, PDF and the board file without names (${BLOCKED})`, async () => {
+  it("exports PNG, SVG, PDF and the board file without names", async () => {
     const downloads = app.downloadsDir();
     for (const format of ["PNG image", "SVG drawing", "PDF document", "Board file"]) {
       await inBoard(async () => {
@@ -72,7 +70,7 @@ describe("Whiteboard: export and post to chat", () => {
     }
   });
 
-  it.skip(`posts the board as a picture that a standard client receives (${BLOCKED})`, async () => {
+  it("posts the board as a picture that a standard client receives", async () => {
     carol = new ScriptBot({ name: "Carol", timeout: 60 });
     await carol.connected();
     const picture = carol.run("expect message --from Alice --contains \"<img\"", 60_000);
